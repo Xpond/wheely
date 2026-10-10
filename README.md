@@ -38,6 +38,10 @@ A radial control center, a file browser and centered shell panels for
 Tested only on Omarchy 4.0.4 with Quickshell 0.3.1. It patches the packaged
 shell, so it is not a plugin `omarchy plugin add` can install.
 
+[Tidal](themes/tidal/README.md) is our independent light Omarchy theme: an
+animated coast and three static wallpapers in chalk, turquoise, and warm sand.
+Preview it with `./themes/tidal/tidal preview`; its installation is separate.
+
 ## Install
 
 Needs `jq`, `python3`, `git`, `hyprctl`, `sudo`, `fd`, `wl-copy`, `gio`,
