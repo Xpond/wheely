@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+theme=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+destination="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/tidal"
+
+case "${1:-help}" in
+  install)
+    if [[ "$theme" != "$destination" ]]; then
+      mkdir -p "$destination"
+      cp -a "$theme/." "$destination/"
+    fi
+    # Remove only this collection's superseded low-resolution assets on upgrade.
+    rm -f "$destination/backgrounds/"{01-shoreline,02-shallows,03-ebb}.png
+    omarchy hook install theme-set "$destination/hooks/tidal-wallpaper"
+    omarchy hook install post-boot "$destination/hooks/tidal-wallpaper"
+    "$destination/tidal" watch
+    printf 'Tidal installed. Apply it with: omarchy theme set tidal\n'
+    ;;
+  animate)
+    "$destination/tidal" watch
+    exec omarchy theme bg set "$HOME/.local/state/omarchy/current/theme/backgrounds/00-living-coast-animated.png"
+    ;;
+  watch)
+    exec quickshell --no-duplicate --daemonize -p "$destination/animated"
+    ;;
+  stop|pause|resume)
+    exec quickshell ipc -p "$destination/animated" call tidal "$1"
+    ;;
+  preview)
+    exec quickshell --no-duplicate -p "$theme/preview.qml"
+    ;;
+  *)
+    printf 'Usage: %s {install|animate|stop|pause|resume|preview}\n' "$0"
+    ;;
+esac

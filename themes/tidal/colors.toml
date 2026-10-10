@@ -1,0 +1,37 @@
+# Tidal — chalk, sea glass, warm sand, and marine ink.
+mode = "light"
+
+accent = "#146A7C"
+selection = "#C6E0DA"
+selection_background = "#C6E0DA"
+selection_foreground = "#163C45"
+muted = "#5C7273"
+
+background = "#F4F1E8"
+dark_background = "#E7EBE5"
+darker_background = "#D6E1DB"
+lighter_background = "#EAF3EF"
+
+foreground = "#23444C"
+dark_foreground = "#5C7273"
+light_foreground = "#36555B"
+bright_foreground = "#163C45"
+
+red = "#AF4B47"
+yellow = "#89621D"
+orange = "#A45F37"
+green = "#397355"
+cyan = "#1B7579"
+blue = "#2A6A8C"
+magenta = "#855F84"
+brown = "#80634D"
+
+bright_red = "#A34441"
+bright_yellow = "#805B19"
+bright_green = "#2E6B50"
+bright_cyan = "#146A70"
+bright_blue = "#205E80"
+bright_magenta = "#80577F"
+
+hyprland_active_border = "rgba(146a7cff) rgba(7fbdb4ff) 45deg"
+hyprland_inactive_border = "rgba(bbcdc8aa)"
