@@ -18,8 +18,13 @@ case "${1:-help}" in
     printf 'Tidal installed. Apply it with: omarchy theme set tidal\n'
     ;;
   animate)
+    case "${2:-colorful}" in
+      colorful) wallpaper=00-living-coast-animated.png ;;
+      muted) wallpaper=00-muted-coast-animated.png ;;
+      *) printf 'Usage: %s animate [colorful|muted]\n' "$0" >&2; exit 1 ;;
+    esac
     "$destination/tidal" watch
-    exec omarchy theme bg set "$HOME/.local/state/omarchy/current/theme/backgrounds/00-living-coast-animated.png"
+    exec omarchy theme bg set "$HOME/.local/state/omarchy/current/theme/backgrounds/$wallpaper"
     ;;
   watch)
     exec quickshell --no-duplicate --daemonize -p "$destination/animated"
@@ -31,6 +36,6 @@ case "${1:-help}" in
     exec quickshell --no-duplicate -p "$theme/preview.qml"
     ;;
   *)
-    printf 'Usage: %s {install|animate|stop|pause|resume|preview}\n' "$0"
+    printf 'Usage: %s {install|animate|stop|pause|resume|preview}\n       %s animate [colorful|muted]\n' "$0" "$0"
     ;;
 esac

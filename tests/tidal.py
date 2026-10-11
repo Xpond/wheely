@@ -49,10 +49,10 @@ for wallpaper in wallpapers:
     width, height = map(int, subprocess.check_output(
         ["magick", "identify", "-format", "%w %h", str(wallpaper)], text=True).split())
     assert width >= 3840 and height >= 2160 and 1.7 < width / height < 1.85
-posters = list((theme / "backgrounds").glob("*.png"))
-assert [p.name for p in posters] == ["00-living-coast-animated.png"]
-assert struct.unpack(">II", posters[0].read_bytes()[16:24]) == (3840, 2160)
-print("ok: three native 4K-or-larger landscape wallpapers", flush=True)
+posters = sorted((theme / "backgrounds").glob("*.png"))
+assert [p.name for p in posters] == ["00-living-coast-animated.png", "00-muted-coast-animated.png"]
+assert all(struct.unpack(">II", p.read_bytes()[16:24]) == (3840, 2160) for p in posters)
+print("ok: three native 4K-or-larger wallpapers and two animated coast posters", flush=True)
 
 # Run Omarchy's real generator against a scratch staging directory, never the user's next theme.
 omarchy = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy"))
@@ -84,7 +84,7 @@ Window {
   property int frame: 0
   property real stopped: 0
   property int updates: 0
-  Surface { id: sea; width: 1920; height: 1080; running: false; seconds: 148 }
+  Surface { id: sea; width: 1920; height: 1080; running: false; seconds: 148; muted: MUTED }
   Connections { target: sea; function onSecondsChanged() { if (sea.running) root.updates++ } }
   Timer { interval: 20000; running: true; onTriggered: { console.error("FAIL timeout"); Qt.exit(1) } }
   Timer {
@@ -120,43 +120,53 @@ Window {
     console.log("PASS motion and pause"); Qt.quit()
   } }
 }
-'''.replace("OUTPUT", json.dumps(str(output)))
-(output / "render.qml").write_text(qml)
+'''
 env = dict(os.environ, QT_QPA_PLATFORM="wayland", QT_QPA_PLATFORMTHEME="generic",
            QT_QUICK_BACKEND="rhi", QSG_RHI_BACKEND="opengl", XDG_CACHE_HOME=str(output / "cache"))
-run = subprocess.run(["quickshell", "--no-color", "-p", str(output / "render.qml")],
-                     env=env, capture_output=True, text=True, timeout=25)
-log = run.stdout + run.stderr
-(output / "render.log").write_text(log)
-assert run.returncode == 0 and "PASS" in log, log
-qslog.check(log)
-frames = {n: subprocess.check_output(["magick", str(output / f"animated-{n}.png"), "-depth", "8", "RGB:-"])
-          for n in [148, 152, 0, 3600]}
-assert frames[0] == frames[3600], "hourly wrap jumps"
-assert struct.unpack(">II", (output / "animated-4k.png").read_bytes()[16:24]) == (3840, 2160)
-change = sum(abs(a - b) for a, b in zip(frames[148], frames[152])) / len(frames[148])
-assert change > 0.67, "the water does not move"
-pixel = lambda x, y: frames[148][(y * 1920 + x) * 3:(y * 1920 + x) * 3 + 3]
-sea, sand = pixel(150, 100), pixel(1750, 950)
-assert sea[2] > sea[0] and sand[0] > sand[2], (sea, sand)
-assert sea[2] - sea[0] > 30, "the turquoise water looks washed out"
-assert sum(frames[148]) / len(frames[148]) > 170, "the coast is too dark for Tidal"
-waterlines = []
-for x in [150, 944, 1738]:
-    column = subprocess.check_output(["magick", str(output / "animated-148.png"),
-        "-crop", f"32x1080+{x}+0", "+repage", "-scale", "1x1080!", "-depth", "8", "RGB:-"])
-    waterlines.append(max(y for y in range(1080) if column[3*y+2] > column[3*y] + 3))
-assert max(waterlines) - min(waterlines) < 216, "the shoreline tilts across the display"
-for moment in [148, 152, 160, 170, 180]:
-    # Average individual sand grains; a wave seam changes whole neighboring regions.
-    difference = subprocess.run(["magick",
-        str(output / f"animated-{moment}.png"), str(output / f"animated-{moment}.0001.png"),
-        "-blur", "0x1", "-metric", "PAE", "-compare", "-format", "%[distortion]", "info:"],
-        capture_output=True, text=True, check=True)
-    maximum = float(difference.stdout)
-    print(f"nearby frames at {moment}s: maximum pixel change {maximum:.4f}", flush=True)
-    assert maximum < 0.04, "the wave edge jumps between nearby instants"
-print("ok: native 4K coast draws, moves smoothly, pauses, wraps, and stays continuous", flush=True)
+for variant in ["colorful", "muted"]:
+    capture = output / variant
+    capture.mkdir(exist_ok=True)
+    render = qml.replace("OUTPUT", json.dumps(str(capture))).replace("MUTED", str(int(variant == "muted")))
+    (output / "render.qml").write_text(render)
+    run = subprocess.run(["quickshell", "--no-color", "-p", str(output / "render.qml")],
+                         env=env, capture_output=True, text=True, timeout=25)
+    log = run.stdout + run.stderr
+    (capture / "render.log").write_text(log)
+    assert run.returncode == 0 and "PASS" in log, log
+    qslog.check(log)
+    frames = {n: subprocess.check_output(["magick", str(capture / f"animated-{n}.png"), "-depth", "8", "RGB:-"])
+              for n in [148, 152, 0, 3600]}
+    assert frames[0] == frames[3600], "hourly wrap jumps"
+    assert struct.unpack(">II", (capture / "animated-4k.png").read_bytes()[16:24]) == (3840, 2160)
+    change = sum(abs(a - b) for a, b in zip(frames[148], frames[152])) / len(frames[148])
+    assert change > 0.67, "the water does not move"
+    pixel = lambda x, y: frames[148][(y * 1920 + x) * 3:(y * 1920 + x) * 3 + 3]
+    sea, sand = pixel(150, 100), pixel(1750, 950)
+    if variant == "muted":
+        assert max(sea) - min(sea) <= 1 and 50 < min(sea) <= max(sea) < 100 and sand[0] >= sand[1] > sand[2], (sea, sand)
+        assert sum(sand) - sum(sea) > 240, "the charcoal water and warm grey shore blend together"
+        assert 180 < sum(sand) / len(sand) < 215, "the shore should stay a muted warm grey"
+    else:
+        assert sea[2] - sea[0] > 30 and sand[0] > sand[2], (sea, sand)
+        assert sum(frames[148]) / len(frames[148]) > 170, "the coast is too dark for Tidal"
+    waterlines = []
+    for x in [150, 944, 1738]:
+        column = subprocess.check_output(["magick", str(capture / "animated-148.png"),
+            "-crop", f"32x1080+{x}+0", "+repage", "-scale", "1x1080!", "-depth", "8", "RGB:-"])
+        waterlines.append(max(y for y in range(1080)
+            if sum((column[3*y+i] - sea[i]) ** 2 for i in range(3))
+             < sum((column[3*y+i] - sand[i]) ** 2 for i in range(3))))
+    assert max(waterlines) - min(waterlines) < 216, "the shoreline tilts across the display"
+    for moment in [148, 152, 160, 170, 180]:
+        # Average individual sand grains; a wave seam changes whole neighboring regions.
+        difference = subprocess.run(["magick",
+            str(capture / f"animated-{moment}.png"), str(capture / f"animated-{moment}.0001.png"),
+            "-blur", "0x1", "-metric", "PAE", "-compare", "-format", "%[distortion]", "info:"],
+            capture_output=True, text=True, check=True)
+        maximum = float(difference.stdout)
+        print(f"{variant}: nearby frames at {moment}s: maximum pixel change {maximum:.4f}", flush=True)
+        assert maximum < 0.04, "the wave edge jumps between nearby instants"
+    print(f"ok: {variant} native 4K coast draws, moves smoothly, pauses, wraps, and stays continuous", flush=True)
 
 # Render the actual collection gallery for the theme's review image.
 shutil.copytree(theme / "backgrounds", output / "backgrounds", dirs_exist_ok=True)
