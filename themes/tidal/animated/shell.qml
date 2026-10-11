@@ -10,7 +10,8 @@ Scope {
   property string background: ""
   property bool tidalTheme: false
   property string lastStatic: stateDir + "/theme/backgrounds/01-shoreline.jpg"
-  readonly property bool animated: tidalTheme && background.endsWith("/00-living-coast-animated.png")
+  readonly property bool muted: background.endsWith("/00-muted-coast-animated.png")
+  readonly property bool animated: tidalTheme && (muted || background.endsWith("/00-living-coast-animated.png"))
   onTidalThemeChanged: backgroundRefresh.restart()
 
   // Watch the directory: watching the image misses replacement of its symlink.
@@ -74,6 +75,7 @@ Scope {
 
       Surface {
         anchors.fill: parent
+        muted: root.muted ? 1 : 0
         running: !root.paused
       }
     }

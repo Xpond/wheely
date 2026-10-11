@@ -4,6 +4,7 @@ import QtQuick
 ShaderEffect {
   id: root
   property bool running: true
+  property real muted: 0
   property real seconds: 148
   readonly property vector2d resolution: Qt.vector2d(width, height)
   readonly property real time: seconds % 3600

@@ -9,6 +9,7 @@ Window {
   visible: true
   color: "#ECECE8"
   title: "Tidal — wallpaper collection"
+  property bool running: true
 
   Item {
     id: page
@@ -50,24 +51,35 @@ Window {
     }
     Text {
       x: page.width - width - 44; y: 99
-      text: sea.running ? "SPACE  Pause the tide     ESC  Close" : "SPACE  Resume the tide     ESC  Close"
+      text: gallery.running ? "SPACE  Pause the tide     ESC  Close" : "SPACE  Resume the tide     ESC  Close"
       color: "#506566"
       font { family: "sans-serif"; pixelSize: 12 }
     }
 
-    Item {
-      x: 44; y: 138; width: page.width - 88; height: 528
-      clip: true
-      Surface { id: sea; anchors.fill: parent }
-      Rectangle {
-        x: 20; y: 20; width: label.width + 32; height: 34
-        color: "#E6F2F2EE"
-        Text {
-          id: label
-          anchors.centerIn: parent
-          text: "01  /  THE LIVING COAST"
-          color: "#23444C"
-          font { family: "sans-serif"; pixelSize: 10; letterSpacing: 1.5 }
+    Row {
+      x: 44; y: 138; spacing: 18
+      Repeater {
+        model: [
+          { muted: 0, label: "01  /  THE LIVING COAST" },
+          { muted: 1, label: "02  /  THE MUTED COAST" }
+        ]
+        Item {
+          id: coast
+          required property var modelData
+          width: (page.width - 106) / 2; height: 528
+          clip: true
+          Surface { anchors.fill: parent; muted: coast.modelData.muted; running: gallery.running }
+          Rectangle {
+            x: 20; y: 20; width: label.width + 32; height: 34
+            color: "#E6F2F2EE"
+            Text {
+              id: label
+              anchors.centerIn: parent
+              text: coast.modelData.label
+              color: "#23444C"
+              font { family: "sans-serif"; pixelSize: 10; letterSpacing: 1.5 }
+            }
+          }
         }
       }
     }
@@ -76,9 +88,9 @@ Window {
       x: 44; y: 690; spacing: 18
       Repeater {
         model: [
-          { file: "01-shoreline", label: "02  /  SHORELINE", note: "The sea meets the sand." },
-          { file: "02-shallows", label: "03  /  SHALLOWS", note: "Sunlight, held in water." },
-          { file: "03-ebb", label: "04  /  EBB", note: "What the tide leaves behind." }
+          { file: "01-shoreline", label: "03  /  SHORELINE", note: "The sea meets the sand." },
+          { file: "02-shallows", label: "04  /  SHALLOWS", note: "Sunlight, held in water." },
+          { file: "03-ebb", label: "05  /  EBB", note: "What the tide leaves behind." }
         ]
         Column {
           required property var modelData
@@ -106,6 +118,6 @@ Window {
     }
   }
 
-  Shortcut { sequence: "Space"; onActivated: sea.running = !sea.running }
+  Shortcut { sequence: "Space"; onActivated: gallery.running = !gallery.running }
   Shortcut { sequence: "Escape"; onActivated: Qt.quit() }
 }
