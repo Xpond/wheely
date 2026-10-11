@@ -39,10 +39,11 @@ Choose any static image to switch back. You can also select the animation with:
 ~/.config/omarchy/themes/tidal/tidal animate
 ```
 
-The camera stays still while irregular surges roll along a horizontal shoreline.
-Caustics drift through shallow turquoise water, foam thins along the edge, and wet
-sand dries behind the backwash. Adapted from Wheely's original Shore shader, with
-a lighter palette and a tide running at 30% of Shore's speed.
+The camera holds a settled shoreline, with a gentle ebb and return over 24 seconds.
+Caustics drift slowly through turquoise water while the foam moves gently at the
+edge. Smaller washes lap along the sand independently over 12 seconds.
+Adapted from Wheely's original Shore shader, with a lighter palette and
+water light moving at 25% of Shore's speed.
 
 Quickshell renders one input-transparent surface per display, above the shell's
 static background and below application windows. It takes no keyboard focus or
@@ -50,6 +51,9 @@ screen space. A 32 ms timer targets about 30 animation updates per second.
 The detailed foam, caustics, and ripples render directly at the display's resolution,
 including 4K, with no low-resolution texture cap or upscaling. No video player
 is needed.
+
+Foam uses a seamless bubble texture for pores and surface lighting. It is loaded
+once, with filtered smaller versions for fine detail at different display sizes.
 
 ```bash
 ~/.config/omarchy/themes/tidal/tidal pause
@@ -85,6 +89,10 @@ Rebuild the shader after editing `animated/tidal.frag`:
   -o themes/tidal/animated/tidal.frag.qsb themes/tidal/animated/tidal.frag
 python3 tests/tidal.py
 ```
+
+The bundled bubble texture is reproducible with `python3 animated/bake-bubbles.py`
+from this theme directory (requires NumPy and ImageMagick). The fragment shader
+is 211 lines; foam and overlapping-wave composition stay in the same pass.
 
 The check validates text contrast, the three wallpapers, Omarchy's generated app
 configs, GPU captures of motion, pause, horizontal surf, native 4K rendering,
