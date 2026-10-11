@@ -1,6 +1,6 @@
 import QtQuick
 
-// The same coast on every display, with a still camera and a slow, hourly repeating tide.
+// A settled coast with a quiet tide and slowly drifting water light.
 ShaderEffect {
   id: root
   property bool running: true
@@ -8,6 +8,14 @@ ShaderEffect {
   readonly property vector2d resolution: Qt.vector2d(width, height)
   readonly property real time: seconds % 3600
   property double previous: Date.now()
+  property var bubbles: ShaderEffectSource {
+    sourceItem: Image { source: Qt.resolvedUrl("bubbles.png") }
+    hideSource: true
+    live: false
+    smooth: true
+    mipmap: true
+    wrapMode: ShaderEffectSource.Repeat
+  }
 
   onRunningChanged: previous = Date.now()
   Timer {
@@ -16,7 +24,7 @@ ShaderEffect {
     running: root.running && root.visible
     onTriggered: {
       var now = Date.now()
-      root.seconds += Math.min(0.1, (now - root.previous) / 1000) * 0.30
+      root.seconds += Math.min(0.1, (now - root.previous) / 1000) * 0.25
       root.previous = now
     }
   }
