@@ -7,9 +7,10 @@ layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
     vec2 resolution;
-    // Seconds of surf, wrapped hourly.
+    // Seconds of water motion, wrapped hourly.
     float time;
 };
+layout(binding = 1) uniform sampler2D bubbles;
 
 const float every = 6.0;
 const float surges = 600.0;
@@ -63,9 +64,14 @@ vec2 foamAt(vec2 p, float density, float age) {
     q += 1.5 * vec2(0.65 * noise(bend) + 0.35 * noise(bend * 2.1 + 3.0), 0.65 * noise(bend + 5.2) + 0.35 * noise(bend * 2.1 + 8.1));
     float n = 0.5 + 2.2 * (fbm(q) - 0.5) + 0.03 * (noise(p * 120.0) - 0.5);
     float lace = 1.0 - abs(2.0 * n - 1.0), edge = 1.0 - density;
-    // Thin foam is a translucent film.
-    return vec2(smoothstep(edge - 0.06, edge + 0.06, lace) * smoothstep(0.001, 0.06, density) * (0.35 + 0.65 * smoothstep(0.1, 0.6, density)),
-                smoothstep(edge, edge + 0.35, lace));
+    vec3 pore = texture(bubbles, p * vec2(6.0, 9.0)).rgb;
+    float froth = smoothstep(0.16, 0.52, pore.r + 0.16 * density);
+    float openings = smoothstep(0.18, 0.48, texture(bubbles, q * 0.09).r + 0.32 * density);
+    float coverage = smoothstep(edge - 0.04, edge + 0.04, lace) * smoothstep(0.001, 0.06, density);
+    float lighting = 0.88 + 0.08 * froth + 0.04 * dot(pore.gb * 2.0 - 1.0, vec2(-0.5, -0.85));
+    float opacity = coverage * (0.2 + 0.8 * openings) * (0.75 + 0.25 * froth)
+                  * (0.35 + 0.65 * smoothstep(0.1, 0.6, density)) * (0.5 + 0.5 * smoothstep(edge, edge + 0.18, lace));
+    return vec2(opacity, opacity * lighting);
 }
 
 // hour is the hour fraction; whole 64-unit shifts keep the caustic wrap continuous.
@@ -105,14 +111,19 @@ void main() {
     depth += 0.65 * smoothstep(0.15, -0.45, v); // Rich turquoise without stacked wave slabs.
     float wet = max(smoothstep(shallows + 0.25, shallows, v), 0.4), gloss = 0.0, shade = 0.0;
     vec2 foam = vec2(0.0);
-    float latest = floor(time / every), peak = when(0.5);
+    float surfTime = 148.0 + 0.65 * sin(6.2831853 * mod(time - 148.0, 6.0) / 6.0);
+    float latest = floor(surfTime / every), peak = when(0.5);
     // Water textures stay continuous underneath overlapping surges.
     vec2 flow = vec2(u, v);
+    // Small overlapping washes move the contact edge along the sand independently.
+    float washPhase = 6.2831853 * mod(time - 148.0, 3.0) / 3.0;
+    v -= smoothstep(-0.12, 0.04, v) * (0.012 * sin(u * 16.0 + washPhase)
+                                   + 0.006 * sin(u * 29.0 - 2.0 * washPhase));
     float covered = 0.0;
     for (int i = -1; i < 5; ++i) {
         float n = latest - float(i), k = mod(n, surges);
         float start = n * every + 0.3 * every * hash(k + 0.1) + 1.6 * (hash(k + 0.3) - 0.5) * u + late(k, u);
-        float span = 12.5 + 3.0 * hash(k + 0.6), since = time - start;
+        float span = 12.5 + 3.0 * hash(k + 0.6), since = surfTime - start;
         if (since < 0.0) continue;
         float r = reach(k, u), s = since / span;
         float p = s * (1.0 + drain * (1.0 - s)), run = 4.0 * p * (1.0 - p) * r;
@@ -138,7 +149,7 @@ void main() {
                     float cover = (1.0 - covered) * smoothstep(-0.004, 0.006, min(lumpy, film)) * arrival;
                     vec2 waveFlow = vec2(u, v - run * (0.5 + 0.5 * exp(-d / 1.5))) + 3.1 * k;
                     // Bore has ragged foam; the thinning edge rope closes up.
-                    float churned = 1.4 - 0.45 * (1.0 - smoothstep(0.1, 0.3, s)) * smoothstep(0.3, 1.0, lumpy / rope);
+                    float churned = 0.78 + 0.30 * noise(waveFlow * vec2(24.0, 38.0));
                     float dense = max(churned * exp(-pow(lumpy / rope, 2.0)) * fading,
                                       0.4 * smoothstep(0.3, 0.7, noise(waveFlow * vec2(3.0, 5.0))) * (1.0 - 0.6 * s) * smoothstep(0.0, 0.03, d));
                     foam += foamAt(waveFlow, dense, since) * cover;
@@ -187,14 +198,14 @@ void main() {
         bottom *= 1.0 - 0.035 * exp(-pow(line / (1.8 * px), 2.0)) * smoothstep(0.2, 0.7, noise(g.x * 9.0 + 7.0 * float(m)));
     }
     // Seen through the water: reds go first, then the shallows turn green and turquoise.
-    vec3 transmission = exp(-depth * vec3(1.05, 0.44, 0.38));
-    vec3 colour = bottom * transmission + vec3(0.12, 0.47, 0.51) * (1.0 - transmission);
+    vec3 transmission = exp(-depth * vec3(1.30, 0.44, 0.34));
+    vec3 colour = bottom * transmission + vec3(0.08, 0.47, 0.51) * (1.0 - transmission);
     // Sun is up the beach.
     vec3 n = normalize(vec3(-slope, 1.0));
     colour += water * vec3(0.75, 0.87, 1.0) * (0.04 + 0.3 * max(-n.y, 0.0));
     colour += water * (1.0 - foam.x) * 0.18 * pow(max(dot(n, normalize(vec3(0.0, -0.15, 1.0))), 0.0), 900.0);
     // Wet sand shines with the sky, freshly bared sand most, in patches as the film drains.
     colour += (1.0 - water) * (0.05 * wet + 0.08 * gloss * (0.5 + 0.5 * noise(g * 30.0))) * vec3(0.8, 0.9, 1.0);
-    colour = mix(colour, vec3(0.97, 0.98, 1.0) * (0.88 + 0.12 * foam.y), foam.x);
+    colour = colour * (1.0 - foam.x) + vec3(0.97, 0.98, 1.0) * foam.y;
     fragColor = vec4(clamp(colour, 0.0, 1.0), 1.0) * qt_Opacity;
 }
