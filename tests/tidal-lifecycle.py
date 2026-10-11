@@ -16,7 +16,7 @@ shutil.copytree(repo / "themes/tidal/animated", config, dirs_exist_ok=True)
 # Keep state outside the config so Quickshell hot reload cannot mask watcher bugs.
 state = output / "state"
 state.mkdir(exist_ok=True)
-for name in ["one.jpg", "two.jpg", "00-living-coast-animated.png"]:
+for name in ["one.jpg", "two.jpg", "00-living-coast-animated.png", "00-muted-coast-animated.png"]:
     (state / name).write_bytes(b"unused: this fixture creates no wallpaper surfaces")
 background = state / "background"
 background.unlink(missing_ok=True)
@@ -31,6 +31,7 @@ source = source.replace("id: root", '''id: root
   onAnimatedChanged: console.log("STATE", root.animated)
   Component.onCompleted: console.log("STATE", root.animated)''', 1)
 source = source.replace("root.background = path", '''root.background = path
+        console.log("SELECTION", path, root.animated, root.muted)
         if (root.tidalTheme) console.log("READY watching")''')
 shell.write_text(source)
 log_path = output / "run.log"
@@ -44,40 +45,66 @@ with log_path.open("w") as log:
             while True:
                 content = log_path.read_text()
                 assert process.poll() is None, content
-                states = [line.rsplit("STATE ", 1)[1] for line in content.splitlines() if "STATE " in line]
-                if expected in content and (expected == "READY watching" or states[-1] == expected):
+                marker = expected.split(" ", 1)[0] + " "
+                messages = [line.split(marker, 1)[1] for line in content.splitlines() if marker in line]
+                if messages and messages[-1] == expected[len(marker):]:
                     return
                 assert time.monotonic() < deadline, content
                 time.sleep(0.02)
 
-        def select(name, animated):
+        def select(name, animated, muted=False):
             replacement = state / "replacement"
             replacement.symlink_to(state / name)
             replacement.replace(background)
-            wait_for("true" if animated else "false")
+            wait_for(f"SELECTION {state / name} {str(animated).lower()} {str(muted).lower()}")
 
         wait_for("READY watching")
-        wait_for("false")
+        wait_for("STATE false")
         for _ in range(2):
+            select("00-living-coast-animated.png", True)
+            select("00-muted-coast-animated.png", True, True)
             select("00-living-coast-animated.png", True)
             select("two.jpg", False)
         select("two.jpg", False)
-        select("00-living-coast-animated.png", True)
+        select("00-muted-coast-animated.png", True, True)
         theme.write_text("another-theme\n")
-        wait_for("false")
+        wait_for("STATE false")
         theme.write_text("tidal\n")
-        wait_for("true")
+        wait_for("STATE true")
         for name, animated in [("another-theme", False), ("tidal", True)]:
             replacement = state / "replacement"
             replacement.write_text(name + "\n")
             replacement.replace(theme)
-            wait_for("true" if animated else "false")
+            wait_for("STATE true" if animated else "STATE false")
         (state / "unrelated").write_text("changed")
         time.sleep(0.15)
-        wait_for("true")
+        wait_for("STATE true")
         qslog.check(log_path.read_text())
     finally:
         if process.poll() is None:
             process.terminate()
             process.wait(timeout=3)
-print("ok: repeated animated/static selections and theme changes resume the same controller", flush=True)
+print("ok: colorful/muted/static selections and theme changes resume the same controller", flush=True)
+
+# Check the CLI's wallpaper paths without changing the desktop selection.
+installed = output / "config/omarchy/themes/tidal"
+installed.mkdir(parents=True, exist_ok=True)
+shutil.copy2(repo / "themes/tidal/tidal", installed / "tidal")
+bin_dir = output / "bin"
+bin_dir.mkdir(exist_ok=True)
+for name, script in {"quickshell": "exit 0", "omarchy": 'printf "%s\\n" "$@" > "$TIDAL_CLI_LOG"'}.items():
+    command = bin_dir / name
+    command.write_text("#!/bin/sh\n" + script + "\n")
+    command.chmod(0o755)
+cli_log = output / "cli.log"
+cli_env = dict(os.environ, XDG_CONFIG_HOME=str(output / "config"),
+               PATH=str(bin_dir) + os.pathsep + os.environ["PATH"], TIDAL_CLI_LOG=str(cli_log))
+help_text = subprocess.check_output([str(installed / "tidal"), "help"], env=cli_env, text=True)
+assert "animate [colorful|muted]" in help_text
+for args, wallpaper in [([], "living"), (["colorful"], "living"), (["muted"], "muted")]:
+    subprocess.run([str(installed / "tidal"), "animate", *args], env=cli_env, check=True)
+    expected = Path.home() / f".local/state/omarchy/current/theme/backgrounds/00-{wallpaper}-coast-animated.png"
+    assert cli_log.read_text().splitlines() == ["theme", "bg", "set", str(expected)]
+invalid = subprocess.run([str(installed / "tidal"), "animate", "unknown"], env=cli_env, capture_output=True, text=True)
+assert invalid.returncode == 1 and "Usage:" in invalid.stderr
+print("ok: animate defaults to colorful, accepts muted, and rejects unknown palettes", flush=True)

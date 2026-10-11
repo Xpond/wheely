@@ -9,6 +9,7 @@ layout(std140, binding = 0) uniform buf {
     vec2 resolution;
     // Seconds of water motion, wrapped hourly.
     float time;
+    float muted;
 };
 layout(binding = 1) uniform sampler2D bubbles;
 
@@ -206,6 +207,13 @@ void main() {
     colour += water * (1.0 - foam.x) * 0.18 * pow(max(dot(n, normalize(vec3(0.0, -0.15, 1.0))), 0.0), 900.0);
     // Wet sand shines with the sky, freshly bared sand most, in patches as the film drains.
     colour += (1.0 - water) * (0.05 * wet + 0.08 * gloss * (0.5 + 0.5 * noise(g * 30.0))) * vec3(0.8, 0.9, 1.0);
-    colour = colour * (1.0 - foam.x) + vec3(0.97, 0.98, 1.0) * foam.y;
+    vec3 foamColour = vec3(0.97, 0.98, 1.0);
+    if (muted > 0.5) {
+        // Charcoal water and warm grey shore; thin washes retain the shore's pale colour.
+        float tone = dot(clamp(colour, 0.0, 1.0), vec3(0.2126, 0.7152, 0.0722));
+        colour = tone * mix(vec3(0.86, 0.85, 0.82), vec3(0.45), smoothstep(0.02, 0.16, depth));
+        foamColour = mix(vec3(0.99, 0.98, 0.95), vec3(0.98), water);
+    }
+    colour = colour * (1.0 - foam.x) + foamColour * foam.y;
     fragColor = vec4(clamp(colour, 0.0, 1.0), 1.0) * qt_Opacity;
 }
