@@ -30,10 +30,18 @@ def luminance(hex_color):
     return sum(v * weight for v, weight in zip(linear, (0.2126, 0.7152, 0.0722)))
 
 
-for key in ["foreground", "accent", "muted", "red", "yellow", "green", "cyan", "blue", "magenta"]:
+for key in ["foreground", "dark_foreground", "light_foreground", "bright_foreground", "accent", "muted",
+            "red", "yellow", "orange", "green", "cyan", "blue", "magenta", "brown",
+            "bright_red", "bright_yellow", "bright_green", "bright_cyan", "bright_blue", "bright_magenta"]:
     contrast = (luminance(palette["background"]) + 0.05) / (luminance(palette[key]) + 0.05)
     assert contrast >= 4.5, (key, contrast)
-print("ok: text, accent, and terminal colors contrast at least 4.5:1 against the ivory ground", flush=True)
+for background in ["dark_background", "darker_background", "lighter_background"]:
+    for key in ["foreground", "dark_foreground", "light_foreground", "bright_foreground", "muted"]:
+        contrast = (luminance(palette[background]) + 0.05) / (luminance(palette[key]) + 0.05)
+        assert contrast >= 4.5, (background, key, contrast)
+contrast = (luminance(palette["selection_background"]) + 0.05) / (luminance(palette["selection_foreground"]) + 0.05)
+assert contrast >= 4.5, ("selection", contrast)
+print("ok: text, accent, terminal colors, secondary text, and selections contrast at least 4.5:1", flush=True)
 
 wallpapers = sorted((theme / "backgrounds").glob("*.jpg"))
 assert len(wallpapers) == 3
@@ -172,6 +180,9 @@ log = run.stdout + run.stderr
 assert run.returncode == 0 and "PASS gallery" in log, log
 qslog.check(log)
 assert struct.unpack(">II", (output / "gallery.png").read_bytes()[16:24]) == (1440, 1000)
+gallery_background = subprocess.check_output(["magick", str(output / "gallery.png"),
+    "-crop", "1x1+0+0", "+repage", "-depth", "8", "RGB:-"])
+assert gallery_background == bytes.fromhex(palette["background"][1:]), "gallery background differs from the palette"
 print("ok: gallery loads every wallpaper and renders without warnings", flush=True)
 subprocess.run([sys.executable, str(repo / "tests/tidal-lifecycle.py"), str(output / "lifecycle")],
                check=True, env=env)

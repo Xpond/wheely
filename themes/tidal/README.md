@@ -26,7 +26,7 @@ omarchy theme set tidal
 The installer copies this directory into `~/.config/omarchy/themes/tidal`.
 It also installs Omarchy theme-change and post-boot hooks for background selection.
 Omarchy generates matching app configurations from `colors.toml`; `shell.toml`
-supplies the ivory surfaces and sea-glass selections.
+supplies the soft grey surfaces and sea-glass selections.
 Wheely's installer does not install or select Tidal.
 
 ## The living coast
