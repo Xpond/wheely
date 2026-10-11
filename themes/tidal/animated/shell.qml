@@ -64,7 +64,7 @@ Scope {
       required property var modelData
       screen: modelData
       anchors { top: true; bottom: true; left: true; right: true }
-      color: "#F4F1E8"
+      color: "#ECECE8"
       exclusionMode: ExclusionMode.Ignore
       mask: Region {}
       WlrLayershell.namespace: "tidal-wallpaper"
