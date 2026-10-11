@@ -7,7 +7,7 @@ Window {
   width: 1440
   height: 1000
   visible: true
-  color: "#F4F1E8"
+  color: "#ECECE8"
   title: "Tidal — wallpaper collection"
 
   Item {
@@ -15,12 +15,12 @@ Window {
     width: 1440; height: 1000
     anchors.centerIn: parent
     scale: Math.min(gallery.width / width, gallery.height / height)
-    Rectangle { anchors.fill: parent; color: "#F4F1E8" }
+    Rectangle { anchors.fill: parent; color: "#ECECE8" }
 
     Text {
       x: 44; y: 24
       text: "AN OMARCHY THEME"
-      color: "#5C7273"
+      color: "#506566"
       font { family: "sans-serif"; pixelSize: 10; letterSpacing: 2.5 }
     }
     Text {
@@ -32,14 +32,14 @@ Window {
     Text {
       x: 44; y: 99
       text: "Chalk, sea glass, and a little motion."
-      color: "#5C7273"
+      color: "#506566"
       font { family: "sans-serif"; pixelSize: 14 }
     }
     Row {
       x: page.width - width - 44; y: 43
       spacing: 10
       Repeater {
-        model: ["#F8F7F0", "#D6E1DB", "#7FBDB4", "#146A7C", "#23444C"]
+        model: ["#F2F2EE", "#D6E1DB", "#7FBDB4", "#146A7C", "#23444C"]
         Rectangle {
           required property string modelData
           width: 32; height: 32; radius: 16
@@ -51,7 +51,7 @@ Window {
     Text {
       x: page.width - width - 44; y: 99
       text: sea.running ? "SPACE  Pause the tide     ESC  Close" : "SPACE  Resume the tide     ESC  Close"
-      color: "#5C7273"
+      color: "#506566"
       font { family: "sans-serif"; pixelSize: 12 }
     }
 
@@ -61,7 +61,7 @@ Window {
       Surface { id: sea; anchors.fill: parent }
       Rectangle {
         x: 20; y: 20; width: label.width + 32; height: 34
-        color: "#E6F8F7F0"
+        color: "#E6F2F2EE"
         Text {
           id: label
           anchors.centerIn: parent
@@ -98,7 +98,7 @@ Window {
           }
           Text {
             text: parent.modelData.note
-            color: "#5C7273"
+            color: "#506566"
             font { family: "sans-serif"; pixelSize: 12 }
           }
         }

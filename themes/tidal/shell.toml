@@ -1,11 +1,11 @@
 # Unspecified roles inherit the palette in colors.toml.
 [bar]
-background = "#F8F7F0"
+background = "#F2F2EE"
 background-alpha = 0.94
 text = "#23444C"
 
 [menu]
-background = "#F8F7F0"
+background = "#F2F2EE"
 text = "#23444C"
 border = "#8CADAA"
 border-alpha = 0.55
@@ -18,7 +18,7 @@ selected-border = "#146A7C"
 selected-border-alpha = 0.30
 
 [launcher]
-background = "#F8F7F0"
+background = "#F2F2EE"
 background-alpha = 0.96
 text = "#23444C"
 border = "#8CADAA"
@@ -30,29 +30,29 @@ selected-background-alpha = 0.20
 selected-text = "#146A7C"
 
 [popups]
-background = "#F8F7F0"
+background = "#F2F2EE"
 text = "#23444C"
 border = "#8CADAA"
 border-alpha = 0.55
 
 [tooltip]
-background = "#F8F7F0"
+background = "#F2F2EE"
 text = "#23444C"
 border = "#8CADAA"
 border-alpha = 0.55
 
 [notifications]
-background = "#F8F7F0"
+background = "#F2F2EE"
 text = "#23444C"
 border = "#8CADAA"
 border-alpha = 0.55
 countdown = "#146A7C"
 
 [lock]
-background = "#F8F7F0"
+background = "#F2F2EE"
 background-alpha = 0.90
 text = "#23444C"
-placeholder = "#5C7273"
+placeholder = "#506566"
 border = "#8CADAA"
 border-active = "#146A7C"
 selection = "#146A7C"
