@@ -9,6 +9,21 @@ ShaderEffect {
   readonly property vector2d resolution: Qt.vector2d(width, height)
   readonly property real time: seconds % 3600
   property double previous: Date.now()
+  blending: false
+  // Wave geometry and old tide marks depend only on the horizontal position.
+  property var surgeData: ShaderEffectSource {
+    sourceItem: ShaderEffect {
+      width: root.width
+      height: 4
+      readonly property vector2d resolution: root.resolution
+      blending: false
+      fragmentShader: Qt.resolvedUrl("geometry.frag.qsb")
+    }
+    textureSize: Qt.size(Math.ceil(root.width * Screen.devicePixelRatio), 4)
+    format: ShaderEffectSource.RGBA32F
+    hideSource: true
+    smooth: false
+  }
   property var bubbles: ShaderEffectSource {
     sourceItem: Image { source: Qt.resolvedUrl("bubbles.png") }
     hideSource: true

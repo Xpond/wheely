@@ -61,6 +61,9 @@ is needed.
 
 Foam uses a seamless bubble texture for pores and surface lighting. It is loaded
 once, with filtered smaller versions for fine detail at different display sizes.
+Wave geometry and old tide marks are cached in four rows of floating-point data
+at the display's pixel width, refreshed when the surface size or scale changes.
+Motion and fine detail still render at full resolution on every animation update.
 
 ```bash
 ~/.config/omarchy/themes/tidal/tidal pause
@@ -89,20 +92,25 @@ Code and assets are distributed under the repository's [MIT license](../../LICEN
 
 ## Development
 
-Rebuild the shader after editing `animated/tidal.frag`:
+Rebuild both shaders after editing `animated/*.frag`:
 
 ```bash
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o themes/tidal/animated/tidal.frag.qsb themes/tidal/animated/tidal.frag
+for shader in themes/tidal/animated/*.frag; do
+  /usr/lib/qt6/bin/qsb --qt6 -o "$shader.qsb" "$shader"
+done
 python3 tests/tidal.py
+python3 tests/tidal-geometry.py
 ```
 
 The bundled bubble texture is reproducible with `python3 animated/bake-bubbles.py`
-from this theme directory (requires NumPy and ImageMagick). The fragment shader
-is 220 lines; both palettes, foam, and overlapping waves stay in the same pass.
+from this theme directory (requires NumPy and ImageMagick). Both palettes, foam,
+and overlapping waves stay in the same fragment pass.
+The small geometry shader runs only when its cached data needs updating.
 
 The check validates text contrast, the three wallpapers, Omarchy's generated app
 configs, GPU captures of both palettes, motion, pause, horizontal surf, native 4K
 rendering, continuous wave edges and the hourly clock wrap, and repeated
 colorful/muted/static wallpaper selections and theme changes using the same controller.
+The geometry check compares resized surfaces with fresh renders, including height-only
+changes, portrait and ultrawide layouts, and fractional display scale.
 Tested on Omarchy 4.0.4 and Quickshell 0.3.1.
