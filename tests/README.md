@@ -23,7 +23,9 @@ dependencies are documented with the features:
 - [Lock screen](../docs/lockscreen.md)
 - [Tidal theme](../themes/tidal/README.md): `python3 tests/tidal.py` checks the palette,
   Omarchy app templates, both animated palettes, continuity, and the collection gallery;
-  `tidal-lifecycle.py` checks colorful/muted/static switching, theme changes, and CLI selection.
+  `tidal-lifecycle.py` checks colorful/muted/static switching, theme changes, and CLI selection;
+  `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 
-`lock-render.py` and `tidal.py` use native Wayland windows; the other rendering suites use
-offscreen fixtures. `lock-process.py` simulates the compositor and authentication.
+`lock-render.py`, `tidal.py`, and `tidal-geometry.py` use native Wayland windows;
+the other rendering suites use offscreen fixtures. `lock-process.py` simulates
+the compositor and authentication.
