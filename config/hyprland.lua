@@ -32,10 +32,9 @@ do
   if saved:match("^[%u%d_][%u%d_ +]*[%u%d_]$") and saved:find(" + ", 1, true) then wheel_key = saved end
 end
 
--- A press while the wheel is up closes it, so the release cannot reopen it by landing first.
+-- The global shortcut delivers both press and release directly to the wheel.
 hl.unbind(wheel_key)
-o.bind(wheel_key, "Wheel", "omarchy-shell -q shell toggle xpo.wheel")
-o.bind(wheel_key, nil, "omarchy-shell -q shell call xpo.wheel commit ''", { release = true })
+o.bind(wheel_key, "Wheel", hl.dsp.global("xpo.wheel:toggle"))
 
 -- SUPER+W normally closes a window; the helper retains that fallback.
 hl.unbind("SUPER + W")

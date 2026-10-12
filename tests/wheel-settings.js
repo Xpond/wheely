@@ -7,8 +7,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
 // own bindings mean nothing from inside it, so they are no rows, and no conflict for a new key.
 {
   const records = [
-    "SUPER + A                 → Wheel\texec\tomarchy-shell -q shell toggle xpo.wheel",
-    "SUPER + A                 → \texec\tomarchy-shell -q shell call xpo.wheel commit ''",
+    'SUPER + A                 → Wheel\tlua\thl.dsp.global("xpo.wheel:toggle")',
     "SUPER + W                 → Close window\texec\t/home/test/wheely/bin/omarchy-wheel-close",
     "SUPER + SPACE             → Omarchy menu\texec\tomarchy-menu toggle",
     "SUPER SHIFT CTRL + SPACE  → Theme menu\texec\tomarchy-menu toggle theme",
@@ -168,7 +167,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   assert.equal(recorded.length, 5)
 
   // Enter on a setting row starts changing it; the wheel stays up.
-  const setRow = { countUse() {}, dismiss() { throw new Error("a setting row closed the wheel") },
+  const setRow = { opened: true, countUse() {}, dismiss() { throw new Error("a setting row closed the wheel") },
                    slices: [], edited: "", edit(e) { this.edited = e.setting } }
   method(wheelSource, "run", { root: setRow, unmap: { running: false }, MenuIndex: M })(rows[0])
   assert.equal(setRow.edited, "shortcut")

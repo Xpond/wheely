@@ -340,6 +340,13 @@ Item {
   property real originX: -1
   property real originY: -1
   readonly property string pluginId: (manifest && manifest.id) || "xpo.wheel"
+  GlobalShortcut {
+    appid: root.pluginId
+    name: "toggle"
+    description: "Wheel"
+    onPressed: if (root.shell) root.shell.toggle(root.pluginId, "{}")
+    onReleased: root.commit()
+  }
   // Freeze the focused screen on open; pointer focus can otherwise move it.
   property var openScreen: null
   function focusedScreen() {
@@ -396,7 +403,7 @@ Item {
     Qt.callLater(function () { root.shown = true; searchInput.forceActiveFocus() })
   }
 
-  // Fade cancellation; unmap immediately before handing keyboard focus to a panel.
+  // Fade cancellation; unmap immediately before handing keyboard focus to a target.
   function close(immediate) {
     if (root.shell) root.shell.releasePopout(root)
     if (immediate) { unmap.stop(); root.opened = false; root.shown = false; return }
@@ -456,8 +463,8 @@ Item {
     return acted ? "closed" : "none"
   }
 
-  // Release fires a flick; the first tap holds and the second dismisses. Only the opening press's
-  // release fires: the next press closes the wheel itself, and its release may land first.
+  // Release fires a flick; the first tap holds and the second dismisses.
+  // Only the opening press's release fires: the next press closes the wheel itself.
   function commit() {
     if (!root.opened || unmap.running) return "closed"
     if (!root.justOpened) { root.dismiss(); return "dismissed" }
@@ -508,9 +515,9 @@ Item {
     return true
   }
 
-  // A click during the close fade runs nothing: the pick that started it is the one that runs.
+  // Ignore input after unmapping and during a cancellation fade.
   function run(e) {
-    if (!e || unmap.running) return
+    if (!e || unmap.running || !root.opened && !root.windowed) return
     if (root.editingRing) { root.pin(e); return }
     if (root.listing && root.listing !== "history") { root.addEntry(e); return }
     root.countUse(e)
@@ -533,8 +540,8 @@ Item {
       else if (e.copy) root.copy(e.copy)
       else if (e.action) Util.execDetached(e.action)
     }
-    // A panel or the browser takes the backdrop over at once; anything else fades out with it, as Esc does.
-    root.dismiss(!!e.plugin || browse)
+    // Release keyboard focus at once; the queued pick runs on the next tick.
+    root.dismiss(true)
     // A pinned search has nothing to unmap first, and stays for the next pick.
     if (root.windowed) { root.queued(); root.queued = null; root.query = "" }
   }
@@ -676,14 +683,15 @@ Item {
     return true
   }
 
-  // A terminal in the highlighted path's folder, once the wheel has faded out, as in run().
+  // A terminal in the highlighted path's folder, with the same focus handoff as run().
   function terminal() {
     var hit = root.searching ? root.results[root.resultIndex] : null
     if (!hit || !hit.path) return false
     root.queued = function () {
       Quickshell.execDetached(["uwsm-app", "--", "xdg-terminal-exec", "--dir=" + MenuIndex.dirOf(hit.path)])
     }
-    root.dismiss()
+    root.dismiss(true)
+    if (root.windowed) { root.queued(); root.queued = null; root.query = "" }
     return true
   }
 
@@ -757,17 +765,27 @@ Item {
   component FileScan: Process {
     id: scan
     property int epoch: 0
-    // Parsed as it lands, so a late folder joins home's paths without parsing them again.
+    // Publish batches on the next tick, without waiting for either walk to finish.
     property var found: null
-    // Ignore partial output from canceled scans.
-    stdout: StdioCollector {
-      onStreamFinished: {
+    property var pending: []
+    function begin() { epoch = root.scanEpoch; pending = []; running = true }
+    function publish() {
+      if (epoch !== root.scanEpoch || !pending.length && found) return
+      found = MenuIndex.joinFiles(found, MenuIndex.parseFiles(pending.join("\n")))
+      pending = []
+      root.files = MenuIndex.joinFiles(homeScan.found, folderScan.found)
+    }
+    stdout: SplitParser {
+      onRead: data => {
         if (scan.epoch !== root.scanEpoch) return
-        scan.found = MenuIndex.parseFiles(text)
-        if (homeScan.found) root.files = MenuIndex.joinFiles(homeScan.found, folderScan.found)
+        scan.pending.push(data)
+        Qt.callLater(scan.publish)
       }
     }
-    onExited: if (epoch !== root.scanEpoch) Qt.callLater(root.scanFiles)
+    onExited: {
+      if (epoch !== root.scanEpoch) Qt.callLater(root.scanFiles)
+      else publish()
+    }
   }
   FileScan { id: homeScan; command: MenuIndex.scanCommand([root.home], root.skipped, root.home) }
   FileScan { id: folderScan; command: MenuIndex.scanCommand(root.folders, root.skipped, root.home) }
@@ -776,9 +794,9 @@ Item {
   // The skip list suggests home's folders alone, so only a search scans the added folders.
   function scanFiles() {
     if (!root.opened && !root.windowed || root.mode !== "file" && root.listing !== "skipped") return
-    if (!homeScan.found && !homeScan.running) { homeScan.epoch = root.scanEpoch; homeScan.running = true }
+    if (!homeScan.found && !homeScan.running) homeScan.begin()
     if (root.mode === "file" && root.folders.length && !folderScan.found && !folderScan.running) {
-      folderScan.epoch = root.scanEpoch; folderScan.running = true
+      folderScan.begin()
     }
   }
   // Closing, or changing a list, drops the scan; the next search scans again.

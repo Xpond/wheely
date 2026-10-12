@@ -92,7 +92,7 @@ console.log("ok: every panel the bar can open is searchable, on the ring or not"
   assert.deepEqual(binding("results", { root: hist, MenuIndex: M }).map(r => r.label), ["Lock", "a.txt"])
   assert.deepEqual([binding("listed", { root: hist }), binding("emptyText", { root: hist })], [[], "Nothing picked yet"])
   const added = []
-  const hr = { listing: "history", editingRing: false, path: [], countUse() {}, addEntry(e) { added.push(e) } }
+  const hr = { opened: true, listing: "history", editingRing: false, path: [], countUse() {}, addEntry(e) { added.push(e) } }
   for (const name of ["run", "enter"]) hr[name] = method(wheelSource, name, { root: hr, spin: { restart() {} }, unmap: { running: false } })
   hr.run({ node: "system", label: "System" })
   assert.deepEqual([added.length, hr.listing, hr.path.join(".")], [0, "", "system"], "a submenu from history was added, or kept the list")

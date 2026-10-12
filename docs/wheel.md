@@ -250,19 +250,18 @@ width allows comparison before replacing the shipped asset.
 One tempo, `fadeDuration`, drives the whole wheel: the open, the close, and
 the ring-to-results swap.
 
-`visible` follows `opened`, so dropping it unmaps the layer surface the same
-frame it asks for the fade. `close()` drops `shown` to run the fade and a timer
-releases the surface once it has finished. Firing a slice
-that opens a panel or the browser keeps the instant unmap: the target grabs the
-keyboard on the next tick and a layer surface still holding an exclusive grab
-hands it a window without focus, so `close(true)` skips the fade. Any other pick
-(an app, a window, a command) fades out as a cancel does, with the backdrop, and
-waits in `queued` for the tick after the unmap: Hyprland will not focus a window
-while the grab stands, and dropping the grab alone was not enough. A click during
-the fade runs nothing. A press of the wheel's key during the fade does nothing
-either: it may be the closing tap's own press, landing after its release.
-Reopening mid-fade cancels the pending unmap and the pick waiting on it, and
-counts as a fresh open.
+`visible` follows `opened`. Cancellation drops `shown` and unmaps after the
+130 ms fade. Executing a pick uses `close(true)` to unmap immediately, then
+runs `queued` on the next tick: Hyprland must receive the unmap before the
+target requests keyboard focus. This applies to apps, commands, settings
+commands, window switching, file opens, copying answers, and opening a terminal
+in a folder. Pinned search runs picks directly because it has no overlay to
+unmap. Late input after closing, or during a cancellation fade, runs nothing.
+Reopening mid-fade cancels the pending unmap and counts as a fresh open.
+
+The saved wheel shortcut uses Hyprland's global-shortcut protocol. Its press
+toggles the wheel and its release commits a flick, without spawning an IPC
+client for either event. The existing shell IPC commands still work.
 
 Typing swaps the ring for the results by fading rather than switching
 `visible`: the ring draws back to 0.94 while the stack grows from
@@ -540,8 +539,9 @@ by rank and name length as it scans, keeping only the first 40 of each tie,
 which is every row that could be read. A file opened from the wheel before
 leads its rank, most opened first, but never climbs into a better one, and a
 bare `/` lists those files, latest first. Home and the folders added outside it
-scan apart, so a slow folder, such as a network share still mounting, holds back
-only its own paths. The Skipped folders list suggests home's folders alone, so it
+scan apart and publish complete lines in batches on the next event-loop turn.
+Neither scan waits for the other or for the walk to finish before showing results.
+The Skipped folders list suggests home's folders alone, so it
 scans home alone. Closing cancels both scans and rejects whatever they were
 about to say; reopening starts fresh ones. `Enter` on a path
 opens the browser there, whether or not the browser was already up. The browser
