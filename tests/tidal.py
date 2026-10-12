@@ -168,7 +168,7 @@ for variant in ["colorful", "muted"]:
         assert maximum < 0.04, "the wave edge jumps between nearby instants"
     print(f"ok: {variant} native 4K coast draws, moves smoothly, pauses, wraps, and stays continuous", flush=True)
 
-# Render the actual collection gallery for the theme's review image.
+# Render the collection gallery that `tidal preview` opens.
 shutil.copytree(theme / "backgrounds", output / "backgrounds", dirs_exist_ok=True)
 gallery = (theme / "preview.qml").read_text()
 gallery = gallery.replace("  id: gallery", '''  id: gallery
