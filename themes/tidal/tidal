@@ -12,8 +12,6 @@ case "${1:-help}" in
       # cp -a keeps the folder's old time, which hides a new preview from Omarchy's theme picker.
       touch "$destination"
     fi
-    # Remove only this collection's superseded low-resolution assets on upgrade.
-    rm -f "$destination/backgrounds/"{01-shoreline,02-shallows,03-ebb}.png
     omarchy hook install theme-set "$destination/hooks/tidal-wallpaper"
     omarchy hook install post-boot "$destination/hooks/tidal-wallpaper"
     "$destination/tidal" watch
