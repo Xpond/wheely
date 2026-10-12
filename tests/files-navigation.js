@@ -89,7 +89,8 @@ assert.equal(activated.length, 1, "a double click opened a row mid-rename")
 assert.match(source, /FilesList\s*\{[^}]*operations:\s*ops/s,
   "Files.qml does not hand its operations object to the list")
 
-const wheel = { root: { home: "/home/test", countUse() {}, dismiss() { this.queued() }, slices: [], copy: text => calls.push(text), shell: {
+const wheel = { root: { opened: true, home: "/home/test", countUse() {},
+  dismiss(immediate) { assert.equal(immediate, true); this.queued() }, slices: [], copy: text => calls.push(text), shell: {
   summon: (id, payload) => calls.push([id, JSON.parse(payload)]),
   toggle() { throw new Error("navigation must summon") }
 } }, unmap: { running: false }, MenuIndex: M,

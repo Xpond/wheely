@@ -184,7 +184,7 @@ def check():
             subprocess.run(["lua", str(source / "tests/desktop.lua"), str(source / "config/hyprland.lua"), key, blur],
                            check=True, cwd=home, env=dict(os.environ, HOME=home))
             assert not (Path(home) / "pwned").exists()
-    print("ok: shipped Lua installs press/release bindings on the saved key, render environment and shared blur")
+    print("ok: shipped Lua installs the direct shortcut on the saved key, render environment and shared blur")
 
 
 if __name__ == "__main__":

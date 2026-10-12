@@ -37,7 +37,7 @@ const shift = 1 << 25, ctrl = 1 << 26
   // The editor edits the ring as drawn, saving each change; the bar's ring is where a first edit starts.
   const saved = []
   const disk = { raw: '{ "other": 1 }', text() { return this.raw }, setText(raw) { this.raw = raw; saved.push(raw) } }
-  const ed = { index, ringIds: null, selected: 0, query: "fire", path: ["system"], editingRing: false, resetAsked: true,
+  const ed = { opened: true, index, ringIds: null, selected: 0, query: "fire", path: ["system"], editingRing: false, resetAsked: true,
     panels: M.panels({ "omarchy.audio": true, "omarchy.network": true }),
     get ring() { return this.ringIds ? M.ringOf(this.index, this.ringIds) : this.panels },
     get slices() { return this.ring }, get sliceCount() { return this.ring.length },

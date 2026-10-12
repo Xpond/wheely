@@ -72,9 +72,9 @@ Item {
   } }
 ''')
 
-    # A pick runs once the wheel has faded out and unmapped, and a second click during the fade
-    # runs nothing. The backdrop goes as the fade starts. The real pick, close, fade and unmap are the fixture.
-    run("launch-after-fade", '''
+    # A pick unmaps immediately, then executes on the next tick so its target can receive focus.
+    # Late input after unmapping must not run a second pick.
+    run("launch-after-unmap", '''
   property bool opened: true
   property bool shown: true
   property var queued: null
@@ -97,14 +97,14 @@ Item {
 ''' + "\n".join(block(wheel, pattern) for pattern in [r"  function run\(", r"  function close\(",
                                                       r"  Timer \{\n    id: unmap", r"  function dismiss\(",
                                                       r"  onOpenedChanged: \{"]) + '''
-  Timer { interval: 1; running: true; onTriggered: { root.run({ copy: "first" }); root.run({ copy: "second" }) } }
-  Timer { interval: 60; running: true; onTriggered: {
-    if (root.copied.length || root.backdrop.join() !== "false") {
-      console.error("FAIL ran before the wheel unmapped, or kept the backdrop", root.backdrop); Qt.exit(1)
+  Timer { interval: 1; running: true; onTriggered: {
+    root.run({ copy: "first" }); root.run({ copy: "second" })
+    if (root.opened || unmap.running || root.copied.length) {
+      console.error("FAIL pick did not defer until after immediate unmap"); Qt.exit(1)
     }
   } }
-  Timer { interval: 400; running: true; onTriggered: {
-    if (JSON.stringify(root.copied) + root.picks !== '["first"]1') {
+  Timer { interval: 60; running: true; onTriggered: {
+    if (JSON.stringify(root.copied) + root.picks !== '["first"]1' || root.backdrop.join() !== "false") {
       console.error("FAIL", JSON.stringify(root.copied), root.picks); Qt.exit(1)
     } else { console.log("PASS"); Qt.quit() }
   } }

@@ -43,6 +43,40 @@ def check(wheel, run, block):
   } }
 """)
 
+    # Complete lines appear while fd still runs; an unfinished line waits for its newline.
+    run("scan-streaming", scan("5") + r'''
+  Component.onCompleted: {
+    homeScan.command = ["sh", "-c", "printf '/first path\\n/part'; sleep .3; printf 'ial\\n'; sleep .3"]
+    root.mode = "file"
+  }
+  Timer { interval: 150; running: true; onTriggered: {
+    if (root.paths() !== '["/first path"]' || !homeScan.running) {
+      console.error("FAIL did not stream complete lines", root.paths()); Qt.exit(1)
+    }
+  } }
+  Timer { interval: 450; running: true; onTriggered: {
+    if (root.paths() !== '["/first path","/partial"]' || !homeScan.running) {
+      console.error("FAIL lost partial line", root.paths()); Qt.exit(1)
+    }
+    root.opened = false
+  } }
+  Timer { interval: 700; running: true; onTriggered: {
+    if (root.files !== null) { console.error("FAIL stale batch after close"); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
+''')
+
+    # An empty completed walk must stop saying Scanning and must not restart on every keystroke.
+    run("scan-empty", scan("5") + '''
+  Component.onCompleted: { homeScan.command = ["true"]; root.mode = "file" }
+  Timer { interval: 200; running: true; onTriggered: {
+    if (root.paths() !== '[]' || homeScan.running) { console.error("FAIL empty scan"); Qt.exit(1); return }
+    root.scanFiles()
+    if (homeScan.running) { console.error("FAIL restarted empty scan"); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
+''')
+
     # The skip list's suggestions are home's scanned folders, so showing it scans home as `/` does,
     # and leaves the added folders unscanned.
     run("scan-skip-list", scan("0.05", "0.05", '["/x"]') + """
@@ -70,11 +104,11 @@ def check(wheel, run, block):
   } }
 """)
 
-    # A folder that lands first waits for home rather than showing alone, and joins it when home lands.
+    # An added folder appears without waiting for home's slower scan, then joins it when home lands.
     run("scan-folder-first", scan("0.6", "0.05", '["/x"]') + """
   Component.onCompleted: root.mode = "file"
   Timer { interval: 400; running: true; onTriggered: {
-    if (root.paths() !== 'null') { console.error("FAIL early", root.paths()); Qt.exit(1) }
+    if (root.paths() !== '["/epoch-0/folder"]') { console.error("FAIL held folder", root.paths()); Qt.exit(1) }
   } }
   Timer { interval: 1600; running: true; onTriggered: {
     if (root.paths() !== '["/epoch-0/home","/epoch-0/folder"]') { console.error("FAIL late", root.paths()); Qt.exit(1) }
