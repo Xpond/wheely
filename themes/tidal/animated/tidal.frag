@@ -121,7 +121,8 @@ void main() {
     v -= smoothstep(-0.12, 0.04, v) * (0.012 * sin(u * 16.0 + washPhase)
                                    + 0.006 * sin(u * 29.0 - 2.0 * washPhase));
     float covered = 0.0;
-    for (int i = -1; i < 5; ++i) {
+    // The tide holds near 148s: the next surge never starts and older ones have dried.
+    for (int i = 0; i < 3; ++i) {
         float n = latest - float(i), k = mod(n, surges);
         float start = n * every + 0.3 * every * hash(k + 0.1) + 1.6 * (hash(k + 0.3) - 0.5) * u + late(k, u);
         float span = 12.5 + 3.0 * hash(k + 0.6), since = surfTime - start;
