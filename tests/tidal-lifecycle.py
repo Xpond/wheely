@@ -40,23 +40,24 @@ with log_path.open("w") as log:
         stdout=log, stderr=subprocess.STDOUT,
         env=dict(os.environ, QT_QPA_PLATFORMTHEME="generic"))
     try:
-        def wait_for(expected):
+        def wait_for(expected, after=0):
             deadline = time.monotonic() + 4
             while True:
                 content = log_path.read_text()
                 assert process.poll() is None, content
                 marker = expected.split(" ", 1)[0] + " "
-                messages = [line.split(marker, 1)[1] for line in content.splitlines() if marker in line]
+                messages = [line.split(marker, 1)[1] for line in content[after:].splitlines() if marker in line]
                 if messages and messages[-1] == expected[len(marker):]:
                     return
                 assert time.monotonic() < deadline, content
                 time.sleep(0.02)
 
         def select(name, animated, muted=False):
+            after = len(log_path.read_text())
             replacement = state / "replacement"
             replacement.symlink_to(state / name)
             replacement.replace(background)
-            wait_for(f"SELECTION {state / name} {str(animated).lower()} {str(muted).lower()}")
+            wait_for(f"SELECTION {state / name} {str(animated).lower()} {str(muted).lower()}", after)
 
         wait_for("READY watching")
         wait_for("STATE false")
@@ -76,9 +77,10 @@ with log_path.open("w") as log:
             replacement.write_text(name + "\n")
             replacement.replace(theme)
             wait_for("STATE true" if animated else "STATE false")
+        (state / "unrelated").unlink(missing_ok=True)
+        after = len(log_path.read_text())
         (state / "unrelated").write_text("changed")
-        time.sleep(0.15)
-        wait_for("STATE true")
+        wait_for(f"SELECTION {background.resolve()} true true", after)
         qslog.check(log_path.read_text())
     finally:
         if process.poll() is None:
