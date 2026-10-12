@@ -11,10 +11,9 @@ layout(std140, binding = 0) uniform buf {
     float time;
     float muted;
 };
+layout(binding = 2) uniform sampler2D surgeData;
 layout(binding = 1) uniform sampler2D bubbles;
 
-const float every = 6.0;
-const float surges = 600.0;
 // Screen heights from centre: surge origin and permanent waterline.
 const float origin = -0.6;
 const float shallows = -0.32;
@@ -24,7 +23,6 @@ const float drain = 0.6;
 float hash(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
 float hash(vec2 p) { vec3 q = fract(p.xyx * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
 
-float noise(float x) { float i = floor(x), f = fract(x); return mix(hash(i), hash(i + 1.0), f * f * f * (f * (6.0 * f - 15.0) + 10.0)); }
 float noise(vec2 p) {
     vec2 i = floor(p), f = fract(p);
     f = f * f * (3.0 - 2.0 * f);
@@ -39,19 +37,6 @@ vec3 sloped(vec2 p) {
                 ds * (vec2(b - a, c - a) + (a - b - c + d) * s.yx));
 }
 float fbm(vec2 p) { return (0.5 * noise(p) + 0.25 * noise(p * 2.03 + 1.7) + 0.125 * noise(p * 4.01 + 3.1) + 0.0625 * noise(p * 7.97 + 5.3)) / 0.9375; }
-
-// Surge k's reach at horizontal position u, in screen heights.
-float reach(float k, float u) {
-    float seed = 97.0 * hash(k + 0.4), size = 0.7 + 0.6 * hash(k + 0.8), rough = 0.6 + 0.8 * hash(k + 0.5);
-    return 0.6 + 0.14 * hash(k + 0.2) + 0.09 * (noise(u * 0.8 * size + seed) - 0.5)
-         + rough * (0.06 * (noise(u * 2.7 * size + seed + 3.0) - 0.5) + 0.025 * (noise(u * 7.0 * size + seed + 7.0) - 0.5));
-}
-
-// Phase delay in seconds across surge k's front.
-float late(float k, float u) {
-    float seed = 57.0 * hash(k + 0.9), size = 0.7 + 0.6 * hash(k + 0.7);
-    return (0.8 + 0.9 * hash(k + 0.15)) * (noise(u * 1.1 * size + seed) - 0.5) + 0.35 * (noise(u * 3.3 * size + seed + 4.0) - 0.5);
-}
 
 // Invert the surge's time warp, which slows the backwash.
 float when(float p) { return (1.0 + drain - sqrt((1.0 + drain) * (1.0 + drain) - 4.0 * drain * p)) / (2.0 * drain); }
@@ -113,7 +98,7 @@ void main() {
     float wet = max(smoothstep(shallows + 0.25, shallows, v), 0.4), gloss = 0.0, shade = 0.0;
     vec2 foam = vec2(0.0);
     float surfTime = 148.0 + 0.65 * sin(6.2831853 * mod(time - 148.0, 6.0) / 6.0);
-    float latest = floor(surfTime / every), peak = when(0.5);
+    float peak = when(0.5);
     // Water textures stay continuous underneath overlapping surges.
     vec2 flow = vec2(u, v);
     // Small overlapping washes move the contact edge along the sand independently.
@@ -123,11 +108,12 @@ void main() {
     float covered = 0.0;
     // The tide holds near 148s: the next surge never starts and older ones have dried.
     for (int i = 0; i < 3; ++i) {
-        float n = latest - float(i), k = mod(n, surges);
-        float start = n * every + 0.3 * every * hash(k + 0.1) + 1.6 * (hash(k + 0.3) - 0.5) * u + late(k, u);
+        float k = 24.0 - float(i);
+        vec4 data = texture(surgeData, vec2(qt_TexCoord0.x, (float(i) + 0.5) / 4.0));
+        float start = data.x;
         float span = 12.5 + 3.0 * hash(k + 0.6), since = surfTime - start;
         if (since < 0.0) continue;
-        float r = reach(k, u), s = since / span;
+        float r = data.y, s = since / span;
         float p = s * (1.0 + drain * (1.0 - s)), run = 4.0 * p * (1.0 - p) * r;
         // Ignore surges beyond their frayed reach.
         if (s < 1.0 && origin + run - v > -0.017) {
@@ -137,7 +123,7 @@ void main() {
             // Draining back, the thinning film tears into patches behind its edge.
             float film = d - smoothstep(peak, 0.75, s) * 0.035 * noise(vec2(u, v) * vec2(25.0, 45.0) + 3.0 * k);
             // Foaming bore thins to an edge rope before draining.
-            float rope = 0.008 * (0.8 + 0.5 * noise(u * 6.0 + k)) * (1.0 + 2.0 * (1.0 - smoothstep(0.0, 0.3, s)));
+            float rope = 0.008 * (0.8 + 0.5 * data.z) * (1.0 + 2.0 * (1.0 - smoothstep(0.0, 0.3, s)));
             float arrival = smoothstep(0.0, 0.06, s);
             float fading = arrival * (1.0 - smoothstep(0.3, 0.5, s));
             if (film > -0.004) {
@@ -145,7 +131,7 @@ void main() {
                 wet = max(wet, smoothstep(-0.004, 0.002, film));
                 // A thin wash over the sand; never stack tinted slabs over the sea.
                 depth = max(depth, 0.055 * smoothstep(0.0, 0.10, film) * arrival * (1.0 - smoothstep(0.65, 1.0, s)));
-                float lumpy = d + 0.003 * (noise(u * 90.0 + k) - 0.5);
+                float lumpy = d + 0.003 * (data.w - 0.5);
                 if (covered < 0.999 && lumpy > -0.004) {
                     // Carry foam with the front; its wake stretches and thins.
                     float cover = (1.0 - covered) * smoothstep(-0.004, 0.006, min(lumpy, film)) * arrival;
@@ -193,12 +179,10 @@ void main() {
         light = caustic(flow * 20.0, time / 3600.0) * water * exp(-1.5 * depth) * (1.0 - foam.x);
     }
     vec3 bottom = sandAt(g - slope * min(depth, 0.6) * 0.03, wet) * (1.0 - 0.10 * shade) * (1.0 + 0.12 * light);
-    // Lines of grit left where higher surges stopped earlier in the tide.
-    for (int m = 0; m < 2; ++m) {
-        float line = 0.25 + 0.09 * float(m) + 0.06 * (noise(g.x * 1.1 + 13.0 * float(m)) - 0.5)
-                   + 0.03 * (noise(g.x * 3.5 + 41.0 + 17.0 * float(m)) - 0.5) - g.y;
-        bottom *= 1.0 - 0.035 * exp(-pow(line / (1.8 * px), 2.0)) * smoothstep(0.2, 0.7, noise(g.x * 9.0 + 7.0 * float(m)));
-    }
+    // Cached positions and strength of the two old tide marks.
+    vec4 grit = texture(surgeData, vec2(qt_TexCoord0.x, 0.875));
+    bottom *= 1.0 - 0.035 * exp(-pow((grit.x - g.y) / (1.8 * px), 2.0)) * grit.y;
+    bottom *= 1.0 - 0.035 * exp(-pow((grit.z - g.y) / (1.8 * px), 2.0)) * grit.w;
     // Seen through the water: reds go first, then the shallows turn green and turquoise.
     vec3 transmission = exp(-depth * vec3(1.30, 0.44, 0.34));
     vec3 colour = bottom * transmission + vec3(0.08, 0.47, 0.51) * (1.0 - transmission);
