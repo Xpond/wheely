@@ -99,7 +99,7 @@ python3 tests/tidal.py
 
 The bundled bubble texture is reproducible with `python3 animated/bake-bubbles.py`
 from this theme directory (requires NumPy and ImageMagick). The fragment shader
-is 219 lines; both palettes, foam, and overlapping waves stay in the same pass.
+is 220 lines; both palettes, foam, and overlapping waves stay in the same pass.
 
 The check validates text contrast, the three wallpapers, Omarchy's generated app
 configs, GPU captures of both palettes, motion, pause, horizontal surf, native 4K
