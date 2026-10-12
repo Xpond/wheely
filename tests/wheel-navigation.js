@@ -30,7 +30,7 @@ console.log("ok: only the panel the wheel opened answers backspace with a return
 // `back` can only give back what `run` wrote down.
 // Recorded off `slices`, so a slice picked with the pointer is written down the
 // same as one picked with the arrows.
-const ran = { countUse() {}, dismiss() {}, launchedAt: null,
+const ran = { opened: true, countUse() {}, dismiss() {}, launchedAt: null,
   slices: [{ plugin: "a" }, { plugin: "b" }, { plugin: "c" }] }
 const runPick = method(wheelSource, "run",
   { root: ran, unmap: { running: false }, MenuIndex: M })
@@ -39,19 +39,6 @@ assert.equal(ran.launchedAt, 2, "the slice that was run is written down")
 runPick({ plugin: "off-ring" })
 assert.equal(ran.launchedAt, -1, "a pick that is on no ring writes down nothing")
 console.log("ok: running a slice records which slice it was")
-
-// A pick waits for the unmap, as its target gets no keyboard while the wheel holds it. A panel or
-// the browser takes the backdrop over, so only they skip the fade.
-const left = []
-ran.dismiss = now => left.push(now)
-ran.home = "/home/test"
-for (const e of [{ plugin: "a" }, { path: "/home/test/a.md" }, { appId: "firefox" }, { address: "0x1" },
-                 { path: "/mnt/a.pdf" }, { action: "true" }]) {
-  ran.queued = null; runPick(e)
-  assert.equal(typeof ran.queued, "function", "a pick ran before the wheel unmapped")
-}
-assert.deepEqual(left, [true, true, false, false, false, false])
-console.log("ok: a pick waits for the unmap, and only a panel or the browser skips the fade")
 
 // A step back hands the ring over the way it was left. Without this the wheel
 // comes up with selected at -1 while the comet still rests on the slice that

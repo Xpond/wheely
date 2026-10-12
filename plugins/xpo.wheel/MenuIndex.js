@@ -685,8 +685,9 @@ function parseFiles(raw) {
   return { paths: paths, lower: lower, starts: starts }
 }
 
-// Home's parsed paths, then the added folders' once they land.
+// Join whichever scan batches have arrived, keeping home's paths first.
 function joinFiles(home, folders) {
+  if (!home) return folders
   if (!folders) return home
   return { paths: home.paths.concat(folders.paths), lower: home.lower.concat(folders.lower),
            starts: home.starts.concat(folders.starts) }

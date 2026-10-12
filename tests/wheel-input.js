@@ -73,8 +73,18 @@ assert.deepEqual(terminals, [["uwsm-app", "--", "xdg-terminal-exec", "--dir=/hom
                              ["uwsm-app", "--", "xdg-terminal-exec", "--dir=/home/test/My Dir"]])
 assert.equal(entered.length, 1, "a path row also ran as enter")
 
+// Pinned search is already unmapped: there will be no close event to run a queued terminal.
+dial.windowed = true
+const beforeTerminal = terminals.length
+dialKey("Key_Return", ctrl)
+assert.equal(terminals.length, beforeTerminal + 1, "pinned search left the terminal queued")
+assert.equal(dial.queued, null, "the pinned terminal could run twice")
+assert.equal(dial.query, "", "the pinned terminal left the previous search")
+dial.windowed = false
+
 // Esc clears the query, then goes up a level, then closes; Backspace on no query goes up.
 const levels = []
+dial.query = "/file"
 copied.length = 0
 dial.up = () => levels.push("up") < 3
 dialKey("Key_Escape"); assert.equal(dial.query, "", "esc clears the query first")
