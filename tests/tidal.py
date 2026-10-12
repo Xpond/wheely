@@ -12,6 +12,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import tomllib
 import qslog
 
@@ -56,8 +57,7 @@ print("ok: three native 4K-or-larger wallpapers and two animated coast posters",
 
 # Run Omarchy's real generator against a scratch staging directory, never the user's next theme.
 omarchy = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy"))
-staged = output / "staged"
-staged.mkdir(exist_ok=True)
+staged = Path(tempfile.mkdtemp(prefix="staged-", dir=output))
 for name in ["colors.toml", "shell.toml"]:
     shutil.copyfile(theme / name, staged / name)
 source = (omarchy / "bin/omarchy-theme-set-templates").read_text()
@@ -80,7 +80,7 @@ Window {
   id: root
   width: 960; height: 540; visible: true
   title: "Tidal render check"
-  property var frames: [148, 148.0001, 152, 152.0001, 160, 160.0001, 170, 170.0001, 180, 180.0001, 0, 3600]
+  property var frames: [148, 148.0001, 152, 152.0001, 160, 160.0001, 170, 170.0001, 180, 180.0001, 3599.999, 3600.001]
   property int frame: 0
   property real stopped: 0
   property int updates: 0
@@ -135,8 +135,7 @@ for variant in ["colorful", "muted"]:
     assert run.returncode == 0 and "PASS" in log, log
     qslog.check(log)
     frames = {n: subprocess.check_output(["magick", str(capture / f"animated-{n}.png"), "-depth", "8", "RGB:-"])
-              for n in [148, 152, 0, 3600]}
-    assert frames[0] == frames[3600], "hourly wrap jumps"
+              for n in [148, 152]}
     assert struct.unpack(">II", (capture / "animated-4k.png").read_bytes()[16:24]) == (3840, 2160)
     change = sum(abs(a - b) for a, b in zip(frames[148], frames[152])) / len(frames[148])
     assert change > 0.67, "the water does not move"
@@ -157,15 +156,16 @@ for variant in ["colorful", "muted"]:
             if sum((column[3*y+i] - sea[i]) ** 2 for i in range(3))
              < sum((column[3*y+i] - sand[i]) ** 2 for i in range(3))))
     assert max(waterlines) - min(waterlines) < 216, "the shoreline tilts across the display"
-    for moment in [148, 152, 160, 170, 180]:
+    for before, after in ([(n, n + 0.0001) for n in [148, 152, 160, 170, 180]]
+                          + [(3599.999, 3600.001)]):
         # Average individual sand grains; a wave seam changes whole neighboring regions.
         difference = subprocess.run(["magick",
-            str(capture / f"animated-{moment}.png"), str(capture / f"animated-{moment}.0001.png"),
+            str(capture / f"animated-{before}.png"), str(capture / f"animated-{after}.png"),
             "-blur", "0x1", "-metric", "PAE", "-compare", "-format", "%[distortion]", "info:"],
             capture_output=True, text=True, check=True)
         maximum = float(difference.stdout)
-        print(f"{variant}: nearby frames at {moment}s: maximum pixel change {maximum:.4f}", flush=True)
-        assert maximum < 0.04, "the wave edge jumps between nearby instants"
+        print(f"{variant}: {before}s to {after}s: maximum pixel change {maximum:.4f}", flush=True)
+        assert maximum < 0.04, (before, after, "the wave edge jumps between nearby instants")
     print(f"ok: {variant} native 4K coast draws, moves smoothly, pauses, wraps, and stays continuous", flush=True)
 
 # Render the collection gallery that `tidal preview` opens.

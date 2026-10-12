@@ -2,60 +2,38 @@
 [bar]
 background = "#F2F2EE"
 background-alpha = 0.94
-text = "#23444C"
 
 [menu]
 background = "#F2F2EE"
-text = "#23444C"
 border = "#8CADAA"
 border-alpha = 0.55
 scrim = "#EAF2EF"
 scrim-alpha = 0.36
 selected-background = "#7FBDB4"
 selected-background-alpha = 0.20
-selected-text = "#146A7C"
 selected-border = "#146A7C"
 selected-border-alpha = 0.30
 
-[launcher]
-background = "#F2F2EE"
-background-alpha = 0.96
-text = "#23444C"
-border = "#8CADAA"
-border-alpha = 0.55
-scrim = "#EAF2EF"
-scrim-alpha = 0.36
-selected-background = "#7FBDB4"
-selected-background-alpha = 0.20
-selected-text = "#146A7C"
-
 [popups]
 background = "#F2F2EE"
-text = "#23444C"
 border = "#8CADAA"
 border-alpha = 0.55
 
 [tooltip]
 background = "#F2F2EE"
-text = "#23444C"
 border = "#8CADAA"
 border-alpha = 0.55
 
 [notifications]
 background = "#F2F2EE"
-text = "#23444C"
 border = "#8CADAA"
 border-alpha = 0.55
-countdown = "#146A7C"
 
 [lock]
 background = "#F2F2EE"
 background-alpha = 0.90
-text = "#23444C"
 placeholder = "#506566"
 border = "#8CADAA"
-border-active = "#146A7C"
-selection = "#146A7C"
 
 [controls]
 normal-border = "#8CADAA"
@@ -63,7 +41,6 @@ normal-border-alpha = 0.45
 hover-cursor-color = "#146A7C"
 hover-cursor-border = "#146A7C"
 hover-cursor-border-alpha = 0.35
-focus-color = "#146A7C"
 focus-border = "#146A7C"
 focus-border-alpha = 0.55
 selected-color = "#146A7C"
