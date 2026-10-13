@@ -172,7 +172,7 @@ Item {
     : root.windowed && !root.query ? ""
     : root.listing === "history" ? "Nothing picked yet"
     : root.mode !== "file" && root.listing !== "skipped" ? "No match"
-    : !root.files ? "Scanning\u2026"
+    : !root.files || homeScan.running || folderScan.running ? "Scanning\u2026"
     : !root.term ? "Type to find files\nctrl+y copy path\nctrl+enter terminal"
     : "No match"
 
@@ -742,9 +742,11 @@ Item {
   property var previousResults: []
   property string previousQuery: ""
   onResultsChanged: {
-    if (root.query !== root.previousQuery) root.resultIndex = 0
+    // Streaming files keep the default on the best match; lower selections follow their path.
+    if (root.query !== root.previousQuery || root.mode === "file" && root.resultIndex === 0) root.resultIndex = 0
     else if (root.previousResults[root.resultIndex])
       root.resultIndex = MenuIndex.indexOfEntry(root.results, root.previousResults[root.resultIndex])
+    if (root.mode === "file") root.resultIndex = Math.max(0, root.resultIndex)
     root.previousResults = root.results
     root.previousQuery = root.query
     root.showResult()
@@ -765,9 +767,10 @@ Item {
   component FileScan: Process {
     id: scan
     property int epoch: 0
-    // Publish batches on the next tick, without waiting for either walk to finish.
+    // Bound re-ranking during a walk, then publish the final paths as soon as it exits.
     property var found: null
     property var pending: []
+    property Timer flush: Timer { interval: 100; onTriggered: scan.publish() }
     function begin() { epoch = root.scanEpoch; pending = []; running = true }
     function publish() {
       if (epoch !== root.scanEpoch || !pending.length && found) return
@@ -779,10 +782,11 @@ Item {
       onRead: data => {
         if (scan.epoch !== root.scanEpoch) return
         scan.pending.push(data)
-        Qt.callLater(scan.publish)
+        if (!scan.flush.running) scan.flush.start()
       }
     }
     onExited: {
+      flush.stop()
       if (epoch !== root.scanEpoch) Qt.callLater(root.scanFiles)
       else publish()
     }

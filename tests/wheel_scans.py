@@ -1,5 +1,6 @@
 """Scan cancellation, epochs and incremental joins in the wheel."""
 import json
+import re
 
 
 def check(wheel, run, block):
@@ -11,14 +12,18 @@ def check(wheel, run, block):
     def scan(seconds, folder_seconds="0.05", folders="[]"):
         out = """
   property bool opened: true
+  property bool windowed: false
   property string mode: ""
   property string listing: ""
+  property string query: "/missing"
+  readonly property string term: MenuIndex.termOf(root.query)
   property var files: null
   property var folders: """ + folders + """
   property real daylight: 0
   property string editing: ""
   function paths() { return root.files ? JSON.stringify(root.files.paths) : "null" }
-""" + block(wheel, r"  component FileScan: Process \{") + "\n"
+""" + re.search(r"  readonly property string emptyText:.*?(?=\n\n)", wheel, re.S).group() + "\n"
+        out += block(wheel, r"  component FileScan: Process \{") + "\n"
         for name, wait in [("home", seconds), ("folder", folder_seconds)]:
             command = ["sh", "-c", "sleep " + wait + '; printf "/epoch-%s/' + name + '\\n" "$1"', "scan"]
             out += "  FileScan { id: " + name + "Scan; command: " + json.dumps(command)[:-1] + ", String(epoch)] }\n"
@@ -34,14 +39,17 @@ def check(wheel, run, block):
     else { console.log("PASS"); Qt.quit() }
   } }
 """)
-    run("scan-close", scan("5") + """
-  Component.onCompleted: root.mode = "file"
+    run("scan-close", scan("5") + r'''
+  Component.onCompleted: {
+    homeScan.command = ["sh", "-c", "printf '/pending\\n'; sleep 5"]
+    root.mode = "file"
+  }
   Timer { interval: 30; running: true; onTriggered: root.opened = false }
   Timer { interval: 500; running: true; onTriggered: {
     if (root.files !== null || homeScan.running) { console.error("FAIL retained scan"); Qt.exit(1) }
     else { console.log("PASS"); Qt.quit() }
   } }
-""")
+''')
 
     # Complete lines appear while fd still runs; an unfinished line waits for its newline.
     run("scan-streaming", scan("5") + r'''
@@ -109,9 +117,11 @@ def check(wheel, run, block):
   Component.onCompleted: root.mode = "file"
   Timer { interval: 400; running: true; onTriggered: {
     if (root.paths() !== '["/epoch-0/folder"]') { console.error("FAIL held folder", root.paths()); Qt.exit(1) }
+    if (root.emptyText !== "Scanning\\u2026") { console.error("FAIL home still scanning"); Qt.exit(1) }
   } }
   Timer { interval: 1600; running: true; onTriggered: {
     if (root.paths() !== '["/epoch-0/home","/epoch-0/folder"]') { console.error("FAIL late", root.paths()); Qt.exit(1) }
+    else if (root.emptyText !== "No match") { console.error("FAIL completed scan"); Qt.exit(1) }
     else { console.log("PASS"); Qt.quit() }
   } }
 """)
@@ -123,6 +133,7 @@ def check(wheel, run, block):
   Timer { interval: 600; running: true; onTriggered: { root.opened = false; root.opened = true; root.scanFiles() } }
   Timer { interval: 800; running: true; onTriggered: {
     if (root.paths() !== '["/epoch-1/home"]') { console.error("FAIL reopened", root.paths()); Qt.exit(1) }
+    if (root.emptyText !== "Scanning\\u2026") { console.error("FAIL folder still scanning"); Qt.exit(1) }
   } }
   Timer { interval: 1400; running: true; onTriggered: {
     if (root.paths() !== '["/epoch-1/home","/epoch-1/folder"]') { console.error("FAIL rescanned", root.paths()); Qt.exit(1) }
