@@ -30,6 +30,17 @@ Item {
 
   ClickShield {}
 
+  // Track the cursor even before rows appear; their hover events can be synthetic.
+  HoverHandler {
+    parent: stack.Window.window ? stack.Window.window.contentItem : null
+    onPointChanged: {
+      if (!stack.wheel.hoverMoved(point.scenePosition) || !stack.visible) return
+      var pt = resultList.mapFromItem(parent, point.position.x, point.position.y)
+      var row = resultList.childAt(pt.x, pt.y)
+      if (row && row.modelData) stack.wheel.resultIndex = row.row
+    }
+  }
+
   Column {
     id: resultList
     anchors.horizontalCenter: parent.horizontalCenter
@@ -70,10 +81,6 @@ Item {
         // A MouseArea's own wheel signal shadows the property here, so the wheel goes by the stack.
         MouseArea {
           anchors.fill: parent
-          hoverEnabled: true
-          onPositionChanged: function (mouse) {
-            if (stack.wheel.hoverMoved(mapToItem(null, mouse.x, mouse.y))) stack.wheel.resultIndex = resultCard.row
-          }
           onClicked: stack.wheel.run(stack.wheel.results[resultCard.row])
         }
 
