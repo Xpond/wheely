@@ -7,6 +7,8 @@ def check(wheel, run, block):
   property bool armed: false
   property bool justOpened: false
   property string query: ""
+  readonly property string mode: MenuIndex.modeOf(root.query)
+  property var files: null
   readonly property bool searching: query.length > 0
   property int selected: -1
   property int resultIndex: 0
@@ -27,7 +29,9 @@ def check(wheel, run, block):
   property string conditionText: "system.suspend:w\\n"
   readonly property var conditions: MenuIndex.parseConditions(root.conditionText, root.menuItems)
   readonly property var slices: MenuIndex.childrenOf(root.menuItems, "system", root.conditions)
-  readonly property var results: MenuIndex.search(MenuIndex.menuRows(root.menuItems, root.conditions), root.query, 40, {})
+  readonly property var results: root.mode === "file"
+    ? MenuIndex.fileRows(root.files, MenuIndex.termOf(root.query), 40, "/home", false, {})
+    : MenuIndex.search(MenuIndex.menuRows(root.menuItems, root.conditions), root.query, 40, {})
   QtObject { id: spin; function stop() {} }
   QtObject { id: unmap; property bool running: false }
   function sliceAngle(i) { return i * 90 }
@@ -71,6 +75,25 @@ def check(wheel, run, block):
     root.expect(root.commit() === "dismissed" && !root.ran, "a later release fired the selection")
     unmap.running = true; root.justOpened = true
     root.expect(root.commit() === "closed" && !root.ran, "a release during the close fade fired")
+    root.finish()
+  } }
+''')
+
+    # Streaming keeps the default on the best match, preserves a lower selection while it fits,
+    # and restores a usable default if that selection falls outside the forty results.
+    run("refresh-file-selection", common + r'''
+  Timer { interval: 50; running: true; onTriggered: {
+    root.query = "/conf"
+    root.files = MenuIndex.parseFiles("/home/configuration\n/home/my-configuration")
+    root.files = MenuIndex.joinFiles(root.files, MenuIndex.parseFiles("/home/config"))
+    root.expect(root.resultIndex === 0, "default followed an early match")
+    root.moveResult(1)
+    root.files = MenuIndex.joinFiles(root.files, MenuIndex.parseFiles("/home/conf"))
+    root.expect(root.resultIndex === 2, "streaming lost a chosen result")
+    var more = []
+    for (var i = 0; i < 40; i++) more.push("/home/conf" + i)
+    root.files = MenuIndex.joinFiles(root.files, MenuIndex.parseFiles(more.join("\n")))
+    root.expect(root.resultIndex === 0, "displaced selection left Enter unusable")
     root.finish()
   } }
 ''')
