@@ -171,7 +171,7 @@ Item {
   property int resultTop: 0
   property int resultIndex: 0
   property int fadeDuration: 0
-  property bool searching: true
+  property bool searching: false
   property var results: [0, 1, 2, 3].map(i => ({ label: "Result " + i, icon: "x", trail: "App" }))
   property var beads: root.results
   property string emptyText: ""
@@ -196,6 +196,12 @@ Item {
   Timer { interval: 200; running: true; onTriggered: {
     var p = root.center(2)
     pointer.mouseMove(stage, p.x, p.y, -1, Qt.NoButton, Qt.NoModifier)
+    root.searching = true
+  } }
+  Timer { interval: 400; running: true; onTriggered: {
+    if (root.resultIndex !== 0) { console.error("FAIL stationary pointer stole selection"); Qt.exit(1); return }
+    var p = root.center(2)
+    pointer.mouseMove(stage, p.x + 1, p.y, -1, Qt.NoButton, Qt.NoModifier)
     if (root.resultIndex !== 2) { console.error("FAIL hovering a result did not select it"); Qt.exit(1); return }
     p = root.center(1)
     pointer.mouseClick(stage, p.x, p.y, Qt.LeftButton, Qt.NoModifier, -1)
