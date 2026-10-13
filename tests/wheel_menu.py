@@ -160,8 +160,8 @@ Item {
   } }
 ''')
 
-    # The real results under real pointer events: hovering a row selects it and a click runs it. A
-    # MouseArea's own wheel signal shadowed the wheel property in their handlers, so neither did.
+    # Incubate results before attaching their window, as the plugin loader does. Appearing under
+    # a stationary pointer must not select; real movement and clicks still select and run rows.
     run("results-pointer", '''
   property int searchHeight: 48
   property int searchWidth: 480
@@ -187,10 +187,16 @@ Item {
   function run(row) { root.ran = row.label }
 ''' + line(wheel, r"^  property point hoverAt: .*") + block(wheel, r"  function hoverMoved\(") + '''
   Pointer { id: pointer }
-  Window { width: 800; height: 600; visible: true; Item { id: stage; anchors.fill: parent; WheelResults { id: stack; wheel: root } } }
+  Window { width: 800; height: 600; visible: true; Item { id: stage; anchors.fill: parent } }
+  Loader {
+    id: stack
+    asynchronous: true
+    sourceComponent: Component { WheelResults { wheel: root } }
+    onLoaded: item.parent = stage
+  }
   function center(row) {
     var cards = [], walk = item => item.children.forEach(c => { if (c.modelData) cards.push(c); walk(c) })
-    walk(stack)
+    walk(stack.item)
     return cards[row].mapToItem(stage, cards[row].width / 2, cards[row].height / 2)
   }
   Timer { interval: 200; running: true; onTriggered: {
