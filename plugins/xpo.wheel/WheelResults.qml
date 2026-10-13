@@ -32,7 +32,7 @@ Item {
 
   // Track the cursor even before rows appear; their hover events can be synthetic.
   HoverHandler {
-    parent: stack.Window.window ? stack.Window.window.contentItem : null
+    parent: stack.Window.window ? stack.Window.window.contentItem : stack
     onPointChanged: {
       if (!stack.wheel.hoverMoved(point.scenePosition) || !stack.visible) return
       var pt = resultList.mapFromItem(parent, point.position.x, point.position.y)
