@@ -32,6 +32,25 @@ def line(source, pattern):
 
 with tempfile.TemporaryDirectory(prefix="omarchy-runtime-") as temporary:
     base = Path(temporary)
+    # A closed reader must stay quiet and reap the scanner, on both write and flush.
+    for count in (1, 16384):
+        pidfile = base / "scan-pid"
+        read_fd, write_fd = os.pipe()
+        os.close(read_fd)
+        try:
+            result = subprocess.run([
+                "python3", "-S", "-E", str(repo / "plugins/xpo.wheel/scan.py"),
+                "python3", "-S", "-E", "-c",
+                "import os,time; from pathlib import Path; "
+                f"Path({str(pidfile)!r}).write_text(str(os.getpid())); "
+                f"print('/closed\\n' * {count}, end='', flush=True); time.sleep(30)"
+            ], stdout=write_fd, stderr=subprocess.PIPE, timeout=3)
+        finally:
+            os.close(write_fd)
+        assert result.returncode == 1 and not result.stderr, result.stderr.decode()
+        assert not Path(f"/proc/{pidfile.read_text()}").exists(), "scanner was not reaped"
+    print("ok: closed scan reader stays quiet and reaps its child")
+
     for path in ["xpo.files/FilesIndex.js", "xpo.files/FilesList.qml", "xpo.files/FilesPreview.qml",
                  "xpo.wheel/MenuIndex.js", "xpo.wheel/scan.py", "xpo.wheel/MenuKeys.js", "xpo.wheel/WheelResults.qml",
                  "xpo.wheel/ClickShield.qml", "xpo.wheel/PanelIcon.qml"]:
