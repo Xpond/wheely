@@ -28,6 +28,8 @@ disc, because a ring you have to read is slower than a word you can type.
       PanelIcon.qml    a first-party panel's own mark, loaded from it
       ClickShield.qml  a surface that stops a click reaching the scrim
       MenuIndex.js     JSONC parsing, flattening, search
+      FileWorker.js    incremental file ranking and interruptible query passes
+      scan.py          bounded, complete-line batches from fd
       MenuKeys.js      the key map: which verb a key means
       Calc.js          the calculator behind a leading `=`
 
@@ -539,19 +541,52 @@ by rank and name length as it scans, keeping only the first 40 of each tie,
 which is every row that could be read. A file opened from the wheel before
 leads its rank, most opened first, but never climbs into a better one, and a
 bare `/` lists those files, latest first. Home and the folders added outside it
-scan apart. Output is buffered without a QML callback for every path; the first
-complete lines are sent after 16 ms, with later batches throttled to 100 ms.
-A background worker owns the index, parses batches, and ranks results, keeping
-that work off the UI thread. Only the result rows come back. One request runs at
-a time; typing during it replaces the pending query, and obsolete replies are
-discarded. Neither scan waits for the other or for the walk to finish before
-showing results.
+scan apart. `scan.py` frames complete lines into bounded batches with a NUL
+separator; `SplitParser` decodes each batch once and retains only the tail.
+Partial UTF-8 characters stay in that tail. The first batch is published after
+16 ms, later batches are throttled to 100 ms, and exit flushes the remainder.
+A background worker appends directly to each source's index and ranks only new
+paths for an unchanged query. Per-source buckets preserve home's precedence in
+ties even when its scan arrives later. Narrowing a completed query reuses its
+match set. Ranking yields after at most 32,768 entries; one request runs at a
+time and each reply lets the UI send the latest query. Obsolete replies are
+discarded. Rows stay visible while a replacement query runs, with launch, copy
+and terminal actions held inactive until its rows arrive. Only running scan
+processes show “Scanning…”. Identical rows do not rebuild the results, and
+setting controls are loaded only on setting rows.
 The Skipped folders list suggests home's folders alone, so it
 scans home alone. Closing cancels both scans, releases the worker's index, and
 rejects pending replies; reopening starts fresh ones. `Enter` on a path
 opens the browser there, whether or not the browser was already up. The browser
 keeps to home, so a path from a folder outside it (Settings) opens the way the
 browser opens a file, through `omarchy-open-path`.
+
+The opt-in `tests/wheel-performance.py` probe shares the runtime tests' production
+scan fixture. It generates unique synthetic paths with seed 36, samples a 16 ms
+heartbeat and main-thread CPU, and types seven queries 20 ms apart. Run
+`PYTHONDONTWRITEBYTECODE=1 python3 tests/wheel-performance.py --compare a53b4af`
+for medians of three runs at 83,000 and 497,000 paths. Add `--batch-delay-ms 1`
+to pace the producer at 8 KiB per millisecond and exercise repeated streaming
+updates. The default feeds the snapshot through `cat`. Neither workload times
+an actual filesystem walk or desktop rendering. CPU covers the entire probe,
+including startup and typing, and has the system clock tick's resolution.
+
+Measured on 2026-10-14 with Quickshell 0.3.1, comparing `a53b4af` to the review
+fixes (milliseconds, medians of three runs):
+
+| Paths / input | First rows | Scan complete | Last key to rows | Main-thread CPU |
+| --- | --- | --- | --- | --- |
+| 83,000 / bulk | 85 → 86 | 88 → 153 | 15 → 29 | 70 → 90 |
+| 497,000 / bulk | 238 → 89 | 567 → 712 | 221 → 169 | 230 → 220 |
+| 83,000 / paced | 30 → 48 | 588 → 597 | 14 → 31 | 130 → 100 |
+| 497,000 / paced | 31 → 47 | 3,398 → 3,372 | 181 → 165 | 2,660 → 240 |
+
+The paced large scan removes about 91% of main-thread CPU without materially
+changing completion time. Bulk scans take longer to finish, and small queries
+pay extra worker round trips. The revised build's median maximum heartbeat
+delay was 1–2 ms across these workloads. All four typing sequences went from
+seven list clearings to zero. These fixtures replace the earlier uncommitted
+home-snapshot measurements; their absolute timings are not directly comparable.
 
 Both are asked for 40, and the stack shows 8: `resultTop` is the first
 row on screen and `showResult()` walks it by one whenever the selection steps
