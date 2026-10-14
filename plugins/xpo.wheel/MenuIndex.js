@@ -821,7 +821,7 @@ if (typeof WorkerScript !== "undefined" && typeof WorkerScript.sendMessage === "
         scanEpoch = message.epoch
         scans = [{ files: parseFiles("") }, { files: parseFiles("") }]
       }
-      if (message.reset) { gc(); return }
+      if (message.reset) { if (!message.rescan) gc(); return }
       for (var i = 0; i < message.chunks.length; i++) {
         var chunk = message.chunks[i]
         parseFiles(chunk.text, scans[chunk.source === "home" ? 0 : 1].files)
