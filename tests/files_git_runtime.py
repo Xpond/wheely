@@ -26,6 +26,7 @@ if name == 'old.txt':
   property var settledSel: ({name: 'old.txt', isDir: false})
   property var changes: ({'old.txt': 'M', 'next.txt': 'M'})
   property bool showsImage: false
+  property bool showsVideo: false
   property string diffText: ""
   property bool diffLoading: false
   property bool switched: false
@@ -68,6 +69,7 @@ if name == 'old.txt':
   property var settledSel: null
   property int previewLimit: 262144
   property bool showsImage: false
+  property bool showsVideo: false
   property bool diffMode: true
   property bool editing: false
   property string diffText: '@@ -1 +1 @@\\n-old\\n+new\\n'
@@ -105,6 +107,7 @@ if name == 'old.txt':
   property var settledSel: null
   property int previewLimit: 262144
   property bool showsImage: false
+  property bool showsVideo: false
   property bool diffMode: true
   property bool editing: false
   property string settledPath: ''
@@ -162,6 +165,7 @@ if name == 'old.txt':
   property string order: 'name'
   property var settledSel: null
   property bool showsImage: false
+  property bool showsVideo: false
   property bool diffMode: true
   property bool editing: false
   property int stage: 0
@@ -215,6 +219,7 @@ if name == 'old.txt':
   property var entries: []
   property var settledSel: null
   property bool showsImage: false
+  property bool showsVideo: false
   property bool diffMode: false
   property bool editing: false
   QtObject { id: preview; function resetScroll() {} }
