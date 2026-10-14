@@ -25,6 +25,7 @@ def check(files, ops, base, run, block):
   property bool showsCode: false
   property bool showsDiff: false
   property bool showsImage: false
+  property bool showsVideo: false
   property bool showsMarkdown: false
   property string previewBody: ""
   property string previewNote: ""

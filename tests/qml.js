@@ -24,8 +24,8 @@ function keymap(name, ...bound) {
   let n = 1
   for (const [, key] of src.matchAll(/Qt\.(Key_\w+)/g)) Qt[key] = Qt[key] || n++
   const onKey = new Function("Qt", src + "\nreturn onKey")(Qt)
-  return (key, modifiers = 0, text = "") => {
-    const event = { key: Qt[key], modifiers, text, accepted: false }
+  return (key, modifiers = 0, text = "", isAutoRepeat = false) => {
+    const event = { key: Qt[key], modifiers, text, isAutoRepeat, accepted: false }
     onKey(...bound, event)
     return event
   }

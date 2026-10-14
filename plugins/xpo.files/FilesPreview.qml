@@ -14,6 +14,7 @@ Item {
   readonly property real paneWidth: scroller.width
   readonly property real paneHeight: scroller.height
   readonly property int imageStatus: scrollerImage.status
+  readonly property int videoStatus: video.status
   property alias editorText: editor.text
   readonly property string lineNumbers:
     panel.editing ? FilesIndex.numbers(editor.text)
@@ -66,6 +67,8 @@ Item {
   }
 
   function resetScroll() { scroller.contentY = 0; scroller.contentX = 0 }
+
+  function toggleVideo() { if (video.item) video.item.toggle() }
 
   function scrollTo(fraction) {
     // The end of a partly laid out file waits for the rest.
@@ -302,6 +305,17 @@ Item {
     sourceSize.height: height
   }
 
+  Loader {
+    id: video
+    anchors.fill: parent
+    active: panel.showsVideo
+    source: "FilesVideo.qml"
+    onLoaded: {
+      item.path = Qt.binding(function() { return panel.settledSel ? panel.settledSel.path : "" })
+      item.fullsize.connect(function(path, position) { panel.openVideo(path, position) })
+    }
+  }
+
   Text {
     anchors.centerIn: parent
     visible: !!panel.previewNote
@@ -317,7 +331,7 @@ Item {
   MouseArea {
     id: pointer
     anchors.fill: scroller
-    enabled: !panel.editing
+    enabled: !panel.editing && !panel.showsVideo
     hoverEnabled: true
     onClicked: panel.pickPreview(hovered.column ? hovered.column.index : -1, hovered.line)
     onDoubleClicked: panel.openPicked()

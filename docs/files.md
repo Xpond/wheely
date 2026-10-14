@@ -12,6 +12,7 @@ the right.
       FilesHeader.qml   breadcrumb, path entry, filter and rename field
       FilesList.qml     the directory, one row per entry
       FilesPreview.qml  the scroller, and the editor inside it
+      FilesVideo.qml    paused video preview, controls and native mpv handoff
       FilesHints.qml    the foot: the legend, and what a held file would do
       FilesIndex.js     snapshotting, filtering, path and text helpers
       FilesKeys.js      the key map: which verb a key means
@@ -39,6 +40,8 @@ red, and a save is confirmed by reading the file back.
 | type anything | filter the current directory by name |
 | `/` or `~` | switch the field to a path from here or from home — see [Path entry](#path-entry) |
 | `↑` `↓` `Tab` `Shift+Tab` `Ctrl+N` `Ctrl+P` | move the selection, wrapping at both ends |
+| `Space` | play/pause a video preview |
+| `Shift+Space` | type a space in the filter while a video is selected |
 | `Enter` | descend into a folder, or hand a file to the app that owns it, text to your editor |
 | `→` | descend into a folder; on a file it does nothing |
 | `←` | go up one directory, landing on the folder you left |
@@ -176,18 +179,39 @@ text floating in the padding.
 
 ## The preview
 
-Four kinds of thing, one scroller:
+Previews follow the selection:
 
 | selection | shown as |
 |---|---|
 | a folder | its contents as a listing — name, size, date — capped at 400 entries |
 | an image | itself, aspect-fit, async, formats Qt actually has plugins for |
+| a video | paused video preview with play/pause, seeking, time, volume and mute |
 | a `.md` file | rendered Markdown — headings, bold, code blocks |
 | any other text | syntax highlighted, with line numbers |
 | anything else | its size and `no preview` |
 
-The first four are read-only renderings. `Ctrl+E` replaces the third or fourth with the
+The previews are read-only renderings. `Ctrl+E` replaces a text preview with the
 file itself — see [Editing](#editing).
+
+Video previews use Qt Multimedia's FFmpeg backend, requiring `qt6-multimedia`
+and `qt6-multimedia-ffmpeg`. Click the video or its play button, or press `Space`,
+to play/pause; `Shift+Space` types a space in the filter. Drag the timeline to
+seek. The fullsize button pauses the preview and opens native mpv fullscreen at
+the current position, with opening feedback and a guard against rapid repeat
+clicks. `Enter` opens the system handler. Unsupported or corrupt videos can
+still open in mpv through the fullsize button.
+
+Each video starts paused. Leaving a video or closing the browser releases its
+player. Pinning and unpinning preserve playback, position, volume and mute;
+paused frames redraw after the window changes.
+
+`python3 tests/files-video.py` checks MP4/WebM frames, pointer controls,
+seeking, file switching, cleanup and invalid media. It calls
+`tests/files_video_window.py` for pin/unpin/resize and rapid fullsize clicks.
+These checks need FFmpeg, ImageMagick and an active Wayland desktop session.
+
+After changing preview code, use `omarchy restart shell` to load it for desktop
+testing. A plugin rescan can retain the previous compiled video component.
 
 A folder previews in the same scroller a file does, rather than in a second
 `ListView` with its own delegate and its own way of being navigated. Its rows

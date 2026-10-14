@@ -122,6 +122,9 @@ function humanSize(bytes) {
 var IMAGE = { png: 1, jpg: 1, jpeg: 1, gif: 1, webp: 1, bmp: 1,
               svg: 1, ico: 1, icns: 1, tif: 1, tiff: 1, tga: 1 }
 
+var VIDEO = { mp4: 1, m4v: 1, mkv: 1, webm: 1, mov: 1, avi: 1, mpg: 1, mpeg: 1,
+              ogv: 1, wmv: 1, flv: 1, "3gp": 1, "3g2": 1, m2ts: 1, vob: 1 }
+
 // StyledText lays code out an order of magnitude faster than the rich-text <pre>
 // it replaced. Keep <pre>'s rules: drop a newline after its opening tag and one
 // before its closing tag, drop \r, and keep other whitespace as written, through
@@ -342,6 +345,11 @@ function isMarkdown(name) {
 function isImage(name) {
   var cut = String(name).lastIndexOf(".")
   return cut > 0 && IMAGE[String(name).slice(cut + 1).toLowerCase()] === 1
+}
+
+function isVideo(name) {
+  var cut = String(name).lastIndexOf(".")
+  return cut > 0 && VIDEO[String(name).slice(cut + 1).toLowerCase()] === 1
 }
 
 // Normalize text files to a trailing newline on save.

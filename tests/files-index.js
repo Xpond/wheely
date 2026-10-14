@@ -3,6 +3,12 @@ const { library } = require("./qml.js")
 const M = library("plugins/xpo.wheel/MenuIndex.js")
 const F = library("plugins/xpo.files/FilesIndex.js")
 
+for (const name of ["clip.mp4", "CLIP.MKV", "a.b.webm", "clip.mov", "clip.m4v", "clip.3gp"])
+  assert.equal(F.isVideo(name), true, name)
+for (const name of ["app.ts", "module.mts", "photo.gif", "clip.mp4.txt", "mp4", ".mp4"])
+  assert.equal(F.isVideo(name), false, name)
+console.log("ok: video formats preserve text and image previews")
+
 const buffer = bytes => Uint8Array.from(bytes).buffer
 const valid = [[], [0], [0x7f], [0xc2, 0x80], [0xdf, 0xbf], [0xe0, 0xa0, 0x80],
   [0xed, 0x9f, 0xbf], [0xef, 0xbb, 0xbf], [0xef, 0xbf, 0xbd], [0xf0, 0x90, 0x80, 0x80],
