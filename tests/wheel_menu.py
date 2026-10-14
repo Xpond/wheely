@@ -78,6 +78,7 @@ Item {
   property bool opened: true
   property bool shown: true
   property var queued: null
+  property string fileAction: "run"
   property int fadeDuration: 130
   property var backdrop: []
   property QtObject shell: QtObject {

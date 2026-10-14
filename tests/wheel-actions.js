@@ -16,7 +16,7 @@ for (const [entry, expected] of [
   const effects = [], picks = [], dismissals = [], later = []
   const unmap = { running: false }
   const root = {
-    home: "/home/test", opened: true, launched: "", queued: null, slices: [entry],
+    home: "/home/test", opened: true, launched: "", queued: null, slices: [entry], filePending: true, fileAction: "run",
     countUse: e => picks.push(e), dropScan() {},
     dismiss(immediate) { dismissals.push(immediate); unmap.running = !immediate },
     copy: text => effects.push(["copy", text]),
@@ -33,6 +33,7 @@ for (const [entry, expected] of [
   run(null)
   assert.deepEqual([picks, dismissals, effects], [[], [], []], "an empty selection does nothing")
   run(entry)
+  assert.equal(root.fileAction, "", "clicking a visible row must replace a pending keyboard action")
   assert.deepEqual(dismissals, [true], "a pick waited for the fade")
   assert.deepEqual(effects, [], "a target ran before the wheel unmapped")
   assert.equal(root.launched, "", "a plugin was recorded before it opened")

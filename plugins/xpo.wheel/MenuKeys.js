@@ -37,7 +37,13 @@ function onKey(wheel, event) {
     if (event.key === Qt.Key_Delete) { wheel.removeEntry(); event.accepted = true; return }
     if (event.key === Qt.Key_Escape) { wheel.listing = ""; event.accepted = true; return }
   }
-  if (event.modifiers & Qt.ControlModifier) {
+  var control = event.modifiers & Qt.ControlModifier
+  // Keep keyboard intent until this query is ranked; a click still uses its visible row.
+  if (wheel.filePending && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || control && event.key === Qt.Key_Y)) {
+    wheel.fileAction = event.key === Qt.Key_Y ? "copy" : control ? "terminal" : "run"
+    event.accepted = true; return
+  }
+  if (control) {
     switch (event.key) {
     case Qt.Key_U:
       wheel.query = wheel.query.slice(wheel.queryAt); wheel.queryAt = 0

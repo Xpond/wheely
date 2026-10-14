@@ -541,12 +541,13 @@ leads its rank, most opened first, but never climbs into a better one, and a
 bare `/` lists those files, latest first. Home and the folders added outside it
 scan apart. `scan.py` frames complete lines into bounded batches, and
 `SplitParser` decodes each batch once, preserving split UTF-8 characters. The
-first batch is sent after 16 ms, with later batches throttled to 100 ms.
+first batch is sent immediately, with later batches throttled to 100 ms.
 A background worker appends paths directly to each source's index and ranks
 only new paths for an unchanged query. Per-source buckets keep home's ties
 ahead of added folders. Only the result rows come back. One request runs at
 a time; typing during it replaces the pending query, and obsolete replies are
-discarded. Previous rows stay visible; actions on stale rows are ignored.
+discarded. Previous rows stay visible and can be clicked. Keyboard actions
+wait for the current query's results; changing the query or closing cancels them.
 Neither scan waits for the other or for the walk to finish before
 showing results.
 The Skipped folders list suggests home's folders alone, so it
