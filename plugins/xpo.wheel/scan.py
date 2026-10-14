@@ -43,6 +43,11 @@ try:
     _, status = os.waitpid(child, 0)
     child = None
     sys.exit(os.waitstatus_to_exitcode(status))
+except BrokenPipeError:
+    # Python's final stdout flush must also tolerate the closed reader.
+    with open(os.devnull, "wb") as sink:
+        os.dup2(sink.fileno(), sys.stdout.fileno())
+    sys.exit(1)
 finally:
     os.close(read_fd)
     if child is not None:
