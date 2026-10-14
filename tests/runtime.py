@@ -9,7 +9,6 @@ import tempfile
 from plugin_shell import check as check_plugin_shell
 from wheel_refresh import check as check_wheel_refresh
 from wheel_scans import check as check_wheel_scans
-from wheel_scan_reader import check as check_scan_reader
 from wheel_menu import check as check_wheel_menu
 from file_runtime import check as check_file_runtime
 from files_lifecycle import check as check_files_lifecycle
@@ -34,7 +33,7 @@ def line(source, pattern):
 with tempfile.TemporaryDirectory(prefix="omarchy-runtime-") as temporary:
     base = Path(temporary)
     for path in ["xpo.files/FilesIndex.js", "xpo.files/FilesList.qml", "xpo.files/FilesPreview.qml",
-                 "xpo.wheel/MenuIndex.js", "xpo.wheel/FileWorker.js", "xpo.wheel/scan.py", "xpo.wheel/MenuKeys.js", "xpo.wheel/WheelResults.qml",
+                 "xpo.wheel/MenuIndex.js", "xpo.wheel/scan.py", "xpo.wheel/MenuKeys.js", "xpo.wheel/WheelResults.qml",
                  "xpo.wheel/ClickShield.qml", "xpo.wheel/PanelIcon.qml"]:
         shutil.copyfile(repo / "plugins" / path, base / Path(path).name)
     # The shell's own components for real plugin QML, and QtTest's events for real pointer input.
@@ -72,7 +71,6 @@ Scope {
     check_wheel_refresh(wheel, run, block)
 
     check_wheel_scans(wheel, run, block)
-    check_scan_reader(repo)
     check_wheel_menu(wheel, base, run, block, line)
     check_file_runtime(files, ops, base, run, block)
     check_files_lifecycle(files, run, block, line)

@@ -167,47 +167,41 @@ Item {
         }
 
         // A setting row ends in its value, drawn as a control, the way Omarchy's panel rows end in one.
-        Loader {
+        BorderSurface {
           id: valueField
           anchors.verticalCenter: parent.verticalCenter
           anchors.right: resultRow.right
-          active: !!modelData.setting && modelData.setting !== "backdrop" && !resultCard.editing
-          visible: active
-          sourceComponent: BorderSurface {
-            width: valueText.implicitWidth + Style.spacing.controlPaddingX * 2
-            height: valueText.implicitHeight + Style.spacing.xs * 2
-            radius: height / 2
-            color: Style.controlFill(resultCard.active, false, Color.menu.text, Color.accent)
-            borderSpec: Border.controlSpec(resultCard.active ? "focus" : "normal", Color.menu.text, Color.accent)
+          visible: !!modelData.setting && !valueSlider.visible && !resultCard.editing
+          width: valueText.implicitWidth + Style.spacing.controlPaddingX * 2
+          height: valueText.implicitHeight + Style.spacing.xs * 2
+          radius: height / 2
+          color: Style.controlFill(resultCard.active, false, Color.menu.text, Color.accent)
+          borderSpec: Border.controlSpec(resultCard.active ? "focus" : "normal", Color.menu.text, Color.accent)
 
-            Text {
-              id: valueText
-              anchors.centerIn: parent
-              text: modelData.trail
-              color: resultCard.active ? Color.accent : Color.menu.text
-              font.family: Style.font.menuFamily
-              font.pixelSize: Style.font.caption
-            }
+          Text {
+            id: valueText
+            anchors.centerIn: parent
+            text: modelData.trail
+            color: resultCard.active ? Color.accent : Color.menu.text
+            font.family: Style.font.menuFamily
+            font.pixelSize: Style.font.caption
           }
         }
 
         // The backdrop's is Omarchy's slider, moved by ←/→ only, so the pointer passes to the row.
-        Loader {
+        PanelSlider {
           id: valueSlider
           anchors.verticalCenter: parent.verticalCenter
           anchors.right: resultRow.right
-          active: modelData.setting === "backdrop"
-          visible: active
-          sourceComponent: PanelSlider {
-            enabled: false
-            width: Style.space(72)
-            bar: QtObject {
-              readonly property color foreground: resultCard.active ? Color.accent : Color.menu.text
-              readonly property color background: Color.menu.background
-            }
-            maximum: 100
-            value: wheel.backdrop
+          visible: modelData.setting === "backdrop"
+          enabled: false
+          width: Style.space(72)
+          bar: QtObject {
+            readonly property color foreground: resultCard.active ? Color.accent : Color.menu.text
+            readonly property color background: Color.menu.background
           }
+          maximum: 100
+          value: wheel.backdrop
         }
 
         // An answer centers under its query and, like the query, overflows to the left.

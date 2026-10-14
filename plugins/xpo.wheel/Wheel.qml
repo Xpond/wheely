@@ -795,18 +795,18 @@ Item {
   }
   WorkerScript {
     id: fileWorker
-    source: "FileWorker.js"
+    source: "MenuIndex.js"
     onReadyChanged: if (ready) Qt.callLater(root.sendFiles)
     onMessage: message => {
-      if (message.reset || message.epoch !== root.scanEpoch) return
+      if (message.epoch !== root.scanEpoch) return
       root.fileBusy = false
       root.filesReady = true
       if (message.error) console.warn("Wheel file search:", message.error)
-      if (message.request === root.fileRequest && message.rows !== undefined) {
+      if (message.request === root.fileRequest) {
         root.fileResultRequest = message.request
-        if (JSON.stringify(root.fileResults) !== JSON.stringify(message.rows)) root.fileResults = message.rows
+        root.fileResults = message.rows
       }
-      if (message.more || root.fileQueue.length || message.request !== root.fileRequest)
+      if (root.fileQueue.length || message.request !== root.fileRequest)
         Qt.callLater(root.sendFiles)
     }
   }

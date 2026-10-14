@@ -1,4 +1,3 @@
-const { fileSearch } = require("./wheel-worker-fixture.js")
 const assert = require("node:assert/strict")
 const { method, keymap } = require("./qml.js")
 const { M, wheelSource, binding, derive } = require("./wheel-source.js")
@@ -33,7 +32,7 @@ const shift = 1 << 25, ctrl = 1 << 26
   // `/` search hands the wheel's picks over: a file opened before leads a shorter name.
   const picker = { listing: "", mode: "file", term: "a", resultLimit: 40, home: "/home/test",
     files: M.parseFiles("/home/test/ab\n/home/test/abc\n"), uses: { "file:/home/test/abc": 1 } }
-  picker.fileResults = fileSearch(picker.files, picker.term, false, picker.home, picker.uses)
+  picker.fileResults = M.fileRows(picker.files, picker.term, 40, picker.home, false, picker.uses)
   assert.deepEqual(binding("results", { root: picker, MenuIndex: M }).map(r => r.label), ["abc", "ab"])
 
   // The editor edits the ring as drawn, saving each change; the bar's ring is where a first edit starts.

@@ -1,4 +1,3 @@
-const { fileSearch } = require("./wheel-worker-fixture.js")
 const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const path = require("node:path")
@@ -37,12 +36,22 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     "home, or a folder in or around it, was offered")
   assert.deepEqual([M.listEntry("/home/test/Android/", home), M.listEntry("/mnt/share/", home)], ["~/Android", "/mnt/share"])
 
+  // Late home batches win equal ties; appending never duplicates earlier matches.
+  const scans = [{ files: M.parseFiles("") }, { files: M.parseFiles("/mnt/target/") }]
+  assert.deepEqual(M.fileSearch(scans, "tar", false, home, {}).map(r => r.path), ["/mnt/target/"])
+  M.parseFiles(home + "/target/", scans[0].files)
+  M.fileSearch(scans, "tar", false, home, {})
+  M.parseFiles(home + "/targets/", scans[0].files)
+  assert.deepEqual(M.fileSearch(scans, "tar", false, home, {}).map(r => r.path),
+    [home + "/target/", "/mnt/target/", home + "/targets/"])
+  assert.deepEqual(M.fileSearch(scans, "targets", true, home, {}).map(r => r.label), ["targets", "targets"])
+
   // Enter adds the suggestion picked, once; Del removes and the next entry takes the place; an emptied
   // list is its default again. Each change is saved, and the rest of wheel.json stays.
   const saved = []
   const disk = { raw: '{ "slices": ["system"] }', text() { return this.raw }, setText(raw) { this.raw = raw; saved.push(JSON.parse(raw)) } }
   const ls = { query: "", listing: "", savedFolders: null, savedSkipped: null, resultIndex: 0, resultLimit: 40, home, files,
-    get fileResults() { return fileSearch(files, this.query, true, home) },
+    get fileResults() { return M.fileSearch([{ files }], this.query, true, home, {}) },
     subfolderPaths: ["/mnt"], get results() { return binding("results", { root: this, MenuIndex: M }) }, drops: 0, dropScan() { this.drops++ }, scans: 0, scanFiles() { this.scans++ } }
   for (const name of ["edit", "addEntry", "removeEntry", "saveList"]) ls[name] = method(wheelSource, name, { root: ls, ringFile: disk, MenuIndex: M })
   derive(ls, "folders", "skipped", "listed")
