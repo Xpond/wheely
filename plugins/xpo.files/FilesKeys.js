@@ -21,6 +21,11 @@ function onKey(panel, ops, preview, event) {
     event.accepted = true
     return
   }
+  if (event.key === Qt.Key_Space && panel.showsVideo && !event.modifiers) {
+    if (!event.isAutoRepeat) preview.toggleVideo()
+    event.accepted = true
+    return
+  }
   if (event.modifiers & Qt.ControlModifier) {
     switch (event.key) {
     case Qt.Key_E: panel.edit(); event.accepted = true; return

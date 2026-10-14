@@ -91,6 +91,7 @@ Scope {
     property bool showsMarkdown: false
     property bool showsDir: false
     property bool showsImage: false
+    property bool showsVideo: false
     property var dirColumns: []
     property var settledSel: null
     property string previewNote: ""

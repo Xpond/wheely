@@ -62,6 +62,10 @@ blur, render loop) to `~/.config/hypr/hyprland.lua`, links three helpers into
 hook, and restarts the shell. Rerunning is safe. Keep the checkout where it is:
 the hook points to it.
 
+Video previews also need `qt6-multimedia` and `qt6-multimedia-ffmpeg`
+(`sudo pacman -S --needed qt6-multimedia qt6-multimedia-ffmpeg`). The fullsize
+button opens native mpv, which Omarchy includes.
+
 ## Revert
 
 ```bash
