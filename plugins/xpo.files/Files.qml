@@ -115,6 +115,8 @@ Item {
   readonly property int previewLimit: 262144
   readonly property bool showsImage: !!root.settledSel && !root.settledSel.isDir && !root.settledSel.missing
                                      && FilesIndex.isImage(root.settledSel.name)
+  readonly property bool showsVideo: !!root.settledSel && !root.settledSel.isDir && !root.settledSel.missing
+                                     && FilesIndex.isVideo(root.settledSel.name)
   property string imageDims: ""
   Process {
     id: measurer
@@ -125,7 +127,7 @@ Item {
   readonly property bool showsMarkdown: !root.showsDiff && !!root.settledSel && !root.settledSel.isDir
                                         && !root.settledSel.missing && FilesIndex.isMarkdown(root.settledSel.name)
   readonly property string previewPath:
-    (root.settledSel && !root.settledSel.isDir && !root.settledSel.missing && !root.showsImage
+    (root.settledSel && !root.settledSel.isDir && !root.settledSel.missing && !root.showsImage && !root.showsVideo
      && root.settledSel.size <= root.previewLimit) ? root.settledSel.path : ""
   // Keep the full file for safe editing. The preview lays out two screens of its lines,
   // and twice as many whenever scrolling nears their end.
@@ -222,11 +224,11 @@ Item {
     }
   }
   // Read whether shown or not, so the heading can count its lines. Only changed files have
-  // a diff; the rest, and images, keep their usual preview.
+  // a diff; the rest, images and videos, keep their usual preview.
   function readDiff() {
     differ.cancel()
     var e = root.settledSel
-    root.diffLoading = !!e && !e.isDir && !root.showsImage && !!root.changes[e.name]
+    root.diffLoading = !!e && !e.isDir && !root.showsImage && !root.showsVideo && !!root.changes[e.name]
     if (!root.diffLoading) { root.diffText = ""; return }
     differ.start(FilesIndex.diffCommand(root.listedDir, e.name, root.gitScript))
   }
@@ -297,6 +299,7 @@ Item {
     : root.settledSel.isDir ? (root.showsDir ? "" : "Empty folder")
     : root.showsCode || root.previewBody || root.showsDiff ? ""
     : root.settledSel.missing ? "Deleted · Ctrl+D shows changes"
+    : root.showsVideo ? (preview.videoStatus === Loader.Error ? "Video preview unavailable · Enter opens in mpv" : "")
     : (root.showsImage && preview.imageStatus !== Image.Error) ? ""
     : FilesIndex.humanSize(root.settledSel.size) + "  ·  no preview"
 
@@ -430,6 +433,11 @@ Item {
     root.pending = root.picked.name; root.index = -1
   }
   function openPicked() { if (!root.naming) ops.activate(root.picked) }
+
+  function openVideo(path, position) {
+    root.close()
+    Quickshell.execDetached(["mpv", "--fullscreen", "--start=" + (position / 1000).toFixed(3), "--", path])
+  }
 
   // At home, hand Backspace navigation to the wheel, or back to the pinned search.
   function toWheel() {

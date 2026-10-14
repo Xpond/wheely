@@ -16,9 +16,10 @@ Item {
   readonly property var diffKey: !panel || !panel.diffMode && !Object.keys(panel.changes).length ? []
     : [["ctrl+d", panel.diffMode ? "hide diff" : "show diff", panel.diffMode]]
   // With the list hidden the bare keys scroll the preview; see FilesKeys.
-  readonly property var moves: !panel || panel.listShown
+  readonly property var moves: (!panel || panel.listShown
     ? [["↑↓", "select"], ["enter", "open"], ["←", "up"], ["shift+↑↓", "scroll"]]
-    : [["↑↓", "scroll"], ["enter", "open"], ["←", "list"]]
+    : [["↑↓", "scroll"], ["enter", "open"], ["←", "list"]])
+      .concat(panel && panel.showsVideo ? [["space", "play/pause"]] : [])
   // A window closes like any other, so only the overlay offers esc.
   readonly property var leave: !panel ? [] : panel.host ? [["esc", "search"]] : panel.windowed ? [] : [["esc", "close"]]
 
