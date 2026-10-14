@@ -7,7 +7,9 @@ def check(wheel, run, block):
   property bool armed: false
   property bool justOpened: false
   property string query: ""
-  readonly property string mode: MenuIndex.modeOf(root.query)
+  property string listing: ""
+  readonly property string mode: root.listing ? "" : MenuIndex.modeOf(root.query)
+  readonly property string fileSearchKey: root.mode === "file" || root.listing === "skipped" ? root.query : ""
   property var files: null
   readonly property bool searching: query.length > 0
   property int selected: -1
@@ -29,7 +31,7 @@ def check(wheel, run, block):
   property string conditionText: "system.suspend:w\\n"
   readonly property var conditions: MenuIndex.parseConditions(root.conditionText, root.menuItems)
   readonly property var slices: MenuIndex.childrenOf(root.menuItems, "system", root.conditions)
-  readonly property var results: root.mode === "file"
+  readonly property var results: !!root.fileSearchKey
     ? MenuIndex.fileRows(root.files, MenuIndex.termOf(root.query), 40, "/home", false, {})
     : MenuIndex.search(MenuIndex.menuRows(root.menuItems, root.conditions), root.query, 40, {})
   QtObject { id: spin; function stop() {} }
@@ -81,7 +83,8 @@ def check(wheel, run, block):
 
     # Streaming keeps the default on the best match, preserves a lower selection while it fits,
     # and restores a usable default if that selection falls outside the forty results.
-    run("refresh-file-selection", common + r'''
+    for listing in ["", "skipped"]:
+        run("refresh-file-selection-" + (listing or "files"), common + 'Component.onCompleted: root.listing = "' + listing + '"\n' + r'''
   Timer { interval: 50; running: true; onTriggered: {
     root.query = "/conf"
     root.files = MenuIndex.parseFiles("/home/configuration\n/home/my-configuration")

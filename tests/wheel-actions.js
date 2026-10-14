@@ -39,7 +39,7 @@ for (const [entry, expected] of [
   assert.equal(typeof root.queued, "function")
   root.opened = false
   run({ action: "second click after closing" })
-  assert.deepEqual(picks, [entry], "a closed wheel accepted another pick")
+  assert.deepEqual(picks, [], "picks re-ranked before the deferred launch")
   openedChanged()
   assert.equal(root.queued, null, "unmapping must consume the queued callback")
   assert.equal(later.length, 1)
@@ -47,6 +47,7 @@ for (const [entry, expected] of [
   openedChanged()
   assert.equal(later.length, 1, "a second close queued the action twice")
   later.shift()()
+  assert.deepEqual(picks, [entry], "the deferred launch did not record its pick")
   assert.deepEqual(effects, [expected], "the queued target or its arguments changed")
   assert.equal(root.launched, entry.plugin || "")
 }

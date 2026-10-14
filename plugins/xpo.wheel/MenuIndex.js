@@ -673,11 +673,12 @@ function nameRows(files, typed, limit, home) {
 var NO_FILES = { paths: [], lower: [] }
 
 // fd marks directories with trailing slashes; fold case and find names once per scan.
-function parseFiles(raw) {
-  var paths = String(raw || "").split("\n")
-  var lower = [], starts = [], count = 0
-  for (var i = 0; i < paths.length; i++) {
-    var path = paths[i].trim()
+function parseFiles(raw, into) {
+  var lines = String(raw || "").split("\n")
+  var paths = into ? into.paths : lines, lower = into ? into.lower : [], starts = into ? into.starts : []
+  var count = into ? paths.length : 0
+  for (var i = 0; i < lines.length; i++) {
+    var path = lines[i].trim()
     if (!path) continue
     paths[count++] = path
     var low = path.toLowerCase()
@@ -725,73 +726,71 @@ function pathPayload(path, pinned) {
   return JSON.stringify(out)
 }
 
-// Rank paths by name position, then picks, then length; materialize rows only for winners.
-// `homeFolders` keeps only folders under home, the ones a skip can take.
-function fileRows(files, term, limit, home, homeFolders, uses) {
-  var src = files || NO_FILES
-  var paths = src.paths, lower = src.lower, starts = src.starts
-  var q = String(term || "").trim().toLowerCase()
-  if (!q) return []
-  var terms = q.split(/\s+/)
-  var first = terms[0]
-  // Later ties cannot enter the first `limit` results.
-  var buckets = [[], [], []], picked = [[], [], []]
-  // Picks by bare path, so a scanned path needs no key string of its own.
-  var picks = {}
+// Resumable rank buckets retain only the first limit of each tie, per scan source.
+function fileRank(term, limit, home, homeFolders, uses) {
+  var q = String(term || "").trim().toLowerCase(), picks = {}
   for (var key in uses) if (key.indexOf("file:") === 0) picks[key.slice(5)] = uses[key]
-  for (var i = 0; i < lower.length; i++) {
-    var low = lower[i]
-    if (low.indexOf(first) === -1) continue
-    if (homeFolders && (low.charCodeAt(low.length - 1) !== 47 || paths[i].indexOf(home + "/") !== 0)) continue
+  return { q: q, terms: q.split(/\s+/), limit: limit, home: home, homeFolders: homeFolders,
+    picks: picks, buckets: [[], [], []], picked: [[], [], []], names: {}, matches: [] }
+}
+
+// Candidate indices are used only when a completed query is narrowed.
+function rankFiles(rank, src, from, end, candidates) {
+  if (!rank.q) return
+  var paths = src.paths, lower = src.lower, q = rank.q, terms = rank.terms
+  var starts = src.starts, homeFolders = rank.homeFolders, prefix = rank.home + "/"
+  var picks = rank.picks, picked = rank.picked, buckets = rank.buckets, matches = rank.matches, limit = rank.limit
+  for (var n = from; n < end; n++) {
+    var i = candidates ? candidates[n] : n, low = lower[i]
+    if (low.indexOf(terms[0]) === -1) continue
+    if (homeFolders && (low.charCodeAt(low.length - 1) !== 47 || paths[i].indexOf(prefix) !== 0)) continue
     var matched = true
     for (var t = 1; t < terms.length; t++) {
       if (low.indexOf(terms[t]) === -1) { matched = false; break }
     }
     if (!matched) continue
-    // Search the name in place; a match running into a directory's slash is outside it.
+    matches.push(i)
     var start = starts[i]
-    // 47 is "/"; charAt would allocate a string per path.
-    var end = low.charCodeAt(low.length - 1) === 47 ? low.length - 1 : low.length
+    var nameEnd = low.charCodeAt(low.length - 1) === 47 ? low.length - 1 : low.length
     var at = low.indexOf(q, start)
-    if (at + q.length > end) at = -1
-    var rank = at === start ? 0 : (at !== -1 ? 1 : 2)
-    if (picks[paths[i]]) { picked[rank].push(i); continue }
-    var lengths = buckets[rank]
-    var ties = lengths[end - start]
-    if (!ties) ties = lengths[end - start] = []
+    if (at + q.length > nameEnd) at = -1
+    var r = at === start ? 0 : (at !== -1 ? 1 : 2)
+    if (homeFolders && q.indexOf("/") < 0 && at === start) rank.names[paths[i].slice(start, -1)] = true
+    if (picks[paths[i]]) { picked[r].push(i); continue }
+    var lengths = buckets[r], ties = lengths[nameEnd - start]
+    if (!ties) ties = lengths[nameEnd - start] = []
     if (ties.length < limit) ties.push(i)
   }
+}
+
+// Merge ties in source order, so late home batches still precede added folders.
+function rankedFileRows(sources, limit, home) {
   var out = []
-  for (var r = 0; r < buckets.length; r++) {
-    // Picked paths lead their rank, most picked first.
-    var groups = [picked[r].sort(function (a, b) { return picks[paths[b]] - picks[paths[a]] || a - b })]
-      .concat(buckets[r])
-    for (var len = 0; len < groups.length; len++) {
-      var entries = groups[len] || []
-      for (var j = 0; j < entries.length; j++) {
-        if (out.length >= limit) return out
-        out.push(fileRow(paths[entries[j]], home))
+  for (var r = 0; r < 3; r++) {
+    var picked = [], lengths = 0
+    for (var s = 0; s < sources.length; s++) {
+      var source = sources[s], rank = source.rank
+      lengths = Math.max(lengths, rank.buckets[r].length)
+      for (var p = 0; p < rank.picked[r].length; p++) {
+        var at = rank.picked[r][p], path = source.files.paths[at]
+        picked.push({ path: path, count: rank.picks[path], source: s, at: at })
       }
     }
+    picked.sort(function (a, b) { return b.count - a.count || a.source - b.source || a.at - b.at })
+    for (var p = 0; p < picked.length && out.length < limit; p++) out.push(fileRow(picked[p].path, home))
+    for (var len = 0; len < lengths && out.length < limit; len++) {
+      for (var s = 0; s < sources.length && out.length < limit; s++) {
+        var source = sources[s], ties = source.rank.buckets[r][len] || []
+        for (var j = 0; j < ties.length && out.length < limit; j++) out.push(fileRow(source.files.paths[ties[j]], home))
+      }
+    }
+    if (out.length >= limit) break
   }
   return out
 }
 
-if (typeof WorkerScript !== "undefined" && typeof WorkerScript.sendMessage === "function") {
-  var scanEpoch = -1, scans = { home: null, folders: null }
-  WorkerScript.onMessage = function (message) {
-    if (message.epoch !== scanEpoch) {
-      scanEpoch = message.epoch
-      scans = { home: null, folders: null }
-    }
-    if (message.reset) return
-    for (var i = 0; i < message.chunks.length; i++) {
-      var chunk = message.chunks[i]
-      scans[chunk.source] = joinFiles(scans[chunk.source], parseFiles(chunk.text))
-    }
-    var files = joinFiles(scans.home, scans.folders)
-    var rows = message.skipped ? nameRows(files, message.query, 40, message.home) : []
-    rows = rows.concat(fileRows(files, message.query, 40, message.home, message.skipped, message.skipped ? null : message.uses))
-    WorkerScript.sendMessage({ epoch: message.epoch, request: message.request, rows: rows })
-  }
+function fileRows(files, term, limit, home, homeFolders, uses) {
+  var src = files || NO_FILES, rank = fileRank(term, limit, home, homeFolders, uses)
+  rankFiles(rank, src, 0, src.paths.length)
+  return rankedFileRows([{ files: src, rank: rank }], limit, home)
 }

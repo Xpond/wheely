@@ -172,7 +172,8 @@ Item {
   property int resultIndex: 0
   property int fadeDuration: 0
   property bool searching: false
-  property var results: [0, 1, 2, 3].map(i => ({ label: "Result " + i, icon: "x", trail: "App" }))
+  property var results: [0, 1, 2, 3].map(i => ({ label: "Result " + i, icon: "x", trail: "App",
+    setting: i === 0 ? "backdrop" : i === 1 ? "shortcut" : "" }))
   property var beads: root.results
   property string emptyText: ""
   property string editing: ""

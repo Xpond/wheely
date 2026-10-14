@@ -172,7 +172,8 @@ Item {
     : root.windowed && !root.query ? ""
     : root.listing === "history" ? "Nothing picked yet"
     : root.mode !== "file" && root.listing !== "skipped" ? "No match"
-    : !root.filesReady || homeScan.running || folderScan.running || root.fileBusy || root.fileQueue.length ? "Scanning\u2026"
+    : homeScan.running || folderScan.running ? "Scanning\u2026"
+    : root.filePending ? ""
     : !root.term ? "Type to find files\nctrl+y copy path\nctrl+enter terminal"
     : "No match"
 
@@ -518,10 +519,10 @@ Item {
   // Ignore input after unmapping and during a cancellation fade.
   function run(e) {
     if (!e || unmap.running || !root.opened && !root.windowed) return
+    if (root.filePending) return
     if (root.editingRing) { root.pin(e); return }
     if (root.listing && root.listing !== "history") { root.addEntry(e); return }
-    root.countUse(e)
-    if (e.node) { root.enter(e.node); return }
+    if (e.node) { root.countUse(e); root.enter(e.node); return }
     if (e.setting) { root.edit(e); return }
     root.launchedAt = root.slices.indexOf(e)
     // The browser keeps to home, so a path outside it opens the way the browser opens a file.
@@ -539,6 +540,7 @@ Item {
       }
       else if (e.copy) root.copy(e.copy)
       else if (e.action) Util.execDetached(e.action)
+      root.countUse(e)
     }
     // Release keyboard focus at once; the queued pick runs on the next tick.
     root.dismiss(true)
@@ -676,6 +678,7 @@ Item {
   }
 
   function takePath() {
+    if (root.filePending) return false
     var hit = root.searching ? root.results[root.resultIndex] : null
     if (!hit || !hit.path) return false
     root.copy(hit.path)
@@ -685,6 +688,7 @@ Item {
 
   // A terminal in the highlighted path's folder, with the same focus handoff as run().
   function terminal() {
+    if (root.filePending) return false
     var hit = root.searching ? root.results[root.resultIndex] : null
     if (!hit || !hit.path) return false
     root.queued = function () {
@@ -743,10 +747,10 @@ Item {
   property string previousQuery: ""
   onResultsChanged: {
     // Streaming files keep the default on the best match; lower selections follow their path.
-    if (root.query !== root.previousQuery || root.mode === "file" && root.resultIndex === 0) root.resultIndex = 0
+    if (root.query !== root.previousQuery || root.fileSearchKey && root.resultIndex === 0) root.resultIndex = 0
     else if (root.previousResults[root.resultIndex])
       root.resultIndex = MenuIndex.indexOfEntry(root.results, root.previousResults[root.resultIndex])
-    if (root.mode === "file") root.resultIndex = Math.max(0, root.resultIndex)
+    if (root.fileSearchKey) root.resultIndex = Math.max(0, root.resultIndex)
     root.previousResults = root.results
     root.previousQuery = root.query
     root.showResult()
@@ -768,11 +772,14 @@ Item {
   property var fileQueue: []
   property bool fileBusy: false
   property int fileRequest: 0
-  readonly property string fileSearchKey: root.listing === "skipped" ? "skip:" + root.query
-    : root.mode === "file" ? "file:" + root.term : ""
+  property int fileResultRequest: -1
+  readonly property string fileSearchKey: root.listing === "skipped" ? "skip:" + root.query.trim().toLowerCase()
+    : root.mode === "file" ? "file:" + root.term.trim().toLowerCase() : ""
+  readonly property bool filePending: !!root.fileSearchKey && !!(root.listing === "skipped" ? root.query.trim() : root.term.trim())
+    && root.fileRequest !== root.fileResultRequest
   onFileSearchKeyChanged: {
     root.fileRequest++
-    root.fileResults = []
+    if (!root.fileSearchKey) root.fileResults = []
     Qt.callLater(root.sendFiles)
   }
   onUsesChanged: if (root.fileSearchKey) { root.fileRequest++; Qt.callLater(root.sendFiles) }
@@ -788,44 +795,45 @@ Item {
   }
   WorkerScript {
     id: fileWorker
-    source: "MenuIndex.js"
+    source: "FileWorker.js"
     onReadyChanged: if (ready) Qt.callLater(root.sendFiles)
     onMessage: message => {
+      if (message.reset || message.epoch !== root.scanEpoch) return
       root.fileBusy = false
-      if (message.epoch === root.scanEpoch) {
-        root.filesReady = true
-        if (message.request === root.fileRequest) root.fileResults = message.rows
+      root.filesReady = true
+      if (message.error) console.warn("Wheel file search:", message.error)
+      if (message.request === root.fileRequest && message.rows !== undefined) {
+        root.fileResultRequest = message.request
+        if (JSON.stringify(root.fileResults) !== JSON.stringify(message.rows)) root.fileResults = message.rows
       }
-      if (root.fileQueue.length || message.epoch !== root.scanEpoch || message.request !== root.fileRequest)
+      if (message.more || root.fileQueue.length || message.request !== root.fileRequest)
         Qt.callLater(root.sendFiles)
     }
   }
   component FileScan: Process {
     id: scan
+    property var walk: []
+    command: ["python3", decodeURIComponent(Qt.resolvedUrl("scan.py").toString().replace("file://", ""))].concat(walk)
     property string source: "home"
     property int epoch: 0
     // Send the first batch promptly, throttle later batches, and flush on exit.
     property bool published: false
-    property int consumed: 0
-    property bool received: false
+    property var batches: []
     property Timer flush: Timer { interval: scan.published ? 100 : 16; onTriggered: scan.publish() }
-    function begin() { flush.stop(); epoch = root.scanEpoch; consumed = 0; received = false; running = true }
+    function begin() { flush.stop(); epoch = root.scanEpoch; batches = []; running = true }
     function publish() {
       if (epoch !== root.scanEpoch) return
-      var raw = received ? output.text : ""
-      var end = running ? raw.lastIndexOf("\n") + 1 : raw.length
-      if (end <= consumed && published) return
-      root.fileQueue = root.fileQueue.concat([{ source: scan.source, text: raw.slice(consumed, end) }])
+      if (!batches.length && published) return
+      root.fileQueue = root.fileQueue.concat(batches.length ? batches : [{ source: scan.source, text: "" }])
+      batches = []
       published = true
-      consumed = end
       Qt.callLater(root.sendFiles)
     }
-    stdout: StdioCollector {
-      id: output
-      waitForEnd: false
-      onDataChanged: {
+    stdout: SplitParser {
+      splitMarker: "\u0000"
+      onRead: data => {
         if (scan.epoch !== root.scanEpoch) return
-        scan.received = true
+        scan.batches.push({ source: scan.source, text: data })
         if (!scan.flush.running) scan.flush.start()
       }
     }
@@ -835,8 +843,8 @@ Item {
       else publish()
     }
   }
-  FileScan { id: homeScan; command: MenuIndex.scanCommand([root.home], root.skipped, root.home) }
-  FileScan { id: folderScan; source: "folders"; command: MenuIndex.scanCommand(root.folders, root.skipped, root.home) }
+  FileScan { id: homeScan; walk: MenuIndex.scanCommand([root.home], root.skipped, root.home) }
+  FileScan { id: folderScan; source: "folders"; walk: MenuIndex.scanCommand(root.folders, root.skipped, root.home) }
 
   property int scanEpoch: 0
   // The skip list suggests home's folders alone, so only a search scans the added folders.
@@ -853,8 +861,12 @@ Item {
     if (fileWorker.ready) fileWorker.sendMessage({ epoch: root.scanEpoch, reset: true })
     homeScan.running = folderScan.running = false
     homeScan.published = folderScan.published = false
+    homeScan.flush.stop(); folderScan.flush.stop()
+    homeScan.batches = []; folderScan.batches = []
     root.fileQueue = []; root.fileResults = []
     root.filesReady = false
+    root.fileBusy = false
+    root.fileResultRequest = -1
   }
   // A pinned search outlives an open, so each new file search scans afresh, as each open does.
   onModeChanged: {
