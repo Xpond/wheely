@@ -126,12 +126,20 @@ def check(wheel, run_case, block):
     # Typing while the worker ranks a batch must coalesce to the latest query.
     run("scan-latest-query", scan("5") + '''
   property bool changed: false
+  readonly property var results: root.fileResults
+  property int resultIndex: 0
+  property int picks: 0
+  function run(e) {
+    if (!e || e.path !== "/home/gamma") { console.error("FAIL launched stale row"); Qt.exit(1) }
+    root.picks++
+  }
   onFileBusyChanged: if (root.fileBusy && !root.changed) {
     root.changed = true
     Qt.callLater(function () {
       root.fileResults = [{ label: "previous", path: "/previous" }]
-      root.query = "/beta"; root.query = "/gamma"
-      if (root.fileResults.length !== 1) { console.error("FAIL typing blanked results"); Qt.exit(1) }
+      root.query = "/beta"; root.fileAction = "copy"; root.query = "/gamma"
+      if (root.fileResults.length !== 1 || root.fileAction) { console.error("FAIL query change"); Qt.exit(1) }
+      MenuKeys.onKey(root, { key: Qt.Key_Return, modifiers: Qt.NoModifier })
     })
   }
   onFileResultsChanged: {
@@ -144,7 +152,7 @@ def check(wheel, run_case, block):
     root.mode = "file"
   }
   Timer { interval: 800; running: true; onTriggered: {
-    if (!root.changed || root.paths() !== '["/home/gamma"]' || root.fileBusy) {
+    if (!root.changed || root.paths() !== '["/home/gamma"]' || root.fileBusy || root.picks !== 1 || root.fileAction) {
       console.error("FAIL latest query", root.paths()); Qt.exit(1)
     } else { console.log("PASS"); Qt.quit() }
   } }

@@ -6,7 +6,10 @@ import sys
 import time
 
 
-child = subprocess.Popen(sys.argv[1:], stdout=subprocess.PIPE)
+try:
+    child = subprocess.Popen(sys.argv[1:], stdout=subprocess.PIPE)
+except OSError as error:
+    sys.exit(f"Wheel file scan: {error}")
 
 
 def stop(signum, frame):
@@ -16,7 +19,7 @@ def stop(signum, frame):
 signal.signal(signal.SIGTERM, stop)
 try:
     pending = b""
-    flushed = 0  # Publish the first complete lines immediately; QML supplies the first 16 ms delay.
+    flushed = 0  # Publish the first complete lines immediately.
     while True:
         ready = select.select([child.stdout], [], [], 0.016)[0]
         chunk = child.stdout.read1(65536) if ready else None

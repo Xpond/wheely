@@ -406,6 +406,7 @@ Item {
 
   // Fade cancellation; unmap immediately before handing keyboard focus to a target.
   function close(immediate) {
+    root.fileAction = ""
     if (root.shell) root.shell.releasePopout(root)
     if (immediate) { unmap.stop(); root.opened = false; root.shown = false; return }
     if (!root.opened || unmap.running) return
@@ -519,7 +520,7 @@ Item {
   // Ignore input after unmapping and during a cancellation fade.
   function run(e) {
     if (!e || unmap.running || !root.opened && !root.windowed) return
-    if (root.filePending) return
+    root.fileAction = ""
     if (root.editingRing) { root.pin(e); return }
     if (root.listing && root.listing !== "history") { root.addEntry(e); return }
     if (e.node) { root.countUse(e); root.enter(e.node); return }
@@ -667,7 +668,7 @@ Item {
     if (root.listing === "folders") root.savedFolders = kept
     else root.savedSkipped = kept
     ringFile.setText(MenuIndex.withList(ringFile.text(), root.listing, kept))
-    root.dropScan()
+    root.dropScan(true)
     root.scanFiles()
   }
 
@@ -678,7 +679,6 @@ Item {
   }
 
   function takePath() {
-    if (root.filePending) return false
     var hit = root.searching ? root.results[root.resultIndex] : null
     if (!hit || !hit.path) return false
     root.copy(hit.path)
@@ -688,7 +688,6 @@ Item {
 
   // A terminal in the highlighted path's folder, with the same focus handoff as run().
   function terminal() {
-    if (root.filePending) return false
     var hit = root.searching ? root.results[root.resultIndex] : null
     if (!hit || !hit.path) return false
     root.queued = function () {
@@ -773,11 +772,13 @@ Item {
   property bool fileBusy: false
   property int fileRequest: 0
   property int fileResultRequest: -1
+  property string fileAction: ""
   readonly property string fileSearchKey: root.listing === "skipped" ? "skip:" + root.query.trim().toLowerCase()
     : root.mode === "file" ? "file:" + root.term.trim().toLowerCase() : ""
   readonly property bool filePending: !!root.fileSearchKey && !!(root.listing === "skipped" ? root.query.trim() : root.term.trim())
     && root.fileRequest !== root.fileResultRequest
   onFileSearchKeyChanged: {
+    root.fileAction = ""
     root.fileRequest++
     if (!root.fileSearchKey) root.fileResults = []
     Qt.callLater(root.sendFiles)
@@ -805,6 +806,12 @@ Item {
       if (message.request === root.fileRequest) {
         root.fileResultRequest = message.request
         root.fileResults = message.rows
+        if (root.fileAction && (message.rows.length || !homeScan.running && !folderScan.running && !root.fileQueue.length)) {
+          var action = root.fileAction
+          root.fileAction = ""
+          if (action === "copy") root.takePath()
+          else if (action !== "terminal" || !root.terminal()) root.run(root.results[root.resultIndex])
+        }
       }
       if (root.fileQueue.length || message.request !== root.fileRequest)
         Qt.callLater(root.sendFiles)
@@ -813,13 +820,13 @@ Item {
   component FileScan: Process {
     id: scan
     property var walk: []
-    command: ["python3", decodeURIComponent(Qt.resolvedUrl("scan.py").toString().replace("file://", ""))].concat(walk)
+    command: ["python3", "-S", "-E", decodeURIComponent(Qt.resolvedUrl("scan.py").toString().replace("file://", ""))].concat(walk)
     property string source: "home"
     property int epoch: 0
     // Send the first batch promptly, throttle later batches, and flush on exit.
     property bool published: false
     property var batches: []
-    property Timer flush: Timer { interval: scan.published ? 100 : 16; onTriggered: scan.publish() }
+    property Timer flush: Timer { interval: 100; onTriggered: scan.publish() }
     function begin() { flush.stop(); epoch = root.scanEpoch; batches = []; running = true }
     function publish() {
       if (epoch !== root.scanEpoch) return
@@ -834,7 +841,8 @@ Item {
       onRead: data => {
         if (scan.epoch !== root.scanEpoch) return
         scan.batches.push({ source: scan.source, text: data })
-        if (!scan.flush.running) scan.flush.start()
+        if (!scan.published) scan.publish()
+        else if (!scan.flush.running) scan.flush.start()
       }
     }
     onExited: {
@@ -856,9 +864,10 @@ Item {
     }
   }
   // Closing, or changing a list, drops the scan; the next search scans again.
-  function dropScan() {
+  function dropScan(rescan) {
+    root.fileAction = ""
     root.scanEpoch++
-    if (fileWorker.ready) fileWorker.sendMessage({ epoch: root.scanEpoch, reset: true })
+    if (fileWorker.ready) fileWorker.sendMessage({ epoch: root.scanEpoch, reset: true, rescan: !!rescan })
     homeScan.running = folderScan.running = false
     homeScan.published = folderScan.published = false
     homeScan.flush.stop(); folderScan.flush.stop()

@@ -82,6 +82,18 @@ assert.equal(dial.queued, null, "the pinned terminal could run twice")
 assert.equal(dial.query, "", "the pinned terminal left the previous search")
 dial.windowed = false
 
+// Typing then acting must wait for the new rows without launching the retained selection.
+dial.filePending = true
+const beforePending = [copied.length, terminals.length, entered.length]
+for (const [key, modifiers, action] of [["Key_Return", 0, "run"], ["Key_Enter", ctrl, "terminal"], ["Key_Y", ctrl, "copy"]]) {
+  assert.equal(dialKey(key, modifiers).accepted, true)
+  assert.equal(dial.fileAction, action)
+}
+assert.deepEqual([copied.length, terminals.length, entered.length], beforePending)
+dial.filePending = false
+method(wheelSource, "close", { root: dial, unmap: { stop() {} } })(true)
+assert.equal(dial.fileAction, "", "closing must cancel the pending keyboard action")
+
 // Esc clears the query, then goes up a level, then closes; Backspace on no query goes up.
 const levels = []
 dial.query = "/file"
