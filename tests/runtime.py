@@ -47,6 +47,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-runtime-") as temporary:
     def run(name, body, extra=None, expected=()):
         qml = base / (name + ".qml")
         qml.write_text('''import QtQuick
+import QtQml.WorkerScript
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io

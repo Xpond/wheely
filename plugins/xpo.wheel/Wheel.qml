@@ -1,4 +1,5 @@
 import QtQuick
+import QtQml.WorkerScript
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
@@ -135,8 +136,8 @@ Item {
   // A leading sigil selects one search source; the ring editor searches only what a ring holds.
   readonly property string mode: root.editingRing || root.listing ? "" : MenuIndex.modeOf(root.query)
   readonly property string term: MenuIndex.termOf(root.query)
-  // Cache scanned paths only for the current open.
-  property var files: null
+  // The worker owns scanned paths for the current open; the UI keeps only its results.
+  property bool filesReady: false
   readonly property int resultLimit: 40
   // A pinned search shows only the rows that fit below its centered field.
   readonly property int resultCap: !root.windowed ? 8 : Math.max(1, Math.min(8, Math.floor(
@@ -144,12 +145,11 @@ Item {
     / (root.resultHeight + Style.spacing.md))))
   readonly property var results: root.listing === "history" ? MenuIndex.historyRows(root.index, root.uses, root.home)
     : root.listing && !root.query ? MenuIndex.listedRows(root.listing, root.listed)
-    : root.listing === "skipped" ? MenuIndex.nameRows(root.files, root.query, root.resultLimit, root.home)
-      .concat(MenuIndex.fileRows(root.files, root.query, root.resultLimit, root.home, true))
+    : root.listing === "skipped" ? root.fileResults
     : root.listing ? MenuIndex.subfolderRows(root.subfolderPaths, root.query, root.home)
     // A bare `/` lists the files picked before, latest first, while the scan runs.
     : root.mode === "file" && !root.term ? MenuIndex.historyRows([], root.uses, root.home)
-    : root.mode === "file" ? MenuIndex.fileRows(root.files, root.term, root.resultLimit, root.home, false, root.uses)
+    : root.mode === "file" ? root.fileResults
     : root.mode === "calc" ? Calc.rows(root.term)
     : MenuIndex.search(root.editingRing ? root.index.filter(MenuIndex.pinnable) : root.index,
                        root.term, root.resultLimit, root.uses)
@@ -172,7 +172,7 @@ Item {
     : root.windowed && !root.query ? ""
     : root.listing === "history" ? "Nothing picked yet"
     : root.mode !== "file" && root.listing !== "skipped" ? "No match"
-    : !root.files || homeScan.running || folderScan.running ? "Scanning\u2026"
+    : !root.filesReady || homeScan.running || folderScan.running || root.fileBusy || root.fileQueue.length ? "Scanning\u2026"
     : !root.term ? "Type to find files\nctrl+y copy path\nctrl+enter terminal"
     : "No match"
 
@@ -764,24 +764,68 @@ Item {
 
   // Scan lazily per open; cap depth to avoid large cache and SDK trees. Home and the added folders
   // scan apart, so a slow folder, such as a share still mounting, holds back only its own paths.
+  property var fileResults: []
+  property var fileQueue: []
+  property bool fileBusy: false
+  property int fileRequest: 0
+  readonly property string fileSearchKey: root.listing === "skipped" ? "skip:" + root.query
+    : root.mode === "file" ? "file:" + root.term : ""
+  onFileSearchKeyChanged: {
+    root.fileRequest++
+    root.fileResults = []
+    Qt.callLater(root.sendFiles)
+  }
+  onUsesChanged: if (root.fileSearchKey) { root.fileRequest++; Qt.callLater(root.sendFiles) }
+  // Keep one job in flight; its reply sends any new batches with the latest query.
+  function sendFiles() {
+    if (root.fileBusy || !fileWorker.ready || !root.fileSearchKey || !root.opened && !root.windowed
+        || !root.filesReady && !root.fileQueue.length) return
+    root.fileBusy = true
+    fileWorker.sendMessage({ epoch: root.scanEpoch, request: root.fileRequest, chunks: root.fileQueue,
+      query: root.listing === "skipped" ? root.query : root.term, skipped: root.listing === "skipped",
+      home: root.home, uses: root.uses })
+    root.fileQueue = []
+  }
+  WorkerScript {
+    id: fileWorker
+    source: "MenuIndex.js"
+    onReadyChanged: if (ready) Qt.callLater(root.sendFiles)
+    onMessage: message => {
+      root.fileBusy = false
+      if (message.epoch === root.scanEpoch) {
+        root.filesReady = true
+        if (message.request === root.fileRequest) root.fileResults = message.rows
+      }
+      if (root.fileQueue.length || message.epoch !== root.scanEpoch || message.request !== root.fileRequest)
+        Qt.callLater(root.sendFiles)
+    }
+  }
   component FileScan: Process {
     id: scan
+    property string source: "home"
     property int epoch: 0
-    // Bound re-ranking during a walk, then publish the final paths as soon as it exits.
-    property var found: null
-    property var pending: []
-    property Timer flush: Timer { interval: 100; onTriggered: scan.publish() }
-    function begin() { epoch = root.scanEpoch; pending = []; running = true }
+    // Send the first batch promptly, throttle later batches, and flush on exit.
+    property bool published: false
+    property int consumed: 0
+    property bool received: false
+    property Timer flush: Timer { interval: scan.published ? 100 : 16; onTriggered: scan.publish() }
+    function begin() { flush.stop(); epoch = root.scanEpoch; consumed = 0; received = false; running = true }
     function publish() {
-      if (epoch !== root.scanEpoch || !pending.length && found) return
-      found = MenuIndex.joinFiles(found, MenuIndex.parseFiles(pending.join("\n")))
-      pending = []
-      root.files = MenuIndex.joinFiles(homeScan.found, folderScan.found)
+      if (epoch !== root.scanEpoch) return
+      var raw = received ? output.text : ""
+      var end = running ? raw.lastIndexOf("\n") + 1 : raw.length
+      if (end <= consumed && published) return
+      root.fileQueue = root.fileQueue.concat([{ source: scan.source, text: raw.slice(consumed, end) }])
+      published = true
+      consumed = end
+      Qt.callLater(root.sendFiles)
     }
-    stdout: SplitParser {
-      onRead: data => {
+    stdout: StdioCollector {
+      id: output
+      waitForEnd: false
+      onDataChanged: {
         if (scan.epoch !== root.scanEpoch) return
-        scan.pending.push(data)
+        scan.received = true
         if (!scan.flush.running) scan.flush.start()
       }
     }
@@ -792,23 +836,25 @@ Item {
     }
   }
   FileScan { id: homeScan; command: MenuIndex.scanCommand([root.home], root.skipped, root.home) }
-  FileScan { id: folderScan; command: MenuIndex.scanCommand(root.folders, root.skipped, root.home) }
+  FileScan { id: folderScan; source: "folders"; command: MenuIndex.scanCommand(root.folders, root.skipped, root.home) }
 
   property int scanEpoch: 0
   // The skip list suggests home's folders alone, so only a search scans the added folders.
   function scanFiles() {
     if (!root.opened && !root.windowed || root.mode !== "file" && root.listing !== "skipped") return
-    if (!homeScan.found && !homeScan.running) homeScan.begin()
-    if (root.mode === "file" && root.folders.length && !folderScan.found && !folderScan.running) {
+    if (!homeScan.published && !homeScan.running) homeScan.begin()
+    if (root.mode === "file" && root.folders.length && !folderScan.published && !folderScan.running) {
       folderScan.begin()
     }
   }
   // Closing, or changing a list, drops the scan; the next search scans again.
   function dropScan() {
     root.scanEpoch++
+    if (fileWorker.ready) fileWorker.sendMessage({ epoch: root.scanEpoch, reset: true })
     homeScan.running = folderScan.running = false
-    homeScan.found = folderScan.found = null
-    root.files = null
+    homeScan.published = folderScan.published = false
+    root.fileQueue = []; root.fileResults = []
+    root.filesReady = false
   }
   // A pinned search outlives an open, so each new file search scans afresh, as each open does.
   onModeChanged: {

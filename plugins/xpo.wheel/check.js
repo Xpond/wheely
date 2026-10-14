@@ -30,10 +30,11 @@ check(Object.keys(items).length > 0, "menu definitions load",
 const scan = execSync("bash", { input: M.conditionScript(items), encoding: "utf8", maxBuffer: 1 << 22 })
 const cond = M.parseConditions(scan, items)
 
-// Scan every caller; strip imports so their .js suffixes do not look like calls.
+// Scan every caller; ignore the library URL in imports and worker sources.
 const callers = fs.readdirSync(here)
   .filter(f => /\.(qml|js)$/.test(f) && f !== "MenuIndex.js" && f !== "check.js")
-  .map(f => fs.readFileSync(path.join(here, f), "utf8").replace(/^import .*$/gm, "")).join("\n")
+  .map(f => fs.readFileSync(path.join(here, f), "utf8").replace(/^import .*$/gm, "")
+    .replace(/(["'])MenuIndex\.js\1/g, "")).join("\n")
 const missing = [...new Set([...callers.matchAll(/MenuIndex\.(\w+)/g)].map(m => m[1]))]
   .filter(n => M[n] === undefined)
 check(missing.length === 0, "every call site names something MenuIndex.js defines", missing.join(", "))

@@ -539,11 +539,16 @@ by rank and name length as it scans, keeping only the first 40 of each tie,
 which is every row that could be read. A file opened from the wheel before
 leads its rank, most opened first, but never climbs into a better one, and a
 bare `/` lists those files, latest first. Home and the folders added outside it
-scan apart and publish complete lines in batches on the next event-loop turn.
-Neither scan waits for the other or for the walk to finish before showing results.
+scan apart. Output is buffered without a QML callback for every path; the first
+complete lines are sent after 16 ms, with later batches throttled to 100 ms.
+A background worker owns the index, parses batches, and ranks results, keeping
+that work off the UI thread. Only the result rows come back. One request runs at
+a time; typing during it replaces the pending query, and obsolete replies are
+discarded. Neither scan waits for the other or for the walk to finish before
+showing results.
 The Skipped folders list suggests home's folders alone, so it
-scans home alone. Closing cancels both scans and rejects whatever they were
-about to say; reopening starts fresh ones. `Enter` on a path
+scans home alone. Closing cancels both scans, releases the worker's index, and
+rejects pending replies; reopening starts fresh ones. `Enter` on a path
 opens the browser there, whether or not the browser was already up. The browser
 keeps to home, so a path from a folder outside it (Settings) opens the way the
 browser opens a file, through `omarchy-open-path`.
