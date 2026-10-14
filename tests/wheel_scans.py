@@ -1,5 +1,5 @@
 """Scan cancellation, epochs and incremental joins in the wheel."""
-from wheel_scan_fixture import fixture
+import json
 import re
 
 
@@ -8,24 +8,34 @@ def check(wheel, run_case, block):
         # Quickshell emits this even for an isolated WorkerScript that only echoes its input.
         return run_case(name, body, expected=(re.escape("QObject::connect(QJSEngine, QtObject): invalid nullptr parameter"),))
 
-    scan = fixture(wheel, block)
+    # A wheel's scan state around the real walks, with `fd` swapped for scans that say which
+    # epoch asked for them. Everything else -- the epoch, the guards, the join -- is production code.
+    handlers = wheel[wheel.index("  property int scanEpoch:"):wheel.index(
+        "  // Omarchy's menu re-checks its rows on every open")]
 
-    run("scan-throttle", scan("5") + r'''
-  property double firstFlush: 0
-  Component.onCompleted: {
-    homeScan.walk = ["python3", "-c", "import time;\nfor i in range(20): print('/path' + str(i), flush=True); time.sleep(.025)\ntime.sleep(5)"]
-    root.mode = "file"
-  }
-  Connections {
-    target: homeScan.flush
-    function onTriggered() {
-      if (!root.firstFlush) { root.firstFlush = Date.now(); return }
-      if (Date.now() - root.firstFlush < 95) { console.error("FAIL unthrottled batch"); Qt.exit(1); return }
-      root.opened = false
-      console.log("PASS"); Qt.quit()
-    }
-  }
-''')
+    def scan(seconds, folder_seconds="0.05", folders="[]"):
+        out = """
+  property bool opened: true
+  property bool windowed: false
+  property string mode: ""
+  property string listing: ""
+  property string query: "//"
+  property string home: "/home"
+  property var uses: ({})
+  readonly property string term: MenuIndex.termOf(root.query)
+  property bool filesReady: false
+  property var folders: """ + folders + """
+  property real daylight: 0
+  property string editing: ""
+  function paths() { return root.filesReady ? JSON.stringify(root.fileResults.map(e => e.path).sort()) : "null" }
+""" + re.search(r"  readonly property string emptyText:.*?(?=\n\n)", wheel, re.S).group() + "\n"
+        out += wheel[wheel.index("  property var fileResults:"):wheel.index("  component FileScan:")]
+        out += block(wheel, r"  component FileScan: Process \{") + "\n"
+        for name, wait in [("home", seconds), ("folder", folder_seconds)]:
+            command = ["sh", "-c", "sleep " + wait + '; printf "/epoch-%s/' + name + '\\n" "$1"', "scan"]
+            out += "  FileScan { id: " + name + "Scan; source: " + json.dumps("home" if name == "home" else "folders")
+            out += "; walk: " + json.dumps(command)[:-1] + ", String(epoch)] }\n"
+        return out + handlers
 
     run("scan-close-reopen", scan("0.15") + """
   Component.onCompleted: root.mode = "file"
@@ -118,7 +128,11 @@ def check(wheel, run_case, block):
   property bool changed: false
   onFileBusyChanged: if (root.fileBusy && !root.changed) {
     root.changed = true
-    Qt.callLater(function () { root.query = "/beta"; root.query = "/gamma" })
+    Qt.callLater(function () {
+      root.fileResults = [{ label: "previous", path: "/previous" }]
+      root.query = "/beta"; root.query = "/gamma"
+      if (root.fileResults.length !== 1) { console.error("FAIL typing blanked results"); Qt.exit(1) }
+    })
   }
   onFileResultsChanged: {
     if (root.query === "/gamma" && root.fileResults.some(e => e.label !== "gamma")) {

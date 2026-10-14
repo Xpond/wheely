@@ -731,17 +731,17 @@ function fileRank(term, limit, home, homeFolders, uses) {
   var q = String(term || "").trim().toLowerCase(), picks = {}
   for (var key in uses) if (key.indexOf("file:") === 0) picks[key.slice(5)] = uses[key]
   return { q: q, terms: q.split(/\s+/), limit: limit, home: home, homeFolders: homeFolders,
-    picks: picks, buckets: [[], [], []], picked: [[], [], []], names: {}, matches: [] }
+    picks: picks, buckets: [[], [], []], picked: [[], [], []], names: {} }
 }
 
-// Candidate indices are used only when a completed query is narrowed.
-function rankFiles(rank, src, from, end, candidates) {
+// Append to the current query's buckets, starting after its last ranked path.
+function rankFiles(rank, src, from) {
   if (!rank.q) return
   var paths = src.paths, lower = src.lower, q = rank.q, terms = rank.terms
   var starts = src.starts, homeFolders = rank.homeFolders, prefix = rank.home + "/"
-  var picks = rank.picks, picked = rank.picked, buckets = rank.buckets, matches = rank.matches, limit = rank.limit
-  for (var n = from; n < end; n++) {
-    var i = candidates ? candidates[n] : n, low = lower[i]
+  var picks = rank.picks, picked = rank.picked, buckets = rank.buckets, limit = rank.limit
+  for (var i = from; i < lower.length; i++) {
+    var low = lower[i]
     if (low.indexOf(terms[0]) === -1) continue
     if (homeFolders && (low.charCodeAt(low.length - 1) !== 47 || paths[i].indexOf(prefix) !== 0)) continue
     var matched = true
@@ -749,7 +749,6 @@ function rankFiles(rank, src, from, end, candidates) {
       if (low.indexOf(terms[t]) === -1) { matched = false; break }
     }
     if (!matched) continue
-    matches.push(i)
     var start = starts[i]
     var nameEnd = low.charCodeAt(low.length - 1) === 47 ? low.length - 1 : low.length
     var at = low.indexOf(q, start)
@@ -791,6 +790,44 @@ function rankedFileRows(sources, limit, home) {
 
 function fileRows(files, term, limit, home, homeFolders, uses) {
   var src = files || NO_FILES, rank = fileRank(term, limit, home, homeFolders, uses)
-  rankFiles(rank, src, 0, src.paths.length)
+  rankFiles(rank, src, 0)
   return rankedFileRows([{ files: src, rank: rank }], limit, home)
+}
+
+// Keep each source's buckets across batches; a changed query or pick count starts a new pass.
+function fileSearch(scans, query, skipped, home, uses) {
+  var key = JSON.stringify([String(query).trim().toLowerCase(), skipped, home, uses]), names = {}
+  for (var i = 0; i < scans.length; i++) {
+    var scan = scans[i]
+    if (scan.key !== key) {
+      scan.rank = fileRank(query, 40, home, skipped, skipped ? null : uses)
+      scan.count = 0; scan.key = key
+    }
+    rankFiles(scan.rank, scan.files, scan.count)
+    scan.count = scan.files.paths.length
+    Object.assign(names, scan.rank.names)
+  }
+  return Object.keys(names).sort(function (a, b) { return a.length - b.length || (a < b ? -1 : 1) })
+    .slice(0, 40).map(function (name) { return { icon: "󱧸", label: name, trail: "anywhere" } })
+    .concat(rankedFileRows(scans, 40, home))
+}
+
+if (typeof WorkerScript !== "undefined" && typeof WorkerScript.sendMessage === "function") {
+  var scanEpoch = -1, scans = []
+  WorkerScript.onMessage = function (message) {
+    var reply = { epoch: message.epoch, request: message.request, rows: [] }
+    try {
+      if (message.epoch !== scanEpoch) {
+        scanEpoch = message.epoch
+        scans = [{ files: parseFiles("") }, { files: parseFiles("") }]
+      }
+      if (message.reset) { gc(); return }
+      for (var i = 0; i < message.chunks.length; i++) {
+        var chunk = message.chunks[i]
+        parseFiles(chunk.text, scans[chunk.source === "home" ? 0 : 1].files)
+      }
+      reply.rows = fileSearch(scans, message.query, message.skipped, message.home, message.uses)
+    } catch (error) { reply.error = String(error) }
+    WorkerScript.sendMessage(reply)
+  }
 }
