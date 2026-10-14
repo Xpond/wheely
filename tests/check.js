@@ -13,8 +13,6 @@ require("./wheel-ring.js")
 require("./wheel-folders.js")
 require("./shell-panels.js")
 
-require("./wheel-worker.js")
-require("./wheel-controller.js")
 require("./wheel-actions.js")
 require("./wheel-close.js")
 require("./files-ops.js")
