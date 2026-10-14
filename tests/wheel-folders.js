@@ -41,6 +41,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   const saved = []
   const disk = { raw: '{ "slices": ["system"] }', text() { return this.raw }, setText(raw) { this.raw = raw; saved.push(JSON.parse(raw)) } }
   const ls = { query: "", listing: "", savedFolders: null, savedSkipped: null, resultIndex: 0, resultLimit: 40, home, files,
+    get fileResults() { return M.nameRows(files, this.query, 40, home).concat(M.fileRows(files, this.query, 40, home, true)) },
     subfolderPaths: ["/mnt"], get results() { return binding("results", { root: this, MenuIndex: M }) }, drops: 0, dropScan() { this.drops++ }, scans: 0, scanFiles() { this.scans++ } }
   for (const name of ["edit", "addEntry", "removeEntry", "saveList"]) ls[name] = method(wheelSource, name, { root: ls, ringFile: disk, MenuIndex: M })
   derive(ls, "folders", "skipped", "listed")
