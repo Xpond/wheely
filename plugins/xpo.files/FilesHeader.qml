@@ -39,6 +39,7 @@ Item {
 
   // Keep the count beside the path so it cannot be mistaken for preview metadata.
   Row {
+    id: trail
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
     // Separate the count from the path's trailing caret.
@@ -59,6 +60,12 @@ Item {
           }
 
           Text {
+            // The last crumb gives way to everything after it, so the facts never overlap the path.
+            width: index < panel.crumbs.length - 1 ? implicitWidth
+              : Math.max(0, Math.min(implicitWidth, root.width - parent.x - x - (typed.visible ? typed.width : 0)
+                  - (pill.visible ? pill.width + trail.spacing : 0) - count.width - trail.spacing
+                  - (facts.visible ? facts.width + trail.spacing : 0)))
+            elide: Text.ElideMiddle
             text: modelData
             color: Color.menu.text
             // Only the unfinished path segment is active during completion.
@@ -71,6 +78,7 @@ Item {
 
       // Completed segments are already in the breadcrumbs.
       Row {
+        id: typed
         visible: panel.pathMode
 
         Separator {}
@@ -88,6 +96,7 @@ Item {
 
     // A pill distinguishes the filter even when accent and foreground match.
     Rectangle {
+      id: pill
       // Rename uses a separate colour so it cannot be mistaken for filtering.
       visible: !!panel.naming || (panel.filter.length > 0 && !panel.pathMode)
       anchors.verticalCenter: parent.verticalCenter
@@ -125,6 +134,7 @@ Item {
     }
 
     Text {
+      id: count
       anchors.verticalCenter: parent.verticalCenter
       text: FilesIndex.countLabel(panel.rows.length, panel.listedEntries.length,
                                   panel.query, panel.showHidden, panel.order)
@@ -136,6 +146,7 @@ Item {
   }
 
   Row {
+    id: facts
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
     spacing: Style.spacing.lg

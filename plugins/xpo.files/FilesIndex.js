@@ -72,10 +72,10 @@ function parentOf(dir) {
   return cut <= 0 ? "/" : d.slice(0, cut)
 }
 
-// Jail paths to home; the slash prevents /home/xpo2 from matching /home/xpo.
-function within(dir, home) {
+// Jail paths to the roots, home first; the slash prevents /home/xpo2 from matching /home/xpo.
+function within(dir, roots) {
   var d = String(dir || "")
-  return (d === home || d.indexOf(home + "/") === 0) ? d : home
+  return roots.some(function (r) { return d === r || d.indexOf(r + "/") === 0 }) ? d : roots[0]
 }
 
 function display(dir, home) {

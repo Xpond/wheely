@@ -554,8 +554,8 @@ The Skipped folders list suggests home's folders alone, so it
 scans home alone. Closing cancels both scans, releases the worker's index, and
 rejects pending replies; reopening starts fresh ones. `Enter` on a path
 opens the browser there, whether or not the browser was already up. The browser
-keeps to home, so a path from a folder outside it (Settings) opens the way the
-browser opens a file, through `omarchy-open-path`.
+keeps to home and the searched folders (Settings), so any other path opens the
+way the browser opens a file, through `omarchy-open-path`.
 
 Both are asked for 40, and the stack shows 8: `resultTop` is the first
 row on screen and `showResult()` walks it by one whenever the selection steps

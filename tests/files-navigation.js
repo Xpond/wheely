@@ -89,7 +89,7 @@ assert.equal(activated.length, 1, "a double click opened a row mid-rename")
 assert.match(source, /FilesList\s*\{[^}]*operations:\s*ops/s,
   "Files.qml does not hand its operations object to the list")
 
-const wheel = { root: { opened: true, home: "/home/test", countUse() {},
+const wheel = { root: { opened: true, home: "/home/test", folders: ["/mnt"], countUse() {},
   dismiss(immediate) { assert.equal(immediate, true); this.queued() }, slices: [], copy: text => calls.push(text), shell: {
   summon: (id, payload) => calls.push([id, JSON.parse(payload)]),
   toggle() { throw new Error("navigation must summon") }
@@ -102,7 +102,9 @@ assert.equal(calls.at(-1)[0], "xpo.files")
 assert.equal(calls.at(-1)[1].select, "new.txt")
 assert.equal(wheel.root.launched, "xpo.files", "a browser opened from a path has no wheel to return to")
 runRow({ path: "/mnt/share/movie.mkv" })
-assert.deepEqual(calls.at(-1), ["omarchy-open-path", "/mnt/share/movie.mkv"], "a path outside home went to the browser")
+assert.deepEqual(calls.at(-1), ["xpo.files", { dir: "/mnt/share", select: "movie.mkv" }], "a searched folder skipped the browser")
+runRow({ path: "/srv/movie.mkv" })
+assert.deepEqual(calls.at(-1), ["omarchy-open-path", "/srv/movie.mkv"], "a path outside the roots went to the browser")
 runRow({ copy: "42" })
 assert.equal(calls.at(-1), "42")
 runRow({ dispatch: "hl.dsp.window.pseudo()" })
@@ -199,7 +201,7 @@ console.log("ok: backspace shortens, then climbs, then leaves for the wheel")
 
 // Going up lands on the folder just left, not on whichever row sorts first.
 const climber = { home: "/home/test", dir: "/home/test/a/docs",
-  enter(d) { this.dir = F.within(d, this.home); this.pending = "" } }
+  enter(d) { this.dir = F.within(d, ["/home/test", "/mnt"]); this.pending = "" } }
 const climb = method(source, "up", { root: climber, FilesIndex: F })
 climb()
 assert.equal(climber.dir, "/home/test/a")
@@ -207,6 +209,12 @@ assert.equal(climber.pending, "docs", "going up forgot the folder it came from")
 climber.dir = "/home/test"
 climb()
 assert.equal(climber.pending, "", "home has nothing above it to land on")
+climber.dir = "/mnt/share"
+climb()
+assert.deepEqual([climber.dir, climber.pending], ["/mnt", "share"])
+climb()
+assert.deepEqual([climber.dir, climber.pending], ["/home/test", ""], "above another root lies home")
+assert.equal(F.within("/mnt2", ["/home/test", "/mnt"]), "/home/test", "a root matched a sibling")
 console.log("ok: going up selects the folder it came from")
 
 // A click in a folder's preview enters that folder and lands on the entry; a double click opens it.
@@ -244,6 +252,9 @@ assert.equal(typist.filter, "/xpo/docs//", "a later / is just a character")
 typist.filter = ""; typist.dir = typist.home
 typeKey("Key_Slash", 0, "/")
 assert.equal(typist.filter, "/", "at home / is home")
+typist.filter = ""; typist.dir = "/mnt/share"
+typeKey("Key_Slash", 0, "/")
+assert.equal(typist.filter, "/", "outside home / is home")
 console.log("ok: / starts the path where you are")
 
 // A key typed while going up waits for the parent is the user's choice; the landing gives way.

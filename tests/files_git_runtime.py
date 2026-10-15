@@ -212,6 +212,7 @@ if name == 'old.txt':
     run("git-up-lands", '''
   property bool shown: true
   property string home: ''' + json.dumps(str(base)) + '''
+  property var roots: [root.home]
   readonly property string tree: ''' + json.dumps(str(tree)) + '''
   property string dir: root.tree
   property bool showHidden: false
