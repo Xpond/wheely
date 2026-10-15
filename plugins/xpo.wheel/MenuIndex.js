@@ -30,7 +30,7 @@ function trailOf(items, id) {
 }
 
 // Search kind precedence.
-var KIND = { slice: 0, window: 1, app: 2, style: 3, menu: 4, bind: 5 }
+var KIND = { slice: 0, window: 1, app: 2, style: 3, menu: 4, bind: 5, manual: 6 }
 
 // Prefer stable ids for use counts; windows already sort by live focus.
 function keyOf(e) {
@@ -498,6 +498,57 @@ function settingRows(shortcut, customRing, folders, skipped, picks, centered) {
             keywords: "wheely settings preferences forget clear picks history remembered ranking uses" },
           { icon: "󰅐", label: "Wheely history", trail: String(picks), kind: KIND.slice, setting: "history",
             keywords: "wheely history recent picks used opened launched" }]
+}
+
+var MANUAL_ICON = "󰋗"
+
+// manual.md's table rows are search rows, `help` lists them, and Enter on any shows the whole
+// manual. None has a key of its own, so none is counted or pinned.
+function manualRows(raw) {
+  var out = [{ icon: MANUAL_ICON, label: "Wheely manual", trail: "", kind: KIND.slice, manual: true,
+               keywords: "wheely manual help guide keys shortcuts docs" }]
+  var ls = lines(raw), section = ""
+  for (var i = 0; i < ls.length; i++) {
+    if (ls[i].indexOf("## ") === 0) section = ls[i].slice(3)
+    var quoted = ls[i].split("|").slice(1, -1).map(function (c) { return c.trim() })
+    var cells = quoted.map(function (c) { return c.replace(/`/g, "") })
+    // A table's first row, over its |---| line, is its heading.
+    if (cells.length !== 2 || /^-+$/.test(cells[0]) || /^\|[-|]+\|$/.test(ls[i + 1] || "")) continue
+    // What is quoted in the first cell is drawn as keys; anything else there is plain words.
+    var caps = (quoted[0].match(/`[^`]+`/g) || []).map(function (c) { return c.slice(1, -1) })
+    out.push({ icon: MANUAL_ICON, label: cells[1], trail: cells[0] + " \u00b7 " + section, kind: KIND.manual,
+               manual: true, section: section, keys: cells[0], caps: caps,
+               keywords: "manual help " + section + " " + cells[0] + " " + cells[1] })
+  }
+  return out
+}
+
+// The manual's sections in order, in columns of about equal length: a section moves to the next
+// column once more than half of it would pass that column's share.
+function manualColumns(rows, count) {
+  var sections = [], total = 0
+  for (var i = 0; i < rows.length; i++) {
+    if (!rows[i].section) continue
+    var last = sections[sections.length - 1]
+    if (!last || last.name !== rows[i].section) sections.push(last = { name: rows[i].section, rows: [] })
+    last.rows.push(rows[i])
+    total++
+  }
+  var columns = [[]], filled = 0
+  for (var j = 0; j < sections.length; j++) {
+    var n = sections[j].rows.length
+    if (columns[columns.length - 1].length && columns.length < count && filled + n / 2 > total / count * columns.length)
+      columns.push([])
+    columns[columns.length - 1].push(sections[j])
+    filled += n
+  }
+  return columns
+}
+
+// A key cell as combos of keycaps, a combo split at its +; plain words are one combo of none.
+function combosOf(row) {
+  if (!row.caps.length) return [{ plain: row.keys, caps: [] }]
+  return row.caps.map(function (c) { return { plain: "", caps: /^\S+\+\S+$/.test(c) ? c.split("+") : [c] } })
 }
 
 // The user's shell.toml with one [section] key set, read as the shell reads it; other lines stay.
