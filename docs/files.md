@@ -12,7 +12,7 @@ the right.
       FilesHeader.qml   breadcrumb, path entry, filter and rename field
       FilesList.qml     the directory, one row per entry
       FilesPreview.qml  the scroller, and the editor inside it
-      FilesVideo.qml    paused video preview, controls and native mpv handoff
+      FilesVideo.qml    muted video preview, controls and native mpv handoff
       FilesHints.qml    the foot: the legend, and what a held file would do
       FilesIndex.js     snapshotting, filtering, path and text helpers
       FilesKeys.js      the key map: which verb a key means
@@ -188,7 +188,7 @@ Previews follow the selection:
 |---|---|
 | a folder | its contents as a listing — name, size, date — capped at 400 entries |
 | an image | itself, aspect-fit, async, formats Qt actually has plugins for |
-| a video | paused video preview with play/pause, seeking, time, volume and mute |
+| a video | muted video preview with play/pause, seeking, time, volume and mute |
 | a `.md` file | rendered Markdown — headings, bold, code blocks |
 | any other text | syntax highlighted, with line numbers |
 | anything else | its size and `no preview` |
@@ -197,9 +197,14 @@ The previews are read-only renderings. `Ctrl+E` replaces a text preview with the
 file itself — see [Editing](#editing).
 
 Video previews use Qt Multimedia's FFmpeg backend (`qt6-multimedia`,
-`qt6-multimedia-ffmpeg`). Each video starts paused; click it or press `Space` to
-play. The fullsize button opens native mpv fullscreen at the current position,
-which also works for videos Qt can't decode. Leaving a video releases its player.
+`qt6-multimedia-ffmpeg`). Each video plays muted as soon as it is selected;
+click it or press `Space` to pause. The fullsize button opens native mpv
+fullscreen at the current position. Leaving a video releases its player.
+
+Previews decode in software: Qt picks hardware decoding even for codecs the GPU
+lacks (AV1 on older cards) and shows black. The install sets
+`QT_FFMPEG_DECODING_HW_DEVICE_TYPES=none` in the Hyprland block; it takes effect
+at the next login.
 
 A folder previews in the same scroller a file does, rather than in a second
 `ListView` with its own delegate and its own way of being navigated. Its rows

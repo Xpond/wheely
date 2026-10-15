@@ -9,7 +9,7 @@ Rectangle {
 
   property string path: ""
   property bool priming: true
-  property bool muted: false
+  property bool muted: true
   property bool refreshPending: false
   signal fullsize(string path, int position)
   color: "black"
@@ -43,15 +43,14 @@ Rectangle {
     // Encode each path segment so #, %, ?, spaces and Unicode stay literal filenames.
     source: root.path ? "file://" + root.path.split("/").map(encodeURIComponent).join("/") : ""
     videoOutput: video
-    audioOutput: AudioOutput { id: audio; volume: 0.7; muted: root.priming || root.muted }
-    // Decode one frame silently, then pause, so browsing shows a still preview.
+    audioOutput: AudioOutput { id: audio; volume: 0.7; muted: root.muted }
+    // Play muted as soon as it loads.
     onMediaStatusChanged: {
       if (mediaStatus !== MediaPlayer.LoadedMedia || !root.priming) return
+      root.priming = false
       if (hasVideo) play()
-      else root.priming = false
     }
   }
-  onPathChanged: { root.priming = true; handoff.stop(); video.clearOutput() }
   Timer { id: handoff; interval: 1000 }
   // A paused VideoOutput loses its scene graph node when moved to another window.
   // Seek to the same position after the new window renders, to supply its frame again.
@@ -62,14 +61,6 @@ Rectangle {
       if (!root.refreshPending) return
       root.refreshPending = false
       if (root.ready && !player.playing && player.seekable) player.position = player.position
-    }
-  }
-  Connections {
-    target: video.videoSink
-    function onVideoFrameChanged() {
-      if (!root.priming || video.sourceRect.width <= 0) return
-      player.pause()
-      root.priming = false
     }
   }
   Component.onDestruction: player.stop()

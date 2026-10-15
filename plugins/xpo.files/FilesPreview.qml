@@ -305,15 +305,13 @@ Item {
     sourceSize.height: height
   }
 
+  // A fresh player per video: Qt's FFmpeg backend stalls when a playing player changes source.
   Loader {
     id: video
     anchors.fill: parent
-    active: panel.showsVideo
-    source: "FilesVideo.qml"
-    onLoaded: {
-      item.path = Qt.binding(function() { return panel.settledSel ? panel.settledSel.path : "" })
-      item.fullsize.connect(function(path, position) { panel.openVideo(path, position) })
-    }
+    readonly property string path: panel.showsVideo ? panel.settledSel.path : ""
+    onPathChanged: setSource(path ? "FilesVideo.qml" : "", { path: path })
+    onLoaded: item.fullsize.connect(function(path, position) { panel.openVideo(path, position) })
   }
 
   Text {
