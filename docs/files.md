@@ -193,25 +193,10 @@ Previews follow the selection:
 The previews are read-only renderings. `Ctrl+E` replaces a text preview with the
 file itself — see [Editing](#editing).
 
-Video previews use Qt Multimedia's FFmpeg backend, requiring `qt6-multimedia`
-and `qt6-multimedia-ffmpeg`. Click the video or its play button, or press `Space`,
-to play/pause; `Shift+Space` types a space in the filter. Drag the timeline to
-seek. The fullsize button pauses the preview and opens native mpv fullscreen at
-the current position, with opening feedback and a guard against rapid repeat
-clicks. `Enter` opens the system handler. Unsupported or corrupt videos can
-still open in mpv through the fullsize button.
-
-Each video starts paused. Leaving a video or closing the browser releases its
-player. Pinning and unpinning preserve playback, position, volume and mute;
-paused frames redraw after the window changes.
-
-`python3 tests/files-video.py` checks MP4/WebM frames, pointer controls,
-seeking, file switching, cleanup and invalid media. It calls
-`tests/files_video_window.py` for pin/unpin/resize and rapid fullsize clicks.
-These checks need FFmpeg, ImageMagick and an active Wayland desktop session.
-
-After changing preview code, use `omarchy restart shell` to load it for desktop
-testing. A plugin rescan can retain the previous compiled video component.
+Video previews use Qt Multimedia's FFmpeg backend (`qt6-multimedia`,
+`qt6-multimedia-ffmpeg`). Each video starts paused; click it or press `Space` to
+play. The fullsize button opens native mpv fullscreen at the current position,
+which also works for videos Qt can't decode. Leaving a video releases its player.
 
 A folder previews in the same scroller a file does, rather than in a second
 `ListView` with its own delegate and its own way of being navigated. Its rows

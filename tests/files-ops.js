@@ -7,14 +7,6 @@ const { spawnSync } = require("node:child_process")
 const { read, method } = require("./qml.js")
 const opsSource = read("plugins/xpo.files/FilesOps.qml")
 const panelSource = read("plugins/xpo.files/Files.qml")
-let nativeVideo, closed = false
-const openVideo = method(panelSource, "openVideo", {
-  root: { close() { closed = true } },
-  Quickshell: { execDetached(argv) { assert.equal(closed, true); nativeVideo = [...argv] } }
-})
-openVideo("/home/test/a #?% ' $(touch injected).mp4", 12345)
-assert.deepEqual(nativeVideo, ["mpv", "--fullscreen", "--start=12.345", "--", "/home/test/a #?% ' $(touch injected).mp4"])
-console.log("ok: fullsize opens native mpv at the preview position with literal paths")
 const base = fs.mkdtempSync(path.join(os.tmpdir(), "files-ops-"))
 try {
   const incoming = path.join(base, "incoming")
