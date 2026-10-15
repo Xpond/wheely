@@ -1254,7 +1254,7 @@ Item {
           width: root.searchWidth
           height: root.searchHeight
           radius: height / 2
-          // The manual shows the query itself; the field keeps the keyboard underneath.
+          // The query field moves into the manual header while its original surface hides.
           opacity: root.reading ? 0 : 1
           color: root.surfaceFill
           // Accented while typing; a pinned field counts as searching even when empty.
@@ -1304,6 +1304,7 @@ Item {
             horizontalAlignment: TextInput.AlignHCenter
             clip: true
             focus: true
+            selectByMouse: true
             // Hidden by opacity: an invisible item would lose the keyboard the recording needs.
             opacity: root.editing ? 0 : 1
             text: root.query
@@ -1323,6 +1324,11 @@ Item {
             // A pinned search outlives an open, so it refreshes windows and apps whenever it is focused.
             onActiveFocusChanged: if (activeFocus && root.windowed) root.rebuildIndex()
             Keys.onPressed: function (event) { MenuKeys.onKey(root, event) }
+          }
+
+          states: State {
+            when: root.reading
+            ParentChange { target: searchInput; parent: manualSheet.filterSlot }
           }
         }
       }

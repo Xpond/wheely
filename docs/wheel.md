@@ -611,10 +611,10 @@ width, so the panel keeps clear of the edges; a smaller screen scrolls it with
 `↑` `↓`, the page keys or the mouse wheel. `Ctrl+T` pins it in the search's
 window, where it reflows the same way; `Ctrl+T` again brings it back.
 
-The field hides but keeps the keyboard, and the sheet starts on an empty
-query, so typing fades every row search would not find. `Esc` gives the query
-back and returns to the results; every other key waits, since the results it
-would act on are hidden.
+The search field moves into the manual header and starts on an empty query,
+so typing fades every row search would not find. `Esc`, or `Backspace` with an
+empty filter, restores the query and results. Normal text editing works;
+actions on the hidden results stay disabled.
 
 `tests/wheel-manual.js` fails when a key in this file's or Files' key tables is
 missing from the manual, other than the few its two rules cover.
