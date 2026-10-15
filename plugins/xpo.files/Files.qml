@@ -299,7 +299,7 @@ Item {
     : root.settledSel.isDir ? (root.showsDir ? "" : "Empty folder")
     : root.showsCode || root.previewBody || root.showsDiff ? ""
     : root.settledSel.missing ? "Deleted · Ctrl+D shows changes"
-    : root.showsVideo ? (preview.videoStatus === Loader.Error ? "Video preview unavailable · Enter opens in mpv" : "")
+    : (root.showsVideo && preview.videoStatus !== Loader.Error) ? ""
     : (root.showsImage && preview.imageStatus !== Image.Error) ? ""
     : FilesIndex.humanSize(root.settledSel.size) + "  ·  no preview"
 
