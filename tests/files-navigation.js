@@ -252,3 +252,13 @@ typeKey("Key_G", 0, "g")
 assert.equal(typist.pending, "", "typing left the landing armed to jump the filtered rows")
 assert.equal(typist.index, 0)
 console.log("ok: typing during a landing cancels it")
+
+// Space plays a selected video; Shift+Space still types.
+let toggles = 0
+const viewer = { filter: "movie", index: 7, editing: false, naming: "", listShown: true, showsVideo: true }
+const viewKey = keymap("plugins/xpo.files/FilesKeys.js", viewer, { doomed: "" }, { toggleVideo() { toggles++ } })
+viewKey("Key_Space", 0, " ")
+assert.deepEqual([toggles, viewer.filter, viewer.index], [1, "movie", 7], "Space did not toggle the video")
+viewKey("Key_Space", 1 << 25, " ")
+assert.deepEqual([toggles, viewer.filter], [1, "movie "], "Shift+Space did not type a space")
+console.log("ok: Space plays a selected video, Shift+Space types")
