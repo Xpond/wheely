@@ -75,6 +75,10 @@ placeholder.
 back. A panel cannot tell the wheel from its own bar button, so it does not
 try: it calls `xpo.wheel back`, and the wheel returns `none` for a panel it did
 not open, leaving the key to mean what it always did there.
+Switching between bar panels with Tab or Ctrl+←/→ carries that return to the
+next panel, so Backspace still brings the wheel back.
+Emoji, Background, and Set reminder also return to the wheel with Backspace
+once their input is empty. Esc dismisses them normally.
 
 Mouse works too: the whole screen is a compass around center, so a flick in
 any direction selects that slice. Releasing the key commits it. The scroll
@@ -627,16 +631,16 @@ value, and Enter changes it without closing the wheel.
 **Wheely shortcut** (`SUPER + A`): Enter, then press a combo that includes
 SUPER, since Hyprland takes a bound combo from every app and apps leave SUPER
 alone. Hyprland's bindings pause while the row records, so a taken combo can be
-chosen; the row says what it would replace. Enter saves, Esc cancels. Saved to
-`~/.config/omarchy/wheel-shortcut`, then Hyprland reloads. Pressing the
-shortcut with the wheel up closes it.
+chosen; the row says what it would replace. Enter saves; Esc or bare Backspace
+cancels. Saved to `~/.config/omarchy/wheel-shortcut`, then Hyprland reloads.
+Pressing the shortcut with the wheel up closes it.
 
 **Wheely ring** (`Bar` or `Custom`): Enter edits the ring (The ring).
 
 **Backdrop**: Enter, then ←/→ change how much the backdrop hides the desktop,
-in tenths, saved as you go; Enter or Esc is done. 0% is a clear desktop with no
-blur (`~/.config/omarchy/wheel-blur`). The dim is `[menu] scrim-alpha` in
-`~/.config/omarchy/shell.toml`, which Omarchy's own menus use too.
+in tenths, saved as you go; Enter, Esc or Backspace is done. 0% is a clear
+desktop with no blur (`~/.config/omarchy/wheel-blur`). The dim is
+`[menu] scrim-alpha` in `~/.config/omarchy/shell.toml`, which Omarchy's own menus use too.
 
 **Centered panels** (`On`): Enter toggles. Off, bar panels open beside their
 widget with no backdrop (`[wheely] panels = native` in `shell.toml`).
@@ -647,16 +651,16 @@ default: home, hidden files included, six levels deep, skipping every
 `.gitignore` lists. Enter lists the entries. Type to find one to add and Enter
 adds it: Searched takes a path from `/` outside home; Skipped offers folder
 names first, each skipping every folder called that, anywhere, as the defaults
-do, then single folders under home. Del removes, Esc is done; an emptied list
-is its default again. Files found in an added folder open in their default
-app, not the browser. Both lists live in `~/.config/omarchy/wheel.json` as
-`"folders"` and `"skipped"`.
+do, then single folders under home. Del removes; Esc or Backspace on an empty
+query is done. An emptied list is its default again. Files found in an added
+folder open in their default app, not the browser. Both lists live in
+`~/.config/omarchy/wheel.json` as `"folders"` and `"skipped"`.
 
 **Wheely history** (`history`): your picks, newest first, files included.
-Enter runs one; typing goes back to search; Esc is done.
+Enter runs one; typing goes back to search; Esc or Backspace is done.
 
 **Forget picks** ends in how many are remembered. Enter, then Enter again
-clears them; Esc keeps them.
+clears them; Esc or Backspace keeps them.
 
 ## What it remembers
 

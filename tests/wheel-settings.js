@@ -78,10 +78,12 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   assert.equal(backdropKey("Key_A").accepted && bd.editing, "backdrop", "a key escaped the backdrop row")
   backdropKey("Key_Return")
   const entered = bd.editing
-  bd.edit({ setting: "backdrop" }); backdropKey("Key_Escape")
-  assert.deepEqual([entered, bd.editing], ["", ""], "enter or esc left the row taking keys")
+  for (const key of ["Key_Escape", "Key_Backspace"]) {
+    bd.edit({ setting: "backdrop" }); backdropKey(key)
+    assert.deepEqual([entered, bd.editing], ["", ""], key + " left the row taking keys")
+  }
 
-  // Forget picks asks again: Enter forgets every pick, on disk too; Esc keeps them; other keys wait.
+  // Forget picks asks again: Enter forgets every pick; Esc or Backspace keeps them; other keys wait.
   const usesFile = { raw: "", setText(raw) { this.raw = raw } }
   const fg = { editing: "", uses: { "system.lock": 3, "file:/a": 1 } }
   derive(fg, "editValue")
@@ -89,9 +91,11 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   const forgetKey = keymap("plugins/xpo.wheel/MenuKeys.js", fg)
   fg.edit({ setting: "forget" })
   assert.deepEqual([fg.editValue, forgetKey("Key_A").accepted, fg.editing], ["Forget 2 picks", true, "forget"],
-    "a key other than Enter or Esc left the question")
-  forgetKey("Key_Escape")
-  assert.deepEqual([fg.editing, Object.keys(fg.uses).length, usesFile.raw], ["", 2, ""], "esc forgot the picks")
+    "a key other than Enter, Esc or Backspace left the question")
+  for (const key of ["Key_Escape", "Key_Backspace"]) {
+    fg.edit({ setting: "forget" }); forgetKey(key)
+    assert.deepEqual([fg.editing, Object.keys(fg.uses).length, usesFile.raw], ["", 2, ""], key + " forgot the picks")
+  }
   assert.equal(binding("settingRows", { root: { ...fg, folders: [], skipped: [] }, MenuIndex: M })
     .find(r => r.setting === "forget").trail, "2",
     "the forget row miscounted the picks")
@@ -117,10 +121,10 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   const keyboardPanel = read("patches/shell/Ui/KeyboardPanel.qml")
   assert.ok(wheelSource.includes(panelRule) && keyboardPanel.includes(panelRule), "the panels read another key than the wheel writes")
 
-  // Recording: a modifier alone waits, plain Esc gives up, plain Enter saves only a candidate,
+  // Recording: a modifier alone waits, plain Esc or Backspace gives up, Enter saves only a candidate,
   // and any other press is judged. shortcutOf's names are checked against real Qt in runtime.py.
   const Q = { ShiftModifier: 1 << 25, ControlModifier: 1 << 26, AltModifier: 1 << 27, MetaModifier: 1 << 28,
-              Key_Escape: 1, Key_Return: 2, Key_Enter: 3 }
+              Key_Escape: 1, Key_Return: 2, Key_Enter: 3, Key_Backspace: 4 }
   const saved = []
   const rec = { shortcut: "SUPER + A", bindText: records, saveShortcut: combo => saved.push(combo) }
   derive(rec, "refused", "pending", "taken", "editValue", "editNote")
@@ -155,9 +159,11 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     record({ key: Q.Key_Enter, modifiers: 0 })
     assert.equal(rec.editing + saved.at(-1), last, "enter after " + JSON.stringify(presses))
   }
-  edit({ setting: "shortcut" }); press("SUPER + C")
-  record({ key: Q.Key_Escape, modifiers: 0 })
-  assert.equal(rec.editing + saved.at(-1), "SUPER + B", "esc saved the candidate")
+  for (const key of [Q.Key_Escape, Q.Key_Backspace]) {
+    edit({ setting: "shortcut" }); press("SUPER + C")
+    record({ key, modifiers: 0 })
+    assert.equal(rec.editing + saved.at(-1), "SUPER + B", "canceling saved the candidate")
+  }
 
   // While a row records, every key is the row's: none types, moves or closes.
   const recorded = []

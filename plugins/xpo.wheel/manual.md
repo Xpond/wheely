@@ -80,6 +80,7 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 ## Settings
 
 Type `wheely settings`; Enter changes a setting without closing the wheel.
+Esc or Backspace with an empty filter returns from a setting.
 
 | Setting | What it does |
 |---|---|
@@ -102,7 +103,7 @@ Opened by the Wheely ring setting; every change is saved as it is made.
 | `Del` | remove the slice |
 | `Shift+←` `Shift+→` | move the slice |
 | `Ctrl+R` | reset to the bar; press twice |
-| `Esc` | done |
+| `Esc` `Backspace` | done |
 
 ## Lock screen
 
