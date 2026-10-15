@@ -354,7 +354,9 @@ Item {
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
           if (root.clearConfirmOpen) {
-            if (clearConfirm.handleKey(event)) event.accepted = true
+            if (event.key === Qt.Key_Backspace && !event.modifiers) root.cancelClearHistory()
+            else if (!clearConfirm.handleKey(event)) return
+            event.accepted = true
             return
           }
 

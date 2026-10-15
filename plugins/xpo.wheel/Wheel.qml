@@ -508,8 +508,7 @@ Item {
   }
 
   // Return only from a panel that this wheel launched and remains open.
-  function back(from) {
-    if (from && from !== root.launched) return "none"
+  function back() {
     if (!root.launched || !root.shell || !root.shell.isPluginOpen(root.launched)) return "none"
     var at = root.launchedAt
     Qt.callLater(function () {
@@ -519,7 +518,7 @@ Item {
     return "wheel"
   }
 
-  // Panel switches carry the return; closing the launched panel releases it.
+  // A switch to another bar panel carries the return with it.
   function followPanel(raw) {
     var change = MenuIndex.parse(raw)
     if (root.launched && root.launched === change.from) root.launched = change.to
@@ -556,15 +555,7 @@ Item {
         root.launched = "xpo.files"
       }
       else if (e.copy) root.copy(e.copy)
-      else if (e.action) {
-        var panel = /^omarchy-shell shell (?:toggle|summon) ([\w.-]+)(?:\s|$)/.exec(e.action)
-        root.launched = panel ? panel[1] : ({
-          "trigger.emoji": "omarchy.emojis",
-          "style.background": "omarchy.image-picker",
-          "trigger.reminder.set": "omarchy.reminders"
-        })[e.id] || ""
-        Util.execDetached(e.action)
-      }
+      else if (e.action) Util.execDetached(e.action)
       root.countUse(e)
     }
     // Release keyboard focus at once; the queued pick runs on the next tick.
