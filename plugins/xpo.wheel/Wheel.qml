@@ -508,7 +508,8 @@ Item {
   }
 
   // Return only from a panel that this wheel launched and remains open.
-  function back() {
+  function back(from) {
+    if (from && from !== root.launched) return "none"
     if (!root.launched || !root.shell || !root.shell.isPluginOpen(root.launched)) return "none"
     var at = root.launchedAt
     Qt.callLater(function () {
@@ -516,6 +517,12 @@ Item {
       if (at >= 0 && at < root.sliceCount) root.select(at)
     })
     return "wheel"
+  }
+
+  // Panel switches carry the return; closing the launched panel releases it.
+  function followPanel(raw) {
+    var change = MenuIndex.parse(raw)
+    if (root.launched && root.launched === change.from) root.launched = change.to
   }
 
   function up() {
@@ -549,7 +556,15 @@ Item {
         root.launched = "xpo.files"
       }
       else if (e.copy) root.copy(e.copy)
-      else if (e.action) Util.execDetached(e.action)
+      else if (e.action) {
+        var panel = /^omarchy-shell shell (?:toggle|summon) ([\w.-]+)(?:\s|$)/.exec(e.action)
+        root.launched = panel ? panel[1] : ({
+          "trigger.emoji": "omarchy.emojis",
+          "style.background": "omarchy.image-picker",
+          "trigger.reminder.set": "omarchy.reminders"
+        })[e.id] || ""
+        Util.execDetached(e.action)
+      }
       root.countUse(e)
     }
     // Release keyboard focus at once; the queued pick runs on the next tick.
@@ -600,10 +615,10 @@ Item {
     root.editing = e.setting
   }
 
-  // Plain Enter saves what was pressed, plain Esc gives up, and any other combo is the new candidate.
+  // Plain Enter saves what was pressed; plain Esc or Backspace gives up.
   function record(event) {
     var bare = !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier | Qt.ShiftModifier))
-    if (bare && event.key === Qt.Key_Escape) { root.editing = ""; return }
+    if (bare && (event.key === Qt.Key_Escape || event.key === Qt.Key_Backspace)) { root.editing = ""; return }
     if (bare && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
       if (root.pending) root.saveShortcut(root.pending)
       root.editing = ""

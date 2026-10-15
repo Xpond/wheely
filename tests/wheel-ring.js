@@ -122,5 +122,8 @@ const shift = 1 << 25, ctrl = 1 << 26
   assert.equal(ringed.resetAsked, false, "another key left ctrl+r armed")
   ringKey("Key_Escape")
   assert.deepEqual([ringed.editingRing, did], [false, []], "esc did not leave the editor, or closed the wheel")
+  ringed.editingRing = true
+  ringKey("Key_Backspace")
+  assert.deepEqual([ringed.editingRing, did], [false, []], "backspace did not leave the editor, or closed the wheel")
 }
 console.log("ok: the ring takes what search finds, and its editor adds, moves, removes and goes back to the bar")
