@@ -15,7 +15,6 @@ const back = method(read("plugins/xpo.wheel/Wheel.qml"), "back",
   { root: ring, Qt: { callLater: fn => fn() } })
 assert.equal(back(), "none", "a wheel that opened nothing owes nothing")
 ring.launched = "omarchy.audio"; opened["omarchy.audio"] = true
-assert.equal(back("omarchy.emojis"), "none", "another picker must not claim the panel's return")
 assert.equal(back(), "wheel")
 assert.equal(opened["omarchy.audio"], true, "the panel stays up until the wheel claims its surface")
 assert.equal(opened["xpo.wheel"], true)

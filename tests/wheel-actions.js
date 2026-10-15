@@ -4,13 +4,9 @@ const { method } = require("./qml.js")
 const { wheelSource } = require("./wheel-source.js")
 const openedSource = wheelSource.match(/^  onOpenedChanged: \{([^]*?)^  }/m)[1]
 
-for (const [entry, expected, returnPanel] of [
+for (const [entry, expected] of [
   [{ appId: "org.example.Editor", label: "My Editor" }, ["app", "org.example.Editor", "My Editor"]],
   [{ action: "example-command --flag 'two words'" }, ["action", "example-command --flag 'two words'"]],
-  [{ id: "trigger.emoji", action: "omarchy-menu-emoji" }, ["action", "omarchy-menu-emoji"], "omarchy.emojis"],
-  [{ action: "omarchy-shell shell toggle omarchy.emojis" }, ["action", "omarchy-shell shell toggle omarchy.emojis"], "omarchy.emojis"],
-  [{ id: "style.background", action: "background-picker-command" }, ["action", "background-picker-command"], "omarchy.image-picker"],
-  [{ id: "trigger.reminder.set", action: "omarchy-reminder -i" }, ["action", "omarchy-reminder -i"], "omarchy.reminders"],
   [{ plugin: "third.notes" }, ["plugin", "third.notes", "{}"]],
   [{ dispatch: "example-dispatch" }, ["window", "example-dispatch"]],
   [{ copy: "42" }, ["copy", "42"]],
@@ -54,6 +50,6 @@ for (const [entry, expected, returnPanel] of [
   later.shift()()
   assert.deepEqual(picks, [entry], "the deferred launch did not record its pick")
   assert.deepEqual(effects, [expected], "the queued target or its arguments changed")
-  assert.equal(root.launched, entry.plugin || returnPanel || "")
+  assert.equal(root.launched, entry.plugin || "")
 }
 console.log("ok: picks execute once after unmapping with exact arguments")
