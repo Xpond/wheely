@@ -2,8 +2,7 @@ const assert = require("node:assert/strict")
 const { read, method, keymap } = require("./qml.js")
 const { M, wheelSource, binding, derive } = require("./wheel-source.js")
 
-// A panel cannot tell how it was opened, so the wheel answers for it: only the
-// panel the wheel put on screen, and only while it is still there.
+// The wheel answers panel return requests; bar-opened panels have no return.
 const opened = {}
 const picked = []
 const ring = { pluginId: "xpo.wheel", launched: "", launchedAt: -1,
@@ -16,6 +15,7 @@ const back = method(read("plugins/xpo.wheel/Wheel.qml"), "back",
   { root: ring, Qt: { callLater: fn => fn() } })
 assert.equal(back(), "none", "a wheel that opened nothing owes nothing")
 ring.launched = "omarchy.audio"; opened["omarchy.audio"] = true
+assert.equal(back("omarchy.emojis"), "none", "another picker must not claim the panel's return")
 assert.equal(back(), "wheel")
 assert.equal(opened["omarchy.audio"], true, "the panel stays up until the wheel claims its surface")
 assert.equal(opened["xpo.wheel"], true)
@@ -25,7 +25,13 @@ ring.launched = ""
 assert.equal(back(), "none", "a panel opened from the bar keeps its backspace")
 ring.launched = "omarchy.audio"
 assert.equal(back(), "none", "and one that has since gone is not owed a return")
-console.log("ok: only the panel the wheel opened answers backspace with a return")
+const followPanel = method(wheelSource, "followPanel", { root: ring, MenuIndex: M })
+followPanel(JSON.stringify({ from: "omarchy.audio", to: "omarchy.network" }))
+assert.equal(back(), "wheel", "switching panels lost the wheel return")
+ring.launched = ""
+followPanel(JSON.stringify({ from: "omarchy.audio", to: "omarchy.network" }))
+assert.equal(back(), "none", "a switch from a bar-opened panel claimed a wheel return")
+console.log("ok: wheel returns follow panel switches without claiming bar-opened panels")
 
 // `back` can only give back what `run` wrote down.
 // Recorded off `slices`, so a slice picked with the pointer is written down the

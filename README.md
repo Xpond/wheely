@@ -59,7 +59,7 @@ It links `plugins/` into `~/.config/omarchy/plugins/` and registers them in
 `~/.config/omarchy/shell.json`, appends a marked block (keybinds, layer rules,
 blur, render loop) to `~/.config/hypr/hyprland.lua`, links three helpers into
 `~/.local/bin`, links the lock-screen designs in `lock/` into
-`~/.local/share/wheely/`, patches eight shell files, installs a post-update
+`~/.local/share/wheely/`, patches twelve shell files, installs a post-update
 hook, and restarts the shell. Rerunning is safe. Keep the checkout where it is:
 the hook points to it.
 
@@ -81,7 +81,7 @@ this project is left untouched and reported.
 
 ## Why sudo
 
-The eight patched files live in `/usr/share/omarchy/shell`, owned by the Omarchy
+The twelve patched files live in `/usr/share/omarchy/shell`, owned by the Omarchy
 package. Copying them in (install) and restoring them (revert) are the only
 `sudo` calls, and each runs only when a file actually needs changing.
 Everything else stays in your home directory.

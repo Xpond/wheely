@@ -3,39 +3,43 @@
 // Keep the key map pure enough to exercise without a running shell. The query
 // field types, deletes, moves and selects for itself; this is everything else.
 function onKey(wheel, event) {
-  // A setting row being changed takes every key until Enter or Esc; the backdrop's ←/→ step a tenth.
+  var back = event.key === Qt.Key_Backspace && !event.modifiers
+  // A setting row takes every key until Enter, Esc or Backspace; the backdrop's ←/→ step a tenth.
   if (wheel.editing === "backdrop") {
     var step = event.key === Qt.Key_Right ? 1 : event.key === Qt.Key_Left ? -1 : 0
     if (step) wheel.setBackdrop(Math.max(0, Math.min(100, (Math.round(wheel.backdrop / 10) + step) * 10)))
-    else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) wheel.editing = ""
+    else if (event.key === Qt.Key_Escape || back || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) wheel.editing = ""
     event.accepted = true; return
   }
-  // Forgetting picks asks again: Enter forgets them, Esc keeps them.
+  // Forgetting picks asks again: Enter forgets them, Esc or Backspace keeps them.
   if (wheel.editing === "forget") {
     var enter = event.key === Qt.Key_Return || event.key === Qt.Key_Enter
     if (enter) wheel.forgetPicks()
-    if (enter || event.key === Qt.Key_Escape) wheel.editing = ""
+    if (enter || event.key === Qt.Key_Escape || back) wheel.editing = ""
     event.accepted = true; return
   }
   if (wheel.editing) { wheel.record(event); event.accepted = true; return }
-  // The ring editor: Del and Shift+arrows change the ring, and Esc is done. Ctrl+R resets it when
-  // pressed again; any other key, a modifier on its way to a combo aside, takes the question back.
+  // The ring editor: Del and Shift+arrows change the ring; Esc or Backspace with no query is done.
+  // Ctrl+R resets it when pressed again; any other key, a modifier on its way to a combo aside,
+  // takes the question back.
   if (wheel.editingRing) {
     var again = (event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_R
     if (!again && shortcutOf(event) !== null) wheel.resetAsked = false
     if (again) { wheel.resetRing(); event.accepted = true; return }
+    if (!wheel.query && (event.key === Qt.Key_Escape || back)) {
+      wheel.editingRing = false; event.accepted = true; return
+    }
     if (!wheel.searching) {
       if (event.key === Qt.Key_Delete) { wheel.unpin(); event.accepted = true; return }
-      if (event.key === Qt.Key_Escape) { wheel.editingRing = false; event.accepted = true; return }
       if ((event.modifiers & Qt.ShiftModifier) && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
         wheel.moveSlice(event.key === Qt.Key_Right ? 1 : -1); event.accepted = true; return
       }
     }
   }
-  // A list in the results: Del removes the picked entry and Esc is done, until something is typed.
+  // A list in the results: Del removes the picked entry; Esc or Backspace is done while empty.
   if (wheel.listing && !wheel.query) {
     if (event.key === Qt.Key_Delete) { wheel.removeEntry(); event.accepted = true; return }
-    if (event.key === Qt.Key_Escape) { wheel.listing = ""; event.accepted = true; return }
+    if (event.key === Qt.Key_Escape || back) { wheel.listing = ""; event.accepted = true; return }
   }
   var control = event.modifiers & Qt.ControlModifier
   if (control) {
