@@ -57,7 +57,7 @@ console.log("ok: checked rows and the current theme and font are marked; icons k
 
 // Search takes every panel the live bar can open, whether or not it has a disc.
 const indexed = { staticRows: M.panelRows(M.OVERLAYS.concat(M.EXTRAS)),
-  styleRows: [], bindRows: [], settingRows: M.settingRows(M.SHORTCUT, false, [], M.SKIPPED), menuItems: {},
+  styleRows: [], bindRows: [], settingRows: M.settingRows(M.SHORTCUT, false, [], M.SKIPPED), manualRows: [], menuItems: {},
   focusOrder: [], appLibrary: null,
   shell: { panels: () => [
     { id: "omarchy.weather", name: "Weather", source: "omarchy.weather" },

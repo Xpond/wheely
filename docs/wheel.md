@@ -591,6 +591,34 @@ answer" rather than a guess; units and currency would need `qalc`, which
 Omarchy does not ship. `node tests/wheel-calc.js` pins issue #8's sums and
 checks 2000 random ones against JavaScript's own arithmetic.
 
+## Manual
+
+`manual.md` is the user's manual, and its table rows are search rows: `help`
+lists them, led by **Wheely manual**, and a word finds the key for a task,
+`help rename` the Files row for `F2`. Each row ends in its key and section.
+The rows have no key of their own, so they are never counted or pinned.
+
+Enter on any of them shows the whole manual on one sheet (`WheelManual.qml`):
+one panel holding a card per section, a hairline between rows, keys drawn as
+keycaps. It is drawn from the parsed rows, never the file, so nothing in the
+plugin folder can be edited from it.
+
+It is a cheat sheet, so it has to fit: a row is a few words on one line, and
+keys any text field has are one "text keys" row, as Shift with the move keys is
+one row in Files. At its own text size, larger than the shell's and never shrunk,
+it fills one 1080p screen. Its columns, up to three, take most of the screen's
+width, so the panel keeps clear of the edges; a smaller screen scrolls it with
+`↑` `↓`, the page keys or the mouse wheel. `Ctrl+T` pins it in the search's
+window, where it reflows the same way; `Ctrl+T` again brings it back.
+
+The field hides but keeps the keyboard, and the sheet starts on an empty
+query, so typing fades every row search would not find. `Esc` gives the query
+back and returns to the results; every other key waits, since the results it
+would act on are hidden.
+
+`tests/wheel-manual.js` fails when a key in this file's or Files' key tables is
+missing from the manual, other than the few its two rules cover.
+
 ## Settings
 
 Settings are search rows: `wheely settings` lists them. Each row ends in its
