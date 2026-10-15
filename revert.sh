@@ -32,9 +32,8 @@ done
 failed=0
 stock=$(mktemp)
 trap 'rm -f "$stock"' EXIT
-for f in Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml Ui/ConfirmDialog.qml plugins/bar/Bar.qml \
-         plugins/clipboard/Clipboard.qml plugins/emojis/Emojis.qml plugins/image-picker/ImagePicker.qml \
-         plugins/reminders/ReminderFlow.qml plugins/lock/LockView.qml plugins/lock/Service.qml \
+for f in Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml \
+         plugins/clipboard/Clipboard.qml plugins/lock/LockView.qml plugins/lock/Service.qml \
          services/PluginShellApi.qml shell.qml; do
   installed="$SHELL_DIR/$f"
   written="$STATE/installed/$f"
