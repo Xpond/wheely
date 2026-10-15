@@ -6,7 +6,7 @@ windows, themes, fonts, settings, files with `/`, and this manual. Just type.
 Type `help` in the wheel to search this manual: every row below is a search row.
 Add a word to narrow it, like `help files` or `help rename`. Enter on any row shows
 the whole manual on one screen, where typing filters rows, Ctrl+T pins it as
-a window, and Esc goes back.
+a window, and Esc goes back. Backspace also goes back when the filter is empty.
 
 ## Wheel
 
@@ -110,4 +110,3 @@ Opened by the Wheely ring setting; every change is saved as it is made.
 |---|---|
 | Lockscreen Designs | pick a design |
 | `omarchy-shell lock preview` | try it without locking |
-

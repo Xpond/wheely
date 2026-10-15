@@ -50,6 +50,7 @@ assert.equal(root.query, "", "the sheet kept the query it was opened from")
 root.leaveManual = method(wheelSource, "leaveManual", { root })
 const key = keymap("plugins/xpo.wheel/MenuKeys.js", root)
 assert.equal(key("Key_A", 0, "a").accepted, false, "typing did not reach the field")
+root.query = "a"
 assert.equal(key("Key_Backspace", 0, "\b").accepted, false, "Backspace did not reach the field")
 const calls = []
 Object.assign(root, { popOut: () => calls.push("pin"), scrollManual: lines => calls.push(lines) })

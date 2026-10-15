@@ -18,18 +18,6 @@ function onKey(wheel, event) {
     event.accepted = true; return
   }
   if (wheel.editing) { wheel.record(event); event.accepted = true; return }
-  // The manual lets the field type and delete, which filters its rows. Esc goes back to the
-  // results, Ctrl+T pins it, ↑/↓ and the page keys scroll it, and every other key waits, since
-  // the results it would act on are hidden.
-  if (wheel.reading) {
-    var k = event.key, ctrl = event.modifiers & Qt.ControlModifier
-    var lines = k === Qt.Key_Down ? 1 : k === Qt.Key_Up ? -1 : k === Qt.Key_PageDown ? 10 : k === Qt.Key_PageUp ? -10 : 0
-    if (k === Qt.Key_Escape) wheel.leaveManual()
-    else if (ctrl && k === Qt.Key_T) wheel.popOut()
-    else if (lines) wheel.scrollManual(lines)
-    else if (!ctrl && (event.text >= " " || k === Qt.Key_Backspace)) return
-    event.accepted = true; return
-  }
   // The ring editor: Del and Shift+arrows change the ring, and Esc is done. Ctrl+R resets it when
   // pressed again; any other key, a modifier on its way to a combo aside, takes the question back.
   if (wheel.editingRing) {
@@ -50,11 +38,6 @@ function onKey(wheel, event) {
     if (event.key === Qt.Key_Escape) { wheel.listing = ""; event.accepted = true; return }
   }
   var control = event.modifiers & Qt.ControlModifier
-  // Keep keyboard intent until this query is ranked; a click still uses its visible row.
-  if (wheel.filePending && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || control && event.key === Qt.Key_Y)) {
-    wheel.fileAction = event.key === Qt.Key_Y ? "copy" : control ? "terminal" : "run"
-    event.accepted = true; return
-  }
   if (control) {
     switch (event.key) {
     case Qt.Key_U:
@@ -69,6 +52,29 @@ function onKey(wheel, event) {
       wheel.queryAt = kept.length; event.accepted = true; return
     case Qt.Key_E: wheel.queryAt = wheel.query.length; event.accepted = true; return
     case Qt.Key_V: wheel.paste(); event.accepted = true; return
+    }
+  }
+  // The manual shares query editing with search, but keeps actions on hidden results disabled.
+  if (wheel.reading) {
+    var k = event.key
+    var lines = k === Qt.Key_Down ? 1 : k === Qt.Key_Up ? -1 : k === Qt.Key_PageDown ? 10 : k === Qt.Key_PageUp ? -10 : 0
+    if (k === Qt.Key_Escape || k === Qt.Key_Backspace && !wheel.query) wheel.leaveManual()
+    else if (control && k === Qt.Key_T) wheel.popOut()
+    else if (lines) wheel.scrollManual(lines)
+    else {
+      event.accepted = k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Tab || k === Qt.Key_Backtab
+        || !!control && (k === Qt.Key_Y || k === Qt.Key_N || k === Qt.Key_P)
+      return
+    }
+    event.accepted = true; return
+  }
+  // Keep keyboard intent until this query is ranked; a click still uses its visible row.
+  if (wheel.filePending && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || control && event.key === Qt.Key_Y)) {
+    wheel.fileAction = event.key === Qt.Key_Y ? "copy" : control ? "terminal" : "run"
+    event.accepted = true; return
+  }
+  if (control) {
+    switch (event.key) {
     case Qt.Key_T: wheel.popOut(); event.accepted = true; return
     case Qt.Key_Y:
       if (!wheel.takePath()) return

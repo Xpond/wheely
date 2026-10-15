@@ -9,6 +9,7 @@ import "MenuIndex.js" as MenuIndex
 Item {
   id: sheet
   property var wheel: null
+  property alias filterSlot: filter
 
   readonly property var rows: wheel.manualRows.filter(function (r) { return !!r.section })
   readonly property string term: wheel.query.trim()
@@ -46,7 +47,7 @@ Item {
   Flickable {
     id: scroller
     anchors.fill: parent
-    contentHeight: Math.max(height, panel.height * panel.scale + panel.y * 2)
+    contentHeight: Math.max(height, panel.height + panel.y * 2)
     interactive: contentHeight > height
     boundsBehavior: Flickable.StopAtBounds
     clip: true
@@ -54,12 +55,9 @@ Item {
     BorderSurface {
       id: panel
       x: (scroller.width - width) / 2
-      y: Math.max(sheet.gap, (scroller.height - height * scale) / 2)
+      y: Math.max(sheet.gap, (scroller.height - height) / 2)
       width: content.width + sheet.gap * 2
       height: content.height + sheet.gap * 2
-      transformOrigin: Item.Top
-      // Never shrunk to fit the height: it scrolls instead. Only a window too narrow for one column shrinks it.
-      scale: Math.min(1, (scroller.width - sheet.gap * 2) / width)
       radius: Style.space(24)
       color: sheet.wheel.surfaceFill
       borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
@@ -85,7 +83,7 @@ Item {
             font.pixelSize: Style.fontPx(1.333)
             font.bold: true
           }
-          // The query shows here; the field itself waits, hidden, underneath.
+          // The wheel's query field moves here while the manual is open.
           BorderSurface {
             id: filter
             anchors.centerIn: parent
@@ -95,11 +93,11 @@ Item {
             radius: height / 2
             color: sheet.wheel.surfaceFill
             borderSpec: Border.flat(sheet.term ? Color.accent : sheet.wheel.surfaceEdge, Style.spacing.hairline)
-            ClickShield {}
             Text {
               anchors.centerIn: parent
-              text: sheet.term || "type to filter"
-              opacity: sheet.term ? 1 : 0.45
+              text: "type to filter"
+              visible: !sheet.term
+              opacity: 0.45
               color: Color.menu.text
               font.family: Style.font.menuFamily
               font.pixelSize: Style.font.subtitle
