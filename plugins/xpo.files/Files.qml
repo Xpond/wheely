@@ -16,6 +16,9 @@ Item {
 
   property var shell: null
   readonly property string home: Quickshell.env("HOME")
+  // The folders the wheel searches outside home, so its results open here too.
+  property var folders: []
+  readonly property var roots: [root.home].concat(root.folders)
 
   property bool opened: false
   // Ctrl+T pops the overlay out into a Hyprland window. The shell then counts
@@ -42,9 +45,9 @@ Item {
     ? root.typedPath.slice(0, root.typedPath.lastIndexOf("/") + 1) : ""
   readonly property string typedLeaf: root.pathMode
     ? root.typedPath.slice(root.typedPath.lastIndexOf("/") + 1) : ""
-  // The typed directory in path mode, jailed to $HOME either way.
+  // The typed directory in path mode, jailed to the roots either way.
   readonly property string listedDir: root.pathMode
-    ? FilesIndex.within(root.typedDir, root.home) : root.dir
+    ? FilesIndex.within(root.typedDir, root.roots) : root.dir
   property int index: 0
   property bool showHidden: false
   property string order: "name"
@@ -405,7 +408,7 @@ Item {
 
   function enter(next) {
     var path = String(next).replace(/\/+$/, "")
-    root.dir = FilesIndex.within(path || "/", root.home)
+    root.dir = FilesIndex.within(path || "/", root.roots)
     root.filter = ""
     root.index = 0
     root.pending = ""
@@ -415,8 +418,9 @@ Item {
   // only with git's status, after the rows, so nothing is selected until it lands.
   function up() {
     var from = root.dir
+    // Above another root lies home, with nothing there to land on.
     root.enter(FilesIndex.parentOf(from))
-    if (root.dir !== from) { root.pending = from.slice(from.lastIndexOf("/") + 1); root.index = -1 }
+    if (root.dir === FilesIndex.parentOf(from)) { root.pending = from.slice(from.lastIndexOf("/") + 1); root.index = -1 }
   }
 
   // A click on an entry in a folder's preview enters that folder, landing on the entry; the second
@@ -618,6 +622,15 @@ Item {
     if (!root.settledSel || !root.settledSel.isDir) return []
     // One past what the preview displays preserves its overflow ellipsis.
     return FilesIndex.snapshot(childFolder, root.dirLimit + 1)
+  }
+
+  FileView {
+    path: root.home + "/.config/omarchy/wheel.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: { try { root.folders = JSON.parse(text()).folders || [] } catch (e) { root.folders = [] } }
+    onLoadFailed: root.folders = []
   }
 
   FileView {

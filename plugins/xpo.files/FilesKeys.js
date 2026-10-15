@@ -105,8 +105,9 @@ function onKey(panel, ops, preview, event) {
     ops.activate(panel.sel); event.accepted = true; return
   }
   if (event.text && event.text.length === 1 && event.text >= " ") {
-    // A leading / starts the path from the folder being browsed, which is always under home.
-    if (!panel.filter && event.text === "/") panel.filter = panel.dir.slice(panel.home.length) + "/"
+    // A leading / starts the path from the folder being browsed, or from home outside it.
+    if (!panel.filter && event.text === "/")
+      panel.filter = (panel.dir + "/").indexOf(panel.home + "/") === 0 ? panel.dir.slice(panel.home.length) + "/" : "/"
     else panel.filter += event.text
     panel.index = 0
     panel.pending = ""

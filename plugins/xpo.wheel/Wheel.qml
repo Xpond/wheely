@@ -526,8 +526,9 @@ Item {
     if (e.node) { root.countUse(e); root.enter(e.node); return }
     if (e.setting) { root.edit(e); return }
     root.launchedAt = root.slices.indexOf(e)
-    // The browser keeps to home, so a path outside it opens the way the browser opens a file.
-    var browse = !!e.path && e.path.indexOf(root.home + "/") === 0
+    // The browser keeps to home and the searched folders; other paths open the way it opens a file.
+    var browse = !!e.path && [root.home].concat(root.folders)
+      .some(function (f) { return e.path.indexOf(f + "/") === 0 })
     root.queued = function () {
       if (e.plugin && root.shell) { root.shell.toggle(e.plugin, "{}"); root.launched = e.plugin }
       // Omarchy 4 requires the Lua dispatcher form for window focus.
