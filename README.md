@@ -11,6 +11,7 @@ A radial control center, a file browser and centered shell panels for
   to calculate (`Enter` copies the answer). `SUPER+W`
   closes the wheel and any open shell panel, otherwise the active window. Its
   settings are search rows too: `wheely shortcut` changes the key that opens it.
+  Type `help` to search the manual, every key and setting in one place.
   See [`docs/wheel.md`](docs/wheel.md).
 - **Files**: a keyboard-driven directory browser with previews, opened from
   the wheel. See [`docs/files.md`](docs/files.md).

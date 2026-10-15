@@ -18,6 +18,18 @@ function onKey(wheel, event) {
     event.accepted = true; return
   }
   if (wheel.editing) { wheel.record(event); event.accepted = true; return }
+  // The manual lets the field type and delete, which filters its rows. Esc goes back to the
+  // results, Ctrl+T pins it, ↑/↓ and the page keys scroll it, and every other key waits, since
+  // the results it would act on are hidden.
+  if (wheel.reading) {
+    var k = event.key, ctrl = event.modifiers & Qt.ControlModifier
+    var lines = k === Qt.Key_Down ? 1 : k === Qt.Key_Up ? -1 : k === Qt.Key_PageDown ? 10 : k === Qt.Key_PageUp ? -10 : 0
+    if (k === Qt.Key_Escape) wheel.leaveManual()
+    else if (ctrl && k === Qt.Key_T) wheel.popOut()
+    else if (lines) wheel.scrollManual(lines)
+    else if (!ctrl && (event.text >= " " || k === Qt.Key_Backspace)) return
+    event.accepted = true; return
+  }
   // The ring editor: Del and Shift+arrows change the ring, and Esc is done. Ctrl+R resets it when
   // pressed again; any other key, a modifier on its way to a combo aside, takes the question back.
   if (wheel.editingRing) {
