@@ -82,6 +82,11 @@ Item {
   readonly property var skipped: root.savedSkipped || MenuIndex.SKIPPED
   // Off, every panel opens beside its bar widget; the shell reads [wheely] panels from shell.toml.
   readonly property bool panelsCentered: Color.shellValues["wheely.panels"] !== "native"
+  // The manual is search rows, and Enter on one shows all of it on one sheet.
+  property var manualRows: []
+  property bool reading: false
+  // The query the manual was opened from, given back when it closes.
+  property string readFrom: ""
   readonly property var settingRows: MenuIndex.settingRows(root.shortcut, !!root.ringIds, root.folders, root.skipped,
                                                         Object.keys(root.uses).length, root.panelsCentered)
   // The setting row being changed in place: the field shows the value, the row what saving would do.
@@ -158,7 +163,7 @@ Item {
   readonly property var beads: root.results.slice(root.resultTop,
                                                   root.resultTop + root.resultCap)
   // A pinned search has no ring, so its keys always go to the results.
-  readonly property bool searching: root.query.length > 0 || !!root.listing || root.windowed
+  readonly property bool searching: root.query.length > 0 || !!root.listing || root.windowed || root.reading
 
   // Ignore synthetic hover moves when result rows shift under the pointer.
   property point hoverAt: Qt.point(-1, -1)
@@ -367,7 +372,7 @@ Item {
       apps: root.appLibrary ? root.appLibrary.sortedEntries("") : [],
       windows: Hyprland.toplevels.values,
       focusOrder: root.focusOrder
-    }), root.styleRows, root.settingRows), root.bindRows, root.menuItems)
+    }), root.styleRows, root.settingRows, root.manualRows), root.bindRows, root.menuItems)
   }
 
   function closePeers() {
@@ -394,6 +399,7 @@ Item {
     root.editing = ""
     root.editingRing = false
     root.listing = ""
+    root.reading = false
     root.justOpened = !wasOpen
     root.openScreen = root.focusedScreen()
     root.opened = true
@@ -432,10 +438,11 @@ Item {
   property bool windowed: false
   function popOut() {
     if (root.windowed) {
-      var query = root.query
+      var query = root.query, reading = root.reading
       root.windowed = false
       root.open()
       root.query = query
+      root.reading = reading
       return
     }
     if (!root.opened || unmap.running) return
@@ -525,6 +532,7 @@ Item {
     if (root.listing && root.listing !== "history") { root.addEntry(e); return }
     if (e.node) { root.countUse(e); root.enter(e.node); return }
     if (e.setting) { root.edit(e); return }
+    if (e.manual) { root.readManual(); return }
     root.launchedAt = root.slices.indexOf(e)
     // The browser keeps to home and the searched folders; other paths open the way it opens a file.
     var browse = !!e.path && [root.home].concat(root.folders)
@@ -556,6 +564,21 @@ Item {
     if (!key || e.setting) return
     root.uses = MenuIndex.withPick(root.uses, key)
     usesFile.setText(JSON.stringify(root.uses) + "\n")
+  }
+
+  // The sheet starts on an empty query, so its first letter is a fresh filter.
+  function readManual() {
+    root.readFrom = root.query
+    root.reading = true
+    root.query = ""
+  }
+
+  function scrollManual(lines) { manualSheet.scroll(lines) }
+
+  function leaveManual() {
+    root.query = root.readFrom
+    root.queryAt = root.query.length
+    root.reading = false
   }
 
   function forgetPicks() {
@@ -976,6 +999,11 @@ Item {
   }
 
   FileView {
+    path: decodeURIComponent(Qt.resolvedUrl("manual.md").toString().replace("file://", ""))
+    onLoaded: root.manualRows = MenuIndex.manualRows(text())
+  }
+
+  FileView {
     path: root.omarchyPath + "/config/omarchy/shell.json"
     onLoaded: root.stockBarIds = MenuIndex.barWidgets(text())
   }
@@ -1226,6 +1254,8 @@ Item {
           width: root.searchWidth
           height: root.searchHeight
           radius: height / 2
+          // The manual shows the query itself; the field keeps the keyboard underneath.
+          opacity: root.reading ? 0 : 1
           color: root.surfaceFill
           // Accented while typing; a pinned field counts as searching even when empty.
           borderSpec: Border.flat(root.query || root.listing ? Color.accent : root.surfaceEdge,
@@ -1298,6 +1328,7 @@ Item {
       }
 
       WheelResults { wheel: root; parent: root.windowed ? pinnedSlot : stage }
+      WheelManual { id: manualSheet; wheel: root; parent: root.windowed ? pinnedSlot.parent : stage }
     }
   }
 }

@@ -13,8 +13,8 @@ Item {
   anchors.horizontalCenter: parent.horizontalCenter
   // Disable hit testing after the transition back to the ring.
   transformOrigin: Item.Top
-  opacity: wheel.searching ? 1 : 0
-  scale: wheel.searching ? 1 : 0.96
+  opacity: wheel.searching && !wheel.reading ? 1 : 0
+  scale: wheel.searching && !wheel.reading ? 1 : 0.96
   visible: opacity > 0
   Behavior on opacity { NumberAnimation { duration: wheel.fadeDuration; easing.type: Easing.OutCubic } }
   Behavior on scale { NumberAnimation { duration: wheel.fadeDuration; easing.type: Easing.OutCubic } }
