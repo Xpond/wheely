@@ -4,8 +4,9 @@ set -uo pipefail
 
 SHELL_DIR=/usr/share/omarchy/shell
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-FILES=(Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml
-       plugins/clipboard/Clipboard.qml plugins/lock/LockView.qml plugins/lock/Service.qml
+FILES=(Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml Ui/ConfirmDialog.qml plugins/bar/Bar.qml
+       plugins/clipboard/Clipboard.qml plugins/emojis/Emojis.qml plugins/image-picker/ImagePicker.qml
+       plugins/reminders/ReminderFlow.qml plugins/lock/LockView.qml plugins/lock/Service.qml
        services/PluginShellApi.qml shell.qml)
 CONF=~/.config/omarchy/shell.json
 STATE=~/.local/state/wheely

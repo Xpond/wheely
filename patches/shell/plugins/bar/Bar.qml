@@ -702,6 +702,8 @@ Item {
 
     lastSwitchDirection = step
     nextSlot.activeItem.open()
+    if (root.shell) root.shell.callIfLoaded("xpo.wheel", "followPanel",
+      JSON.stringify({ from: currentSlot.moduleName, to: nextSlot.moduleName }))
     return true
   }
 
