@@ -77,8 +77,6 @@ try: it calls `xpo.wheel back`, and the wheel returns `none` for a panel it did
 not open, leaving the key to mean what it always did there.
 Switching between bar panels with Tab or Ctrl+←/→ carries that return to the
 next panel, so Backspace still brings the wheel back.
-Emoji, Background, and Set reminder also return to the wheel with Backspace
-once their input is empty. Esc dismisses them normally.
 
 Mouse works too: the whole screen is a compass around center, so a flick in
 any direction selects that slice. Releasing the key commits it. The scroll
