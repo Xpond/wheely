@@ -93,13 +93,16 @@ preview, the wheel and `Shift`+arrows do.
 
 ## Home is the floor
 
-The browser opens at `$HOME` every time and cannot be navigated above it.
+The browser opens at `$HOME` every time and cannot be navigated above it, or
+above the folders the wheel searches outside home (`folders` in
+`~/.config/omarchy/wheel.json`), so the wheel's results there open here too.
 `FilesIndex.within()` is applied on every path change — arrow navigation, `←`,
-`Backspace`, and typed paths alike — and anything resolving outside home
-resolves *to* home rather than being refused. There is no state the panel can
-be left holding that it cannot get out of.
+`Backspace`, and typed paths alike — and anything resolving outside those roots
+resolves *to* home rather than being refused, so going up from a searched folder
+lands at home. There is no state the panel can be left holding that it cannot
+get out of.
 
-It tests `home + "/"` rather than a bare prefix, because `/home/xpo2` starts
+It tests `root + "/"` rather than a bare prefix, because `/home/xpo2` starts
 with `/home/xpo` and is not inside it.
 
 It does not remember where you were. A remembered directory is only valid until
@@ -120,8 +123,8 @@ path as you write it, and `Enter` descends into what it found.
 `~` starts from home. `/` starts from the folder you are in: typed in
 `~/xpo/omarchy-custom/docs` it writes `/xpo/omarchy-custom/docs/` into the
 field, so the list stays put, `Ctrl+W` climbs a segment and typing goes deeper.
-Both are rooted at `$HOME`, the only root this panel has, so
-`/xpo/omarchy-custom` and `~/xpo/omarchy-custom` are the same path.
+Both are rooted at `$HOME`, so `/xpo/omarchy-custom` and
+`~/xpo/omarchy-custom` are the same path; outside home, `/` starts from home.
 
 **A typed path is written into the trail, not beside it.** The breadcrumb
 already *is* the directory being listed, so the tail still being typed is drawn
