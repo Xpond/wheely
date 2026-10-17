@@ -6,6 +6,7 @@ import Quickshell.Io
 Item {
   id: root
   property bool running: true
+  property bool particlesRunning: running
   property int revolution: 1200
   property real wheelTurn: 0
   property var layout: ({ size: [1, 1], wheels: {} })
@@ -35,6 +36,15 @@ Item {
     layer.effect: ShaderEffect { fragmentShader: Qt.resolvedUrl("scene-light.frag.qsb") }
 
     Image { source: "base.png"; smooth: true }
+    HorizonStorm { anchors.fill: parent; horizon: root.layout.horizon || 0; running: root.particlesRunning }
+    // Everything but the sky, redrawn over the storm.
+    Image {
+      source: "cutout.png"
+      cache: false
+      x: root.layout.cutout ? root.layout.cutout[0] : 0
+      y: root.layout.cutout ? root.layout.cutout[1] : 0
+      visible: !!root.layout.cutout
+    }
     Repeater {
       model: Object.keys(root.layout.wheels)
       Item {
@@ -99,7 +109,7 @@ Item {
         function sand(a) { const c = Qt.lighter(Qt.color(root.layout.dust), 1.08); return Qt.rgba(c.r * a, c.g * a, c.b * a, a) }
         x: rear.center[0]; y: rear.contactY || rear.center[1] + r
 
-        ParticleSystem { id: dust; paused: !root.running }
+        ParticleSystem { id: dust; paused: !root.particlesRunning }
         ImageParticle {
           system: dust; groups: ["grain"]
           source: "dust.svg"
@@ -136,5 +146,7 @@ Item {
         Friction { system: dust; groups: ["puff"]; factor: 1 }
       }
     }
+
+    AmbientDust { anchors.fill: parent; running: root.particlesRunning }
   }
 }

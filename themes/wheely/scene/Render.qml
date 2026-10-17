@@ -13,6 +13,7 @@ Window {
     source: "Surface.qml"
     onLoaded: {
       item.running = false
+      item.particlesRunning = true // Populate the air while holding the requested wheel angle.
       item.wheelTurn = ((-Number(Quickshell.env("WHEELY_ANGLE")) / 360) % 1 + 1) % 1
     }
   }

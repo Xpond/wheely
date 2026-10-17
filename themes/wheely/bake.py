@@ -1,4 +1,5 @@
 """Build the native scene from source assets: python bake.py [output directory]."""
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -9,6 +10,7 @@ import numpy as np
 
 from wheels import load, prepare, save
 from chain import build_chain
+from sky import cutout, storm_sky
 
 root = Path(__file__).resolve().parent
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "build"
@@ -80,11 +82,31 @@ for name, center, radius in (("front", (3146.5, 1763.5), 322), ("rear", (4338, 2
         layout["wheels"][name]["contactY"] = 2588
 
 save(out / "base.png", base)
+
+# The storm replaces only the sky; everything else is redrawn over it.
+rgba, layout["cutout"], layout["horizon"] = cutout(root / "scene", base, layout)
+save(out / "cutout.png", rgba)
 layout["chain"] = build_chain(root, out, scene)
 (out / "layout.json").write_text(json.dumps(layout, indent=1) + "\n")
-for name in ("Surface.qml", "shell.qml", "Render.qml", "dust.svg", "contact-shadow.svg",
-             "wheel-light.frag", "scene-light.frag"):
+shutil.copy2(sources / "storm-wall-sky-4k.jpg", out / "storm-wall-sky-4k.jpg")
+save(out / "storm-sky.png", storm_sky(load(sources / "storm-wall-sky-4k.jpg")))
+for name in ("dust.svg", "sand-grain.svg", "contact-shadow.svg",
+             "storm-wall.frag", "wheel-light.frag", "scene-light.frag"):
     shutil.copy2(root / "scene" / name, out / name)
-for name in ("wheel-light", "scene-light"):
-    subprocess.run(["/usr/lib/qt6/bin/qsb", "--qt6", "-o", str(out / f"{name}.frag.qsb"),
-                    str(out / f"{name}.frag")], check=True)
+for name in ("wheel-light", "scene-light", "storm-wall"):
+    shader = out / f"{name}.frag"
+    filename = f"{name}.frag.qsb"
+    if name == "storm-wall":
+        # Qt retains shaders by URL across reloads; changed code needs a fresh URL.
+        digest = hashlib.sha256(shader.read_bytes()).hexdigest()[:12]
+        filename = storm_shader = f"{name}-{digest}.frag.qsb"
+    subprocess.run(["/usr/lib/qt6/bin/qsb", "--qt6", "-o", str(out / filename),
+                    str(shader)], check=True)
+# An open preview reloads whenever its QML changes, even mid-bake. Write the QML last,
+# complete, and remove superseded storm shaders, so a reload never runs stale code.
+for name in ("Surface.qml", "AmbientDust.qml", "HorizonStorm.qml", "shell.qml", "Render.qml"):
+    qml = (root / "scene" / name).read_text()
+    (out / name).write_text(qml.replace("storm-wall.frag.qsb", storm_shader))
+for old in out.glob("storm-wall*.frag.qsb"):
+    if old.name != storm_shader:
+        old.unlink()
