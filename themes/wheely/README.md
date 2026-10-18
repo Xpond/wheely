@@ -5,18 +5,22 @@ This is a preview and rebuildable scene, not an installable Omarchy theme yet.
 
 ![Current scene](preview.jpg)
 
-## Next session: stitched sky bands
+## Sky prints
 
-Replace the sky section with three differently colored skies stitched together:
-low bands, each spanning the full width from left to right. Keep the bold pasted
-look of the half-baked render, where a sky plate sat in the scene like a pasted
-strip, but blend each seam properly. The storm, rider, and dunes stay in front.
-The cutout already holds everything that is not sky, so the bands can be drawn
-behind it like the storm.
+The user approved the sky on 2026-10-18. Three sky photos, deep blue, rose-magenta,
+and amber from top to bottom, replace the scene's sky as equal full-width strips,
+each framed in white like prints laid edge to edge. Together they fill the sky down
+to the `horizon` row; the amber print's lower edge lies behind the dunes. `sky.py`
+cuts each strip from the middle of its photo, scaled to the scene width, and the
+bake writes them into `base.png`. The storm draws over the prints, and
+`scene/Surface.qml` redraws the frames over the storm from the `prints` rows and
+`printBorder` width in `layout.json`, so thin dust never ghosts a frame through it.
+The rider, bike, and dunes stay in front of everything. The border width is set in
+`bake.py`. The photos are native 8:1 and 4:1 panoramas, so every strip is
+downscaled to the scene width rather than cut from a soft 21:9 frame.
 
-Known issue: for up to about 30 seconds after a hot reload, a few large ambient
-wisps show as bright white puffs instead of their faint tint. Fresh launches and
-offscreen stills do not show them.
+An open preview reloads only when its QML changes, so restart it after a bake
+that changes only the sky.
 
 ## Ambient dust
 
@@ -31,12 +35,16 @@ ready for visual review; theme packaging and installation remain unfinished.
 Verified with a native still, QML lint, and frame comparisons: dust moves while
 running, holds identical frames while paused, and moves again after resuming.
 
+Known issue: for up to about 30 seconds after a hot reload, a few large ambient
+wisps show as bright white puffs instead of their faint tint. Fresh launches and
+offscreen stills do not show them.
+
 ## Horizon sandstorm
 
 The user judged the storm good on 2026-10-18. A blue-keyed plate always showed
 its cut crest, so the storm plate is generated over a dusk sky like the scene's;
-its crest fades into sky the way real dust does, and the shader only swaps that
-sky for the scene's darker one. Keep the native 6336×2688 source and scene resolution.
+its crest fades into sky the way real dust does, and the shader removes that sky so
+the sky prints show through. Keep the native 6336×2688 source and scene resolution.
 
 A dense, textured sand bank grows behind the distant dunes over four
 minutes, then continues billowing there. Its ten-minute texture-flow loop is seamless;
@@ -47,8 +55,7 @@ gently distorts `sources/storm-wall-sky-4k.jpg`, keeping its original aspect rat
 The 6336-pixel-wide source covers the native scene throughout the approach without
 enlargement. The bake fits a smooth model of the plate's own sky (`storm-sky.png`);
 the shader solves each pixel's dust coverage against it, using the dust hue measured
-from the plate, and composites the dust over a deep-blue graduated shade that
-darkens the upper sky. Tune the shade on the shader's `dusk` line.
+from the plate, and draws only the dust.
 
 The storm replaces only the sky. `scene/rider-trace.svg` and `scene/dunes.svg` are
 rough hand traces; near them `sky.py` separates the plate's sky from the rider,
@@ -73,6 +80,7 @@ shaders, so a reload during the bake cannot run stale shader code.
 - Existing rear-wheel sand grains and puffs remain a starting point for dust work.
 - Ambient airborne sand and low drifting wisps fill the wider scene.
 - A distant sandstorm slowly approaches, with moving billows behind the rider.
+- Three white-framed sky prints, blue, magenta, and amber, replace the original sky.
 
 Keep the native resolution. Use one ordinary preview window. **Never resize,
 move, float, or rearrange it.** The scene letterboxes in the preview window.
@@ -109,12 +117,13 @@ positions vary between stills.
 `sources/` contains every rebuild input; no scratch-directory inputs are required.
 `bake.py` builds wheel layers, stationary covers, the chain atlas, and compiled shaders.
 `wheels.py` aligns sprites and evens tire illumination; `chain.py` places the links;
-`sky.py` builds the sky-free cutout and the storm plate's sky model.
+`sky.py` builds the sky-free cutout, the storm plate's sky model, and the sky prints.
 `render.py` captures the assembled scene without duplicating its lighting code.
 
-The cleanup was checked by rebuilding from these inputs, comparing the decoded
-runtime assets with the accepted prototype, linting QML, compiling Python and
-shaders, and rendering the native still. The live preview was verified earlier
+The sky prints checkpoint was checked by rebuilding from these inputs, confirming the
+decoded bake outputs were identical before and after cleanup, linting QML, compiling
+Python and shaders, rendering native stills at the start and end of the storm's
+approach, and restarting the live preview. The live preview was verified earlier
 with unchanged window geometry and consistent lighting at multiple wheel angles.
 
 The old experiments and detailed review captures remain local under
@@ -138,6 +147,11 @@ previews from `themes/wheely/build`. The old scratch path is not a source direct
 - `sources/storm-wall-sky-4k.jpg`: original 6336×2688 dust-bank plate over a
   dusk sky from `google/gemini-3-pro-image` via `rb imagen`, 4K, 21:9, preserved
   unaltered. The shader removes its sky. Prompt: [sandstorm](prompts/storm-wall-sky-4k.txt).
+- `sources/sky-blue.png`, `sources/sky-magenta.png`, `sources/sky-amber.png`:
+  original sky panoramas from `google/gemini-3.1-flash-image` via `rb imagen`, 4K,
+  preserved unaltered: blue at 8:1 (11712×1408), magenta and amber at 4:1
+  (8256×2048). Prompts: [blue](prompts/sky-blue.txt), [magenta](prompts/sky-magenta.txt),
+  [amber](prompts/sky-amber.txt).
 
 Contact shadows and lighting are code-defined. Generated source assets are kept
 unaltered; new bakes reproduce the compositing and motion layers from them.

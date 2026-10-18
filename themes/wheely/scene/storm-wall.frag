@@ -28,14 +28,12 @@ float noise(vec2 p) {
 
 void main() {
     vec2 uv = vec2(qt_TexCoord0.x, qt_TexCoord0.y * extent);
-    // Deepen the pale upper sky behind the storm so its sunlit crest stands out.
-    vec4 dusk = vec4(0.10, 0.22, 0.45, 1.0) * 0.6 * (1.0 - smoothstep(0.0, 0.8, uv.y));
     float zoom = mix(1.03, 1.15, approach);
     float height = sceneAspect / max(textureAspect, 0.01) * zoom;
     float top = 0.65 - 0.66 * height - 0.05 * approach;
     vec2 st = vec2(0.5 + (uv.x - 0.5) / zoom, (uv.y - top) / height);
     if (st.y < 0.0 || st.y > 1.0) {
-        fragColor = dusk * qt_Opacity;
+        fragColor = vec4(0.0);
         return;
     }
 
@@ -55,7 +53,7 @@ void main() {
     float hh = dot(hue, hue), hb = dot(hue, back);
     float alpha = (hb * dot(hue, d) - hh * dot(back, d)) / max(hh * dot(back, back) - hb * hb, 1e-4);
     alpha = clamp((alpha - 0.04) / 0.86, 0.0, 1.0);
-    // Swap the plate's sky for the scene's darkened sky.
+    // Keep only the dust; the scene's sky shows through the rest.
     vec3 dust = clamp(plate - (1.0 - alpha) * back, vec3(0.0), vec3(alpha));
-    fragColor = (vec4(dust, alpha) + (1.0 - alpha) * dusk) * qt_Opacity;
+    fragColor = vec4(dust, alpha) * qt_Opacity;
 }

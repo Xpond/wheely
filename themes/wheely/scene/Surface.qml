@@ -37,6 +37,21 @@ Item {
 
     Image { source: "base.png"; smooth: true }
     HorizonStorm { anchors.fill: parent; horizon: root.layout.horizon || 0; running: root.particlesRunning }
+    // The sky prints' white frames, over the storm; the last print's lower edge lies past the horizon.
+    Item {
+      width: parent.width; height: root.layout.horizon || 0
+      clip: true
+      Repeater {
+        model: root.layout.prints ? root.layout.prints.length - 1 : 0
+        Rectangle {
+          required property int index
+          y: root.layout.prints[index]
+          width: parent.width; height: root.layout.prints[index + 1] - y
+          color: "transparent"
+          border.color: "white"; border.width: root.layout.printBorder
+        }
+      }
+    }
     // Everything but the sky, redrawn over the storm.
     Image {
       source: "cutout.png"

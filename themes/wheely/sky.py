@@ -1,4 +1,5 @@
-"""Separate sky from everything else, in the scene plate and in the storm plate."""
+"""Separate sky from everything else, in the scene plate and in the storm plate,
+and build the framed sky prints that replace the scene's sky."""
 import subprocess
 
 import numpy as np
@@ -95,6 +96,28 @@ def cutout(scene, base, layout):
     rgba = np.dstack([color, alpha])[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
     # The storm ends a few rows inside the redrawn dunes, so none shows under their edge.
     return rgba, [int(xs.min()), int(ys.min())], 2 * (low - 3)
+
+
+def photo(path, width):
+    """A photo scaled to the scene's width, as RGB."""
+    raw = subprocess.check_output(["magick", str(path), "-resize", f"{width}x", "-depth", "8", "rgb:-"])
+    return np.frombuffer(raw, np.uint8).reshape(-1, width, 3).astype(np.float32) / 255
+
+
+def prints(photos, rows, border):
+    """Equal full-width strips cut from the middle of each photo, each framed in white like a
+    print, and the prints' edge rows.
+
+    Together they fill the sky; the last print's lower border lies just past it, behind the dunes.
+    """
+    height = (rows + border) / len(photos)
+    edges = [round(i * height) for i in range(len(photos) + 1)]
+    sky = np.ones((edges[-1], photos[0].shape[1], 3), np.float32)
+    for image, top, bottom in zip(photos, edges, edges[1:]):
+        inner = bottom - top - 2 * border
+        first = (len(image) - inner) // 2
+        sky[top + border:bottom - border, border:-border] = image[first:first + inner, border:-border]
+    return sky[:rows], edges
 
 
 def storm_sky(storm):

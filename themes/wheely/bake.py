@@ -10,7 +10,7 @@ import numpy as np
 
 from wheels import load, prepare, save
 from chain import build_chain
-from sky import cutout, storm_sky
+from sky import cutout, photo, prints, storm_sky
 
 root = Path(__file__).resolve().parent
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "build"
@@ -81,11 +81,15 @@ for name, center, radius in (("front", (3146.5, 1763.5), 322), ("rear", (4338, 2
     if name == "rear":
         layout["wheels"][name]["contactY"] = 2588
 
-save(out / "base.png", base)
-
 # The storm replaces only the sky; everything else is redrawn over it.
 rgba, layout["cutout"], layout["horizon"] = cutout(root / "scene", base, layout)
 save(out / "cutout.png", rgba)
+# Three sky photos replace the plate's sky as full-width, white-framed prints. The scene
+# redraws the frames over the storm, so its thin dust never shows a frame through it.
+skies = [photo(sources / f"sky-{name}.png", base.shape[1]) for name in ("blue", "magenta", "amber")]
+layout["printBorder"] = 18
+base[:layout["horizon"], :, :3], layout["prints"] = prints(skies, layout["horizon"], layout["printBorder"])
+save(out / "base.png", base)
 layout["chain"] = build_chain(root, out, scene)
 (out / "layout.json").write_text(json.dumps(layout, indent=1) + "\n")
 shutil.copy2(sources / "storm-wall-sky-4k.jpg", out / "storm-wall-sky-4k.jpg")
