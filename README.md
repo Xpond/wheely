@@ -89,7 +89,8 @@ Everything else stays in your home directory.
 Because the package owns them, `omarchy update` overwrites them. The hook then
 reruns `install.sh`, which merges the patches onto the new version; a conflict
 leaves the shipped file as it is and is reported, on the desktop too when
-`notify-send` is available.
+`notify-send` is available. The lock screen's two files are patched together or
+not at all, so a conflict in either leaves Omarchy's own lock screen working.
 
 ## License
 
