@@ -45,9 +45,12 @@ Item {
     xVector: PointDirection { x: 2.8; y: 0 }
     yVector: PointDirection { x: 0; y: 0.3 }
   }
+  // Rotation also keeps glints on scaled quads; point sprites ignore the scene's scale.
+  ImageParticle { system: air; groups: ["glint"]; source: "sand-grain.svg"; rotationVariation: 180 }
 
   // Pre-roll fills the air immediately; emission also extends beyond the left edge.
   Emitter {
+    id: distantGrains
     system: air; group: "distant"; enabled: root.painted
     x: -0.15 * root.width; y: 0.10 * root.height
     width: 1.15 * root.width; height: 0.66 * root.height
@@ -56,6 +59,7 @@ Item {
     velocity: PointDirection { x: 24; xVariation: 18; y: -5; yVariation: 10 }
   }
   Emitter {
+    id: nearGrains
     system: air; group: "near"; enabled: root.painted
     x: -0.2 * root.width; y: 0.42 * root.height
     width: 1.2 * root.width; height: 0.58 * root.height
@@ -70,5 +74,18 @@ Item {
     emitRate: 1; lifeSpan: 22000; lifeSpanVariation: 5000; startTime: 27000
     size: 440; endSize: 700; sizeVariation: 160
     velocity: PointDirection { x: 65; xVariation: 25; y: -8; yVariation: 8 }
+  }
+  // Half as many untinted grains ride with each grain layer and sparkle in the low sun.
+  Repeater {
+    model: [distantGrains, nearGrains]
+    Emitter {
+      required property Emitter modelData
+      system: air; group: "glint"; enabled: root.painted
+      x: modelData.x; y: modelData.y; width: modelData.width; height: modelData.height
+      emitRate: modelData.emitRate / 2; startTime: modelData.startTime
+      lifeSpan: modelData.lifeSpan; lifeSpanVariation: modelData.lifeSpanVariation
+      size: modelData.size; sizeVariation: modelData.sizeVariation
+      velocity: modelData.velocity
+    }
   }
 }

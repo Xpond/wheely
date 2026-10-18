@@ -40,6 +40,11 @@ Emitting, pre-roll included, waits for the window's first three drawn frames. Qt
 has drawn, so a hot reload's pre-roll otherwise showed as bright white puffs for ~15 s.
 Checked on hot reload, fresh launch, and offscreen stills.
 
+The user liked how those white grains sparkled and approved untinted glints on
+2026-10-18: they ride with the distant and near grains at half their rates, mirroring
+their area and motion. The glint painter needs a rotation; without one Qt draws point
+sprites, which ignore the scene's downscale and show as large soft blobs.
+
 ## Horizon sandstorm
 
 The user judged the storm good on 2026-10-18. A blue-keyed plate always showed
@@ -80,7 +85,7 @@ shaders, so a reload during the bake cannot run stale shader code.
 - Pronounced warm sunset lighting across the scene, with cooler foreground sand.
   Wheel lighting stays fixed to the upper-left light source while the tires turn.
 - Existing rear-wheel sand grains and puffs remain a starting point for dust work.
-- Ambient airborne sand and low drifting wisps fill the wider scene.
+- Ambient airborne sand, sparkling glints, and low drifting wisps fill the wider scene.
 - A distant sandstorm slowly approaches, with moving billows behind the rider.
 - Three white-framed sky prints, blue, magenta, and amber, replace the original sky.
 
