@@ -53,6 +53,10 @@ it on stderr *and* via `notify-send`, and exits non-zero so the hook logs
 `Hook failed`. It never writes conflict markers into a QML file — that would
 break the entire shell, which is far worse than losing the patch.
 
+The lock screen's `LockView.qml` and `Service.qml` only load as a pair (our
+`Service.qml` sets properties only our `LockView.qml` has), so when either is
+left untouched, the other is held back too.
+
 `revert.sh` writes stock back only over files that are ours, and only bytes
 matching pacman's checksum: `orig/` when it matches, otherwise the file from the
 cached package. Anything else stays in place and produces an error. See the
