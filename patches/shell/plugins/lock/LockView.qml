@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import QtQuick.Effects
 import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: root
@@ -40,7 +41,7 @@ Item {
   readonly property bool showPasswordCursor: inputEnabled && !authenticatingPassword && failureMessage.length === 0
   readonly property bool errorState: failureMessage.length > 0
   // The design's own light edges the field, white for designs without one.
-  readonly property color edgeColor: errorState ? Color.lock.borderError : scene.item && scene.item.accent || "white"
+  readonly property color edgeColor: errorState ? Commons.Color.lock.borderError : scene.item && scene.item.accent || "white"
   // Once the password is accepted the field clears quickly, ahead of the design's exit.
   property real fieldOpacity: driving ? 0 : 1
   Behavior on fieldOpacity { NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
@@ -106,7 +107,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    color: Color.background
+    color: Commons.Color.background
 
     // A design that fails to load leaves this plain background, and the field still unlocks.
     Loader {
@@ -202,8 +203,8 @@ Item {
         passwordCharacter: "\u25CF"
         passwordMaskDelay: 0
         color: "white"
-        selectionColor: Color.lock.selection
-        selectedTextColor: Color.lock.text
+        selectionColor: Commons.Color.lock.selection
+        selectedTextColor: Commons.Color.lock.text
         font.family: Style.font.family
         font.pixelSize: text.length > 0 ? Math.max(1, Math.floor(root.passwordDotFontSize * root.passwordDotScale)) : root.fieldFontSize
         font.letterSpacing: text.length > 0 ? root.passwordDotLetterSpacing * root.passwordDotScale : 0
@@ -242,7 +243,7 @@ Item {
         anchors.fill: passwordInput
         text: root.authenticatingPassword || root.driving ? "Checking…" : (root.failureMessage.length > 0 ? root.failureMessage : root.placeholderText)
         visible: passwordInput.text.length === 0
-        color: root.authenticatingPassword || root.driving ? "white" : (root.failureMessage.length > 0 ? Color.lock.textError : Qt.rgba(1, 1, 1, 0.62))
+        color: root.authenticatingPassword || root.driving ? "white" : (root.failureMessage.length > 0 ? Commons.Color.lock.textError : Qt.rgba(1, 1, 1, 0.62))
         font.family: Style.font.family
         font.pixelSize: root.fieldFontSize
         horizontalAlignment: Text.AlignHCenter
