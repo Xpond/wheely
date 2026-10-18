@@ -32,6 +32,20 @@ def circle(x, y):
     return -d / 2, -e / 2, np.sqrt((d * d + e * e) / 4 - f)
 
 
+def waves(angle):
+    """Cosine and sine of the first six angular harmonics, on a new last axis."""
+    return np.stack([f(k * angle) for k in range(1, 7) for f in (np.cos, np.sin)], -1)
+
+
+def contour(theta, radius, keep):
+    """A traced edge's mean radius and first six harmonics, refit without stray angles."""
+    basis = np.c_[np.ones_like(theta), waves(theta)]
+    for _ in range(3):
+        fit = np.linalg.lstsq(basis[keep], radius[keep], rcond=None)[0]
+        keep = keep & (np.abs(radius - basis @ fit) < 1.5)
+    return fit
+
+
 def even_tire_light(sprite, inner):
     # Broad light/contrast patches rotating around a centered tire look like wobble.
     # Remove slow angular variation only; tread blocks and fine texture stay sharp.
@@ -41,8 +55,7 @@ def even_tire_light(sprite, inner):
     polar = sample(sprite, center + radii[:, None] * np.cos(theta),
                    center + radii[:, None] * np.sin(theta))
     light, weight = polar[..., :3].mean(-1), polar[..., 3]
-    basis = np.stack([np.ones_like(theta)] + [f(k * theta)
-                     for k in range(1, 7) for f in (np.cos, np.sin)], 1)
+    basis = np.c_[np.ones_like(theta), waves(theta)]
     level, spread, mean = light.copy(), np.ones_like(light), light.mean(1)
     for i, w in enumerate(weight):
         if w.sum() < 40:
@@ -59,7 +72,8 @@ def even_tire_light(sprite, inner):
     original = sprite[..., :3].mean(-1)
     corrected = mean[ri] + (original - level[ri, ai]) * spread[ri, ai]
     fade = np.clip((radius - inner) / 4, 0, 1)
-    gain = np.clip(corrected / np.maximum(original, 0.01), 0.5, 1.5)
+    # The rim-side sidewall is lit about 3.5x brighter on one side; allow enough gain to even it.
+    gain = np.clip(corrected / np.maximum(original, 0.01), 0.25, 4)
     sprite[..., :3] *= (1 + (gain - 1) * fade)[..., None]
 
 
@@ -87,18 +101,7 @@ def prepare(sheet, matte_sheet, name, radius, destination):
         residual = np.hypot(hx + inner * np.cos(theta) - rx, hy + inner * np.sin(theta) - ry) - rr
         valid = gaps.any(0) & (np.abs(residual) < 3)
     # Correct only broad tire-outline deviations; retain the individual tread blocks.
-    basis = np.stack([f(k * theta) for k in range(1, 7) for f in (np.cos, np.sin)], 1)
-    harmonics = np.linalg.lstsq(basis, outer - outer.mean(), rcond=None)[0]
-    size = 2 * (radius + 18)
-    y, x = (np.mgrid[:size, :size].astype(np.float32) + 0.5 - size / 2) * tr / radius
-    dist, angle = np.hypot(x, y), np.arctan2(y, x)
-    # Fade from the bearing center to the rim center, then the tread's measured outline.
-    centers = [np.interp(dist, [0, 0.25 * tr, rr, tr], [h, h, r, h])
-               for h, r in ((hx, rx), (hy, ry))]
-    correction = sum(v * f(k * angle) for v, (k, f) in zip(
-        harmonics, [(k, f) for k in range(1, 7) for f in (np.cos, np.sin)]))
-    fade = np.clip((dist - rr) / (tr - rr), 0, 1)
-    factor = 1 + correction * fade / tr
+    harmonics = np.linalg.lstsq(waves(theta), outer - outer.mean(), rcond=None)[0]
     # Take only the new rim finish; keep the accepted tire, spokes, hub, and alpha.
     matte = matte_sheet[:, :side] if name == "front" else matte_sheet[:, side:]
     rim_distance = np.hypot(xx - rx, yy - ry)
@@ -106,12 +109,31 @@ def prepare(sheet, matte_sheet, name, radius, destination):
               * np.clip((rr + 54 - rim_distance) / 5, 0, 1))[..., None]
     source = source.copy()
     source[..., :3] = source[..., :3] * (1 - finish) + matte[..., :3] * finish
+    # Trace both rim edges from the rim center: where the spoke gaps end, and the dark seam
+    # where the tire begins. Elliptical edges would visibly pulse as the wheel turns.
+    band = np.arange(rr - 10, rr + 50, 0.25)
+    ring = sample(source, rx + band[:, None] * np.cos(theta), ry + band[:, None] * np.sin(theta))
+    edge = band[len(band) - 1 - np.argmax((ring[..., 3] < 0.5)[::-1], axis=0)]
+    seam = band[np.argmin(np.where(band[:, None] > rr + 30, ring[..., :3].mean(-1), 1), axis=0)]
+    rim = contour(theta, edge, (ring[band < rr - 4, :, 3] < 0.25).all(0))
+    seam = contour(theta, seam, np.ones_like(theta, bool))
+    size = 2 * (radius + 18)
+    y, x = (np.mgrid[:size, :size].astype(np.float32) + 0.5 - size / 2) * tr / radius
+    dist, angle = np.hypot(x, y), np.arctan2(y, x)
+    # Map the bearing, both rim edges, and the tread outline onto concentric circles.
+    knots = [0, 0.25 * tr, rim[0], seam[0], tr]
+    centers = [np.interp(dist, knots, [h, h, r, r, h]) for h, r in ((hx, rx), (hy, ry))]
+    wave = waves(angle)
+    shift = sum(np.interp(dist, knots, hat) * (wave @ fit)
+                for hat, fit in zip(np.eye(5)[2:], (rim[1:], seam[1:], harmonics)))
+    factor = 1 + shift / dist
     premultiplied = source.copy()
     premultiplied[..., :3] *= source[..., 3:]
     sprite = sample(premultiplied, centers[0] + x * factor, centers[1] + y * factor)
     sprite[..., :3] /= np.maximum(sprite[..., 3:], 1e-6)
     sprite[sprite[..., 3] < 0.01] = 0
-    even_tire_light(sprite, max((rr + 54) * radius / tr, 0.8 * radius))
+    # Start at the rim: uneven light on it or the sidewall beside it rotates as a bright arc.
+    even_tire_light(sprite, rim[0] * radius / tr + 1)
     save(destination, sprite)
     print(f"{name}: source hub {hx:.2f},{hy:.2f}; rim {rx:.2f},{ry:.2f}; "
           f"tread r={tr:.2f}; output {size}px, radius {radius}px")

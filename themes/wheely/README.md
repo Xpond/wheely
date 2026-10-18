@@ -70,8 +70,9 @@ shaders, so a reload during the bake cannot run stale shader code.
 
 ## Current checkpoint
 
-- Separate front/rear wheels with concentric hubs and rims, matte rim finishes,
-  and even tire shading to avoid rotating white patches that look like wobble.
+- Separate front/rear wheels with concentric hubs, round traced rim edges, matte rim
+  finishes, and shading evened from the rim's inner edge outward, so no rotating
+  white patch looks like wobble.
 - Animated drive chain, with links timed to the rear wheel and masked behind
   the boot and swingarm. The user marked this done.
 - A stronger stationary contact shadow beneath the rear tire, accepted for now.
@@ -116,7 +117,7 @@ positions vary between stills.
 `scene/` owns the QML, lighting and storm shaders, dust textures, traces, and contact shadow.
 `sources/` contains every rebuild input; no scratch-directory inputs are required.
 `bake.py` builds wheel layers, stationary covers, the chain atlas, and compiled shaders.
-`wheels.py` aligns sprites and evens tire illumination; `chain.py` places the links;
+`wheels.py` aligns and rounds sprites and evens their shading; `chain.py` places the links;
 `sky.py` builds the sky-free cutout, the storm plate's sky model, and the sky prints.
 `render.py` captures the assembled scene without duplicating its lighting code.
 
