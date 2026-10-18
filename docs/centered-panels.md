@@ -385,7 +385,7 @@ and look at it.
 
 | Knob | Value | Effect |
 |---|---|---|
-| `panelScrimColor` | `Color.menu.scrim` | the one backdrop, behind panels, wheel, browser and clipboard alike |
+| `panelScrimColor` | `Commons.Color.menu.scrim` | the one backdrop, behind panels, wheel, browser and clipboard alike |
 | `panelScrimHoldMs` | `150` | **must stay >= `closeFadeDuration`** or the backdrop drops out early |
 
 Installed blur strength comes from `config/hyprland.lua` (`size 4, passes 2`);

@@ -117,7 +117,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   assert.deepEqual({ ...parseShell(panelsFile.raw) }, { "menu.scrim-alpha": "0.5", "wheely.panels": "native" })
   pn.panelsCentered = false; pn.edit({ setting: "panels" })
   assert.equal(parseShell(panelsFile.raw)["wheely.panels"], "centered")
-  const panelRule = 'Color.shellValues["wheely.panels"] !== "native"'
+  const panelRule = 'Commons.Color.shellValues["wheely.panels"] !== "native"'
   const keyboardPanel = read("patches/shell/Ui/KeyboardPanel.qml")
   assert.ok(wheelSource.includes(panelRule) && keyboardPanel.includes(panelRule), "the panels read another key than the wheel writes")
 

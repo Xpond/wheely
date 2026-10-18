@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtMultimedia
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Rectangle {
@@ -96,7 +97,7 @@ Rectangle {
     id: controls
     anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
     height: transport.implicitHeight + Style.spacing.sm * 2
-    color: Color.menu.background
+    color: Commons.Color.menu.background
 
     RowLayout {
       id: transport
@@ -106,7 +107,7 @@ Rectangle {
       Button {
         iconText: player.playing ? "󰏤" : "󰐊"
         tooltipText: player.playing ? "Pause" : "Play"
-        foreground: Color.menu.text
+        foreground: Commons.Color.menu.text
         enabled: root.ready
         opacity: enabled ? 1 : 0.4
         onClicked: root.toggle()
@@ -114,7 +115,7 @@ Rectangle {
 
       Text {
         text: root.clock(seek.dragging ? seek.liveValue : player.position) + " / " + root.clock(player.duration)
-        color: Color.menu.text
+        color: Commons.Color.menu.text
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.caption
       }
@@ -129,16 +130,16 @@ Rectangle {
         integer: true
         enabled: root.ready && player.seekable
         opacity: enabled ? 1 : 0.4
-        trackColor: Util.alpha(Color.menu.text, 0.18)
-        fillColor: Color.accent
-        knobColor: Color.menu.text
+        trackColor: Util.alpha(Commons.Color.menu.text, 0.18)
+        fillColor: Commons.Color.accent
+        knobColor: Commons.Color.menu.text
         onReleased: function(value) { player.position = Math.round(value) }
       }
 
       Button {
         iconText: root.muted || audio.volume === 0 ? "󰝟" : "󰕾"
         tooltipText: root.muted ? "Unmute" : "Mute"
-        foreground: Color.menu.text
+        foreground: Commons.Color.menu.text
         enabled: player.hasAudio
         opacity: enabled ? 1 : 0.4
         onClicked: root.muted = !root.muted
@@ -150,9 +151,9 @@ Rectangle {
         step: 0.05
         enabled: player.hasAudio
         opacity: enabled && !root.muted ? 1 : 0.4
-        trackColor: Util.alpha(Color.menu.text, 0.18)
-        fillColor: Color.accent
-        knobColor: Color.menu.text
+        trackColor: Util.alpha(Commons.Color.menu.text, 0.18)
+        fillColor: Commons.Color.accent
+        knobColor: Commons.Color.menu.text
         onMoved: function(value) { audio.volume = value; root.muted = false }
       }
 
@@ -162,7 +163,7 @@ Rectangle {
         tooltipText: handoff.running ? "Opening mpv…" : "Open in mpv"
         enabled: !handoff.running
         opacity: enabled ? 1 : 0.4
-        foreground: Color.menu.text
+        foreground: Commons.Color.menu.text
         onClicked: root.openNative()
       }
     }

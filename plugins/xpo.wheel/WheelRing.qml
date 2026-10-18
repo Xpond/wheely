@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // The dial, including its discs, labels, track, and comet.
@@ -48,7 +49,7 @@ Item {
         NumberAnimation { duration: slice.targetLight > slice.light ? 70 : 260; easing.type: Easing.OutCubic }
       }
       readonly property real sweep: root.spin * 0.24 + light * (1 - root.spin * 0.85)
-      readonly property color glyphColor: Qt.tint(Color.menu.text,
+      readonly property color glyphColor: Qt.tint(Commons.Color.menu.text,
         Util.alpha(wheel.cometColor, Math.max(slice.emphasis, slice.sweep)))
       readonly property real glyphSize: Style.font.displayLarge * wheel.itemSize / wheel.baseItem
 
@@ -122,7 +123,7 @@ Item {
         x: parent.width / 2 + reach * Math.cos(parent.angle) - width / 2
         y: parent.height / 2 + reach * Math.sin(parent.angle) - height / 2
         text: modelData.label
-        color: Qt.tint(Color.menu.text, Util.alpha(Color.accent, slice.emphasis))
+        color: Qt.tint(Commons.Color.menu.text, Util.alpha(Commons.Color.accent, slice.emphasis))
         opacity: 0.6 + 0.4 * slice.emphasis
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.caption

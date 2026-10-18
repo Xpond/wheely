@@ -79,7 +79,7 @@ PanelWindow {
   }
 
   // The wheel's Centered panels setting; off, a panel opens beside its widget with no backdrop.
-  readonly property bool centered: Color.shellValues["wheely.panels"] !== "native"
+  readonly property bool centered: Commons.Color.shellValues["wheely.panels"] !== "native"
 
   // Count mapped panel surfaces for the shared bar scrim.
   property bool surfaceCounted: false

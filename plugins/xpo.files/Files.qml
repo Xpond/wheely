@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import Qt.labs.folderlistmodel
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "FilesIndex.js" as FilesIndex
 import "FilesKeys.js" as FilesKeys
@@ -85,9 +86,9 @@ Item {
   }
   readonly property var crumbs: FilesIndex.crumbs(root.listedDir, root.home)
 
-  readonly property color edge: Util.alpha(Color.menu.text, 0.13)
-  readonly property color hoverFill: Util.alpha(Color.menu.text, 0.05)
-  readonly property color activeFill: Util.alpha(Color.accent, 0.14)
+  readonly property color edge: Util.alpha(Commons.Color.menu.text, 0.13)
+  readonly property color hoverFill: Util.alpha(Commons.Color.menu.text, 0.05)
+  readonly property color activeFill: Util.alpha(Commons.Color.accent, 0.14)
 
   // Size both columns in the characters they render.
   TextMetrics {
@@ -709,7 +710,7 @@ Item {
       width: Math.min(root.cardWidth, surface.width * 0.92)
       height: Math.min(Style.space(900), surface.height * 0.80)
       radius: Style.space(24)
-      color: Util.alpha(Color.menu.background, 0.94)
+      color: Util.alpha(Commons.Color.menu.background, 0.94)
       borderSpec: Border.flat(root.edge, Style.spacing.hairline)
 
       MouseArea { anchors.fill: parent; onClicked: {} }
@@ -717,7 +718,7 @@ Item {
       Item {
         id: keys
         // A window's ground, nearly solid, so the blurred backdrop barely shows through.
-        readonly property color ground: Util.alpha(Color.menu.background, 0.88)
+        readonly property color ground: Util.alpha(Commons.Color.menu.background, 0.88)
         // The window has its own border, so it takes the content without the card.
         parent: root.host ? root.host.contentItem : root.windowed ? window.contentItem : card
         anchors.fill: parent
