@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import "FilesIndex.js" as FilesIndex
 
 Item {
@@ -23,13 +24,13 @@ Item {
   component Caret: Rectangle {
     width: Style.space(2)
     height: Style.font.subtitle
-    color: Color.accent
+    color: Commons.Color.accent
     opacity: caretLit ? 0.85 : 0.0
   }
 
   component Separator: Text {
     text: "/"
-    color: Color.menu.text
+    color: Commons.Color.menu.text
     opacity: 0.22
     leftPadding: Style.spacing.sm
     rightPadding: Style.spacing.sm
@@ -67,7 +68,7 @@ Item {
                   - (facts.visible ? facts.width + trail.spacing : 0)))
             elide: Text.ElideMiddle
             text: modelData
-            color: Color.menu.text
+            color: Commons.Color.menu.text
             // Only the unfinished path segment is active during completion.
             opacity: !panel.pathMode && index === panel.crumbs.length - 1 ? 0.95 : 0.5
             font.family: Style.font.menuFamily
@@ -85,7 +86,7 @@ Item {
 
         Text {
           text: panel.typedLeaf
-          color: Color.accent
+          color: Commons.Color.accent
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.subtitle
         }
@@ -103,8 +104,8 @@ Item {
       width: field.width + Style.spacing.md * 2
       height: Style.font.subtitle + Style.spacing.sm * 2
       radius: height / 2
-      color: panel.naming ? Util.alpha(Color.accent, 0.16)
-                            : Util.alpha(Color.menu.text, 0.07)
+      color: panel.naming ? Util.alpha(Commons.Color.accent, 0.16)
+                            : Util.alpha(Commons.Color.menu.text, 0.07)
 
       // Rename has a movable caret; filtering appends at the end.
       Row {
@@ -116,7 +117,7 @@ Item {
         Text {
           anchors.verticalCenter: parent.verticalCenter
           text: panel.naming ? panel.renameTo.slice(0, panel.renameAt) : panel.filter
-          color: Color.accent
+          color: Commons.Color.accent
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.subtitle
         }
@@ -126,7 +127,7 @@ Item {
         Text {
           anchors.verticalCenter: parent.verticalCenter
           text: panel.naming ? panel.renameTo.slice(panel.renameAt) : ""
-          color: Color.accent
+          color: Commons.Color.accent
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.subtitle
         }
@@ -138,7 +139,7 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
       text: FilesIndex.countLabel(panel.rows.length, panel.listedEntries.length,
                                   panel.query, panel.showHidden, panel.order)
-      color: Color.menu.text
+      color: Commons.Color.menu.text
       opacity: 0.5
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.bodySmall
@@ -160,7 +161,7 @@ Item {
             : panel.fileNote ? panel.fileNote
             : savedFlash.running ? "saved"
             : panel.dirty ? "unsaved" : "editing"
-      color: panel.saveError ? Color.menu.text : Color.accent
+      color: panel.saveError ? Commons.Color.menu.text : Commons.Color.accent
       opacity: 0.85
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.bodySmall
@@ -178,7 +179,7 @@ Item {
         textFormat: Text.StyledText
         // No-break spaces: trailing plain ones would not count toward the width.
         text: '<font color="#98c379">+' + counts[0] + '</font>&#32;<font color="#e06c75">\u2212' + counts[1]
-              + '</font><font color="' + Util.alpha(Color.menu.text, 0.5) + '">&#160;&#160;·&#160;&#160;</font>'
+              + '</font><font color="' + Util.alpha(Commons.Color.menu.text, 0.5) + '">&#160;&#160;·&#160;&#160;</font>'
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.bodySmall
       }
@@ -188,7 +189,7 @@ Item {
         width: Math.min(implicitWidth, Math.round(panel.previewWidth * 0.6))
         elide: Text.ElideMiddle
         text: panel.settledSel ? panel.settledSel.name : ""
-        color: Color.menu.text
+        color: Commons.Color.menu.text
         opacity: 0.9
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.body
@@ -198,7 +199,7 @@ Item {
     Text {
       anchors.verticalCenter: parent.verticalCenter
       text: panel.metaLine
-      color: Color.menu.text
+      color: Commons.Color.menu.text
       opacity: 0.5
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.bodySmall

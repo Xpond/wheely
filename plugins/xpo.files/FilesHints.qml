@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: root
@@ -78,7 +79,7 @@ Item {
 
             Text {
               text: modelData[0]
-              color: root.arming ? panel.danger : modelData[2] ? Color.accent : Color.menu.text
+              color: root.arming ? panel.danger : modelData[2] ? Commons.Color.accent : Commons.Color.menu.text
               opacity: root.arming || modelData[2] ? 1.0 : 0.72
               font.family: Style.font.menuFamily
               font.pixelSize: Style.font.caption
@@ -86,7 +87,7 @@ Item {
 
             Text {
               text: modelData[1]
-              color: root.arming ? panel.danger : modelData[2] ? Color.accent : Color.menu.text
+              color: root.arming ? panel.danger : modelData[2] ? Commons.Color.accent : Commons.Color.menu.text
               opacity: root.arming || modelData[2] ? 0.9 : 0.36
               font.family: Style.font.menuFamily
               font.pixelSize: Style.font.caption

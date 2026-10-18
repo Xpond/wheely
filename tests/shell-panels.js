@@ -78,7 +78,7 @@ console.log("ok: the wheel replaces an open panel instead of stacking above it")
 
 // The bar owns the shared backdrop so panel handoffs preserve blur.
 for (const f of ["plugins/xpo.wheel/Wheel.qml", "plugins/xpo.files/Files.qml"]) {
-  assert.doesNotMatch(read(f), /color:\s*Color\.menu\.scrim/, f + " paints its own scrim")
+  assert.doesNotMatch(read(f), /color:\s*(?:Commons\.)?Color\.menu\.scrim/, f + " paints its own scrim")
   assert.match(read(f), /onOpenedChanged:[\s\S]*?panelSurfaceVisible\(root\.opened\)/,
     f + " does not drive the bar scrim from its open state")
 }

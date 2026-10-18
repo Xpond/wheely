@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "MenuIndex.js" as MenuIndex
 
@@ -78,7 +79,7 @@ Item {
             id: title
             anchors.verticalCenter: parent.verticalCenter
             text: "Wheely manual"
-            color: Color.menu.text
+            color: Commons.Color.menu.text
             font.family: Style.font.menuFamily
             font.pixelSize: Style.fontPx(1.333)
             font.bold: true
@@ -92,13 +93,13 @@ Item {
             height: sheet.wheel.searchHeight
             radius: height / 2
             color: sheet.wheel.surfaceFill
-            borderSpec: Border.flat(sheet.term ? Color.accent : sheet.wheel.surfaceEdge, Style.spacing.hairline)
+            borderSpec: Border.flat(sheet.term ? Commons.Color.accent : sheet.wheel.surfaceEdge, Style.spacing.hairline)
             Text {
               anchors.centerIn: parent
               text: "type to filter"
               visible: !sheet.term
               opacity: 0.45
-              color: Color.menu.text
+              color: Commons.Color.menu.text
               font.family: Style.font.menuFamily
               font.pixelSize: Style.font.subtitle
             }
@@ -109,7 +110,7 @@ Item {
             anchors.right: parent.right
             text: (sheet.wheel.windowed ? "" : "ctrl+t pin  ·  ") + "esc back"
             opacity: 0.5
-            color: Color.menu.text
+            color: Commons.Color.menu.text
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.body
           }
@@ -134,7 +135,7 @@ Item {
                   width: sheet.columnWidth
                   height: body.height + sheet.pad * 2
                   radius: Style.space(18)
-                  color: Util.alpha(Color.menu.text, 0.03)
+                  color: Util.alpha(Commons.Color.menu.text, 0.03)
                   borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
 
                   Column {
@@ -147,7 +148,7 @@ Item {
                       bottomPadding: Style.spacing.sm
                       text: section.modelData.name.toUpperCase()
                       opacity: section.modelData.rows.some(sheet.lit) ? 0.6 : 0.2
-                      color: Color.menu.text
+                      color: Commons.Color.menu.text
                       font.family: Style.font.menuFamily
                       font.pixelSize: Style.font.body
                       font.letterSpacing: 1.5
@@ -193,7 +194,7 @@ Item {
                                   visible: !!combo.modelData.plain
                                   anchors.verticalCenter: parent.verticalCenter
                                   text: combo.modelData.plain
-                                  color: Color.menu.text
+                                  color: Commons.Color.menu.text
                                   font.family: Style.font.menuFamily
                                   font.pixelSize: sheet.keySize
                                 }
@@ -204,13 +205,13 @@ Item {
                                     width: Math.max(sheet.capHeight, cap.implicitWidth + Style.spacing.sm * 2)
                                     height: sheet.capHeight
                                     radius: Style.spacing.xs * 2
-                                    color: Util.alpha(Color.menu.text, 0.06)
+                                    color: Util.alpha(Commons.Color.menu.text, 0.06)
                                     borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
                                     Text {
                                       id: cap
                                       anchors.centerIn: parent
                                       text: parent.modelData
-                                      color: Color.menu.text
+                                      color: Commons.Color.menu.text
                                       font.family: Style.font.menuFamily
                                       font.pixelSize: sheet.keySize
                                     }
@@ -227,7 +228,7 @@ Item {
                             width: parent.width - x
                             text: entry.modelData.label
                             wrapMode: Text.Wrap
-                            color: Color.menu.text
+                            color: Commons.Color.menu.text
                             font.family: Style.font.menuFamily
                             font.pixelSize: sheet.textSize
                           }

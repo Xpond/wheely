@@ -92,7 +92,7 @@ Item {
   property int tooltipRequest: 0
   property var activePopout: null
   // One wash behind every open shell surface.
-  property color panelScrimColor: Color.menu.scrim
+  property color panelScrimColor: Commons.Color.menu.scrim
   // Keep at least as long as KeyboardPanel.closeFadeDuration.
   property int panelScrimHoldMs: 150
   // Count mapped surfaces so the scrim does not arrive before their cards.

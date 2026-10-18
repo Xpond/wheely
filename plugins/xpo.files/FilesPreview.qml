@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import "FilesIndex.js" as FilesIndex
 
 // Preview and edit the selected entry through one shared scroller.
@@ -179,7 +180,7 @@ Item {
           required property string modelData
           required property int index
           text: modelData
-          color: Color.menu.text
+          color: Commons.Color.menu.text
           opacity: 0.92
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.subtitle
@@ -191,7 +192,7 @@ Item {
           Text {
             x: glyphWidth.advanceWidth
             text: panel.dirMarks[column.index] || ""
-            color: Color.accent
+            color: Commons.Color.accent
             font: column.font
             renderType: Text.NativeRendering
             lineHeightMode: Text.FixedHeight
@@ -212,7 +213,7 @@ Item {
         visible: root.lineNumbers.length > 0
         text: root.lineNumbers
         horizontalAlignment: Text.AlignRight
-        color: Color.menu.text
+        color: Commons.Color.menu.text
         opacity: 0.32
         font.family: Style.font.menuFamily
         // Match the gutter rhythm to editable text or fixed-height preview code.
@@ -231,10 +232,10 @@ Item {
       TextEdit {
         id: editor
         visible: panel.editing
-        color: Color.menu.text
+        color: Commons.Color.menu.text
         opacity: 0.92
-        selectionColor: Util.alpha(Color.accent, 0.35)
-        selectedTextColor: Color.menu.text
+        selectionColor: Util.alpha(Commons.Color.accent, 0.35)
+        selectedTextColor: Commons.Color.menu.text
         persistentSelection: true
         textFormat: TextEdit.PlainText
         font.family: Style.font.menuFamily
@@ -252,7 +253,7 @@ Item {
         text: panel.showsMarkdown ? panel.previewBody : ""
         wrapMode: Text.Wrap
         textFormat: Text.MarkdownText
-        color: Color.menu.text
+        color: Commons.Color.menu.text
         opacity: 0.92
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.subtitle
@@ -263,7 +264,7 @@ Item {
         id: rendered
         visible: !panel.editing && !panel.showsMarkdown
         text: panel.showsMarkdown ? "" : panel.previewBody
-        color: Color.menu.text
+        color: Commons.Color.menu.text
         opacity: 0.92
         textFormat: panel.showsCode ? Text.StyledText : Text.PlainText
         font.family: Style.font.menuFamily
@@ -286,7 +287,7 @@ Item {
     visible: scroller.visible && scroller.contentHeight > scroller.height + 1
     width: Style.space(2)
     radius: width / 2
-    color: Util.alpha(Color.menu.text, 0.22)
+    color: Util.alpha(Commons.Color.menu.text, 0.22)
     height: Math.max(Style.space(24),
                      scroller.height * scroller.height / Math.max(1, scroller.contentHeight))
     y: (scroller.contentY / Math.max(1, scroller.contentHeight - scroller.height))
@@ -318,7 +319,7 @@ Item {
     anchors.centerIn: parent
     visible: !!panel.previewNote
     text: panel.previewNote
-    color: Color.menu.text
+    color: Commons.Color.menu.text
     opacity: 0.45
     font.family: Style.font.menuFamily
     font.pixelSize: Style.font.bodySmall
