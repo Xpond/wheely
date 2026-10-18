@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "model.js" as Model
 
 // GPU paths trace the car; completed outlines are cached until another lands.
@@ -7,7 +7,7 @@ Item {
   id: car
 
   property Item environment
-  property color lineColor: Color.lock.text
+  property color lineColor: Commons.Color.lock.text
   // Fixed blue keeps comets distinct from the theme's lines and accent.
   property color glowColor: "#7fd4ff"
   property real clock: duration
