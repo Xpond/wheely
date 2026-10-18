@@ -69,13 +69,14 @@ applied=()   # patch copied in
 rebased=()   # patch re-based onto a new upstream version first
 conflicts=() # merge failed; installed file left untouched
 foreign=()   # neither stock nor ours; installed file left untouched
+held=()      # lock file whose partner was left untouched; left untouched too
 failed=()    # recording or installation failed
+ready=()     # patch due to be copied in
 
 for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
   ours="$REPO/patches/shell/$f"
   base="$REPO/patches/orig/$f"
-  written="$STATE/installed/$f"
   cmp -s "$installed" "$ours" && continue
 
   # Stock that differs from the merge base is a new upstream version to rebase onto.
@@ -96,6 +97,17 @@ for f in "${FILES[@]}"; do
   elif ! is_ours "$f" "$installed"; then
     foreign+=("$f"); continue
   fi
+  ready+=("$f")
+done
+
+for f in "${ready[@]}"; do
+  # The lock's view and service only load as a pair, so one left untouched holds back the other.
+  if [[ $f == plugins/lock/* && " ${conflicts[*]} ${foreign[*]}" == *" plugins/lock/"* ]]; then
+    held+=("$f"); continue
+  fi
+  installed="$SHELL_DIR/$f"
+  ours="$REPO/patches/shell/$f"
+  written="$STATE/installed/$f"
 
   # Record the bytes, then mark the copy pending, so an interrupted copy is still ours.
   if ! { mkdir -p "$(dirname "$written")" && cp "$ours" "$written.new" &&
@@ -114,13 +126,14 @@ done
 (( ${#applied[@]} )) && printf 'installed: %s\n' "${applied[*]}"
 (( ${#applied[@]} + ${#conflicts[@]} + ${#foreign[@]} + ${#failed[@]} )) || echo "already up to date"
 
-broken=("${conflicts[@]}" "${foreign[@]}" "${failed[@]}")
+broken=("${conflicts[@]}" "${foreign[@]}" "${held[@]}" "${failed[@]}")
 if (( ${#broken[@]} )); then
   msg=("Not patched: ${broken[*]}")
   (( ${#conflicts[@]} )) && msg+=("Merge conflicted; installed files left untouched." \
                                   "Rebase by hand: diff orig/ against shell/ for: ${conflicts[*]}")
   (( ${#foreign[@]} )) && msg+=("Files changed outside this project, left untouched: ${foreign[*]}" \
                                 "Reinstall the omarchy package to restore them, then rerun install.sh.")
+  (( ${#held[@]} )) && msg+=("Held back so the lock screen's files stay a matching pair: ${held[*]}")
   alert "${msg[@]}"
 fi
 

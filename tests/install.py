@@ -115,6 +115,27 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     (fixture.shell / relative).write_bytes(fixture.stock[relative])
     print("ok: a package update is rebased onto, and revert restores the updated stock file")
 
+    # A lock file left stock holds back its partner, even one that rebased cleanly.
+    lock = ["plugins/lock/LockView.qml", "plugins/lock/Service.qml"]
+    for conflicted, partner in [lock, lock[::-1]]:
+        update = {**fixture.stock, conflicted: fixture.stock[conflicted].replace(b"\n", b" \n"),
+                  partner: b"// upstream addition\n" + fixture.stock[partner]}
+        fixture.publish(update)
+        for relative in lock:
+            (fixture.shell / relative).write_bytes(update[relative])
+        result = fixture.run()
+        assert result.returncode == 1 and f"rebased onto new upstream: {partner}" in result.stdout, result.stderr
+        assert all(fixture.installed(relative) == update[relative] for relative in lock), partner
+        assert "Held back" in result.stderr and partner in result.stderr, result.stderr
+        assert fixture.installed("shell.qml") == fixture.patched("shell.qml")
+        assert fixture.run("revert.sh").returncode == 0
+        fixture.publish(fixture.stock)
+        for relative in lock:
+            for directory in ("orig", "shell"):
+                (fixture.repo / "patches" / directory / relative).write_bytes((source / "patches" / directory / relative).read_bytes())
+            (fixture.shell / relative).write_bytes(fixture.stock[relative])
+    print("ok: a lock file that cannot be patched holds back its partner, keeping the stock lock")
+
     relative = "plugins/bar/Bar.qml"
     edited = fixture.stock[relative] + b"// personal edit\n"
     (fixture.shell / relative).write_bytes(edited)
