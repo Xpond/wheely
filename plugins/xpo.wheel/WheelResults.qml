@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Ranked search results using the ring's visual language.
@@ -52,7 +53,7 @@ Item {
       visible: wheel.results.length === 0
       horizontalAlignment: Text.AlignHCenter
       text: wheel.emptyText
-      color: Color.menu.text
+      color: Commons.Color.menu.text
       opacity: 0.5
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.body
@@ -103,7 +104,7 @@ Item {
             visible: (!modelData.appIcon || appImage.status === Image.Error) && !modelData.iconFile
             width: Style.font.iconLarge
             text: modelData.icon
-            color: active ? Color.accent : Color.menu.text
+            color: active ? Commons.Color.accent : Commons.Color.menu.text
             font.family: modelData.iconFont || Style.font.menuFamily
             font.pixelSize: Style.font.iconLarge
           }
@@ -113,7 +114,7 @@ Item {
             width: Style.font.iconLarge
             file: modelData.iconFile || ""
             size: Style.font.iconLarge
-            tint: resultCard.active ? Color.accent : Color.menu.text
+            tint: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
           }
           // Fall back to the glyph when a themed icon fails to load.
           Image {
@@ -135,7 +136,7 @@ Item {
             width: Math.min(implicitWidth, resultRow.textBudget - trailText.width)
             elide: Text.ElideRight
             text: resultCard.editing ? wheel.editNote : modelData.label
-            color: active ? Color.accent : Color.menu.text
+            color: active ? Commons.Color.accent : Commons.Color.menu.text
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.body
           }
@@ -146,7 +147,7 @@ Item {
                             Math.max(resultRow.textBudget * 0.4,
                                      resultRow.textBudget - labelText.implicitWidth))
             text: modelData.setting ? "" : modelData.trail
-            color: Color.menu.text
+            color: Commons.Color.menu.text
             opacity: 0.45
             // Preserve the filename end of paths and the root of breadcrumbs.
             elide: modelData.path ? Text.ElideLeft : Text.ElideRight
@@ -159,7 +160,7 @@ Item {
             width: modelData.node ? implicitWidth + parent.spacing : 0
             visible: !!modelData.node
             text: "\u203a"
-            color: active ? Color.accent : Color.menu.text
+            color: active ? Commons.Color.accent : Commons.Color.menu.text
             opacity: 0.5
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.body
@@ -175,14 +176,14 @@ Item {
           width: valueText.implicitWidth + Style.spacing.controlPaddingX * 2
           height: valueText.implicitHeight + Style.spacing.xs * 2
           radius: height / 2
-          color: Style.controlFill(resultCard.active, false, Color.menu.text, Color.accent)
-          borderSpec: Border.controlSpec(resultCard.active ? "focus" : "normal", Color.menu.text, Color.accent)
+          color: Style.controlFill(resultCard.active, false, Commons.Color.menu.text, Commons.Color.accent)
+          borderSpec: Border.controlSpec(resultCard.active ? "focus" : "normal", Commons.Color.menu.text, Commons.Color.accent)
 
           Text {
             id: valueText
             anchors.centerIn: parent
             text: modelData.trail
-            color: resultCard.active ? Color.accent : Color.menu.text
+            color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.caption
           }
@@ -197,8 +198,8 @@ Item {
           enabled: false
           width: Style.space(72)
           bar: QtObject {
-            readonly property color foreground: resultCard.active ? Color.accent : Color.menu.text
-            readonly property color background: Color.menu.background
+            readonly property color foreground: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
+            readonly property color background: Commons.Color.menu.background
           }
           maximum: 100
           value: wheel.backdrop
@@ -211,7 +212,7 @@ Item {
           width: Math.min(implicitWidth, resultRow.width - 2 * (Style.font.iconLarge + resultRow.spacing))
           elide: Text.ElideLeft
           text: modelData.label
-          color: active ? Color.accent : Color.menu.text
+          color: active ? Commons.Color.accent : Commons.Color.menu.text
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.body
         }
@@ -220,7 +221,7 @@ Item {
           anchors.right: resultRow.right
           visible: !!modelData.copy
           text: "󰆏"
-          color: active ? Color.accent : Color.menu.text
+          color: active ? Commons.Color.accent : Commons.Color.menu.text
           opacity: 0.5
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.iconLarge
@@ -235,7 +236,7 @@ Item {
     anchors.right: parent.right
     width: Style.space(2)
     radius: width / 2
-    color: Util.alpha(Color.menu.text, 0.18)
+    color: Util.alpha(Commons.Color.menu.text, 0.18)
     height: resultList.height * wheel.resultCap / wheel.results.length
     y: wheel.resultTop / span * (resultList.height - height)
   }
