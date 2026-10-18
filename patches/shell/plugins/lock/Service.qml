@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Services.Pam
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 
 // Keep the renderer and its driver caches out of the long-lived desktop shell.
 Loader {
@@ -336,7 +337,7 @@ Item {
 
     WlSessionLockSurface {
       id: lockSurface
-      color: Color.background
+      color: Commons.Color.background
 
       LockView {
         id: lockView
@@ -475,6 +476,8 @@ Item {
 
   Process {
     id: strandedLockCheckProc
+    // Not -stranded, which waits out every other Quickshell: the desktop shell always runs
+    // beside this worker but never locks, and quickshell -n rules out a second worker.
     command: ["bash", "-c", "omarchy-hyprland-session-locked"]
     onExited: function(exitCode) {
       // No output to read the lock off yet.
