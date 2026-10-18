@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import QtQuick.Effects
 import Qt.labs.folderlistmodel
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Calc.js" as Calc
 import "MenuIndex.js" as MenuIndex
@@ -74,14 +75,14 @@ Item {
   // The backdrop in percent as the shell draws it; while changed, the value the shell reads back next.
   property int backdropDraft: 0
   readonly property int backdrop: root.editing === "backdrop" ? root.backdropDraft
-    : Math.round(Color.menu.scrim.a * 100)
+    : Math.round(Commons.Color.menu.scrim.a * 100)
   // Folders `/` searches outside home, and folders it skips, as wheel.json keeps them.
   property var savedFolders: null
   property var savedSkipped: null
   readonly property var folders: root.savedFolders || []
   readonly property var skipped: root.savedSkipped || MenuIndex.SKIPPED
   // Off, every panel opens beside its bar widget; the shell reads [wheely] panels from shell.toml.
-  readonly property bool panelsCentered: Color.shellValues["wheely.panels"] !== "native"
+  readonly property bool panelsCentered: Commons.Color.shellValues["wheely.panels"] !== "native"
   // The manual is search rows, and Enter on one shows all of it on one sheet.
   property var manualRows: []
   property bool reading: false
@@ -278,7 +279,7 @@ Item {
   function cometAt(turns, amount) {
     function cb(v) { return Math.pow(Math.max(0, v), 1 / 3) }
     function lin(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
-    var c = Color.accent
+    var c = Commons.Color.accent
     var r = lin(c.r), g = lin(c.g), b = lin(c.b)
     var la = cb(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
     var ma = cb(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
@@ -308,7 +309,7 @@ Item {
                    enc(-0.0041960863 * lb - 0.7034186147 * mb + 1.7076147010 * sb), 1)
   }
 
-  readonly property color cometColor: root.charge <= 0 ? Color.accent
+  readonly property color cometColor: root.charge <= 0 ? Commons.Color.accent
     : root.cometAt(root.huePhase * root.charge, root.charge)
 
   // Disc illumination follows the input head and eases at both ends.
@@ -337,10 +338,10 @@ Item {
     }
   }
 
-  readonly property color surfaceFill: Util.alpha(Color.menu.background, root.windowed ? 0.6 : 0.85)
-  readonly property color surfaceEdge: Util.alpha(Color.menu.text, 0.16)
-  readonly property color selectedFill: Qt.tint(Util.alpha(Color.menu.background, 0.9),
-                                                Util.alpha(Color.accent, 0.22))
+  readonly property color surfaceFill: Util.alpha(Commons.Color.menu.background, root.windowed ? 0.6 : 0.85)
+  readonly property color surfaceEdge: Util.alpha(Commons.Color.menu.text, 0.16)
+  readonly property color selectedFill: Qt.tint(Util.alpha(Commons.Color.menu.background, 0.9),
+                                                Util.alpha(Commons.Color.accent, 0.22))
   readonly property int moveThreshold: Style.space(8)
   readonly property int fadeDuration: 130
   property real originX: -1
@@ -1102,7 +1103,7 @@ Item {
     visible: root.windowed
     title: "Search"
     // The backdrop's tint, which Hyprland blurs as it blurs the backdrop; Files brings its own ground.
-    color: guest ? guest.ground : Color.menu.scrim
+    color: guest ? guest.ground : Commons.Color.menu.scrim
     implicitWidth: Style.space(700)
     implicitHeight: Style.space(700)
     Component.onCompleted: Pinned.window = pinned
@@ -1247,7 +1248,7 @@ Item {
           // A submenu's crumb, or what the ring editor's keys do.
           text: root.editingRing ? root.ringHint : root.listing === "history" ? "esc done"
             : root.listing ? "del removes · esc done" : "‹  " + root.crumb
-          color: Color.menu.text
+          color: Commons.Color.menu.text
           opacity: root.editingRing || root.listing && !root.query || root.path.length && !root.searching ? 0.7 : 0
           Behavior on opacity { NumberAnimation { duration: root.fadeDuration } }
           font.family: Style.font.menuFamily
@@ -1264,7 +1265,7 @@ Item {
           opacity: root.reading ? 0 : 1
           color: root.surfaceFill
           // Accented while typing; a pinned field counts as searching even when empty.
-          borderSpec: Border.flat(root.query || root.listing ? Color.accent : root.surfaceEdge,
+          borderSpec: Border.flat(root.query || root.listing ? Commons.Color.accent : root.surfaceEdge,
                                   Style.spacing.hairline)
           // Out of the dial, the field casts the dial's shadow itself.
           layer.enabled: root.windowed
@@ -1284,7 +1285,7 @@ Item {
             elide: Text.ElideLeft
             visible: !!root.editing
             text: root.editValue
-            color: Color.accent
+            color: Commons.Color.accent
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.subtitle
           }
@@ -1295,7 +1296,7 @@ Item {
             text: root.listing === "folders" ? "Add a folder from /" : root.listing === "history" ? "Recent picks"
               : root.listing ? "Find a folder to skip"
               : root.editingRing ? "Add to ring" : "Search · / files · = calc"
-            color: Color.menu.text
+            color: Commons.Color.menu.text
             opacity: 0.45
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.subtitle
@@ -1314,15 +1315,15 @@ Item {
             // Hidden by opacity: an invisible item would lose the keyboard the recording needs.
             opacity: root.editing ? 0 : 1
             text: root.query
-            color: Color.menu.text
-            selectionColor: Util.alpha(Color.accent, 0.35)
-            selectedTextColor: Color.menu.text
+            color: Commons.Color.menu.text
+            selectionColor: Util.alpha(Commons.Color.accent, 0.35)
+            selectedTextColor: Commons.Color.menu.text
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.subtitle
             cursorVisible: activeFocus && text.length > 0
             cursorDelegate: Rectangle {
               width: Style.space(2)
-              color: Color.accent
+              color: Commons.Color.accent
               // TextInput does not hide a custom cursor delegate automatically.
               visible: searchInput.cursorVisible
             }
