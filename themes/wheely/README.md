@@ -74,6 +74,18 @@ The bake gives changed storm shaders a new filename so Qt reloads their code
 in the existing preview window. It writes the QML last and deletes superseded storm
 shaders, so a reload during the bake cannot run stale shader code.
 
+## Storm shade
+
+The user approved the shade on 2026-10-19. `dunes.py` regrades the dunes in the bake to
+the storm's dust hue, a little lighter and duller, with no lit crest. Near the rider,
+color tells sand from the bike; along an edge, a pixel takes its share of the change to
+the sand beside it, so no pale line remains. The far foreground takes on some of the
+shade and cools toward the viewer over about 220 px, and the edge between them blends
+over 7 rows. The photo's darker crest lip there is scaled by its own color, so it never
+turns black. The shade is static. For the darker theme, `scene/scene-light.frag`
+darkens the foreground toward the bottom edge and its corners, in linear light; the
+sand ripples and the wheel trail stay.
+
 ## Current checkpoint
 
 - Separate front/rear wheels with concentric hubs, round traced rim edges, matte rim
@@ -84,6 +96,7 @@ shaders, so a reload during the bake cannot run stale shader code.
 - A stronger stationary contact shadow beneath the rear tire, accepted for now.
 - Pronounced warm sunset lighting across the scene, with cooler foreground sand.
   Wheel lighting stays fixed to the upper-left light source while the tires turn.
+- Dunes in the storm's shade, and a foreground that darkens toward the bottom.
 - Existing rear-wheel sand grains and puffs remain a starting point for dust work.
 - Ambient airborne sand, sparkling glints, and low drifting wisps fill the wider scene.
 - A distant sandstorm slowly approaches, with moving billows behind the rider.
@@ -124,7 +137,8 @@ positions vary between stills.
 `sources/` contains every rebuild input; no scratch-directory inputs are required.
 `bake.py` builds wheel layers, stationary covers, the chain atlas, and compiled shaders.
 `wheels.py` aligns and rounds sprites and evens their shading; `chain.py` places the links;
-`sky.py` builds the sky-free cutout, the storm plate's sky model, and the sky prints.
+`sky.py` builds the sky-free cutout, the storm plate's sky model, and the sky prints;
+`dunes.py` puts the dunes in the storm's shade.
 `render.py` captures the assembled scene without duplicating its lighting code.
 
 The sky prints checkpoint was checked by rebuilding from these inputs, confirming the

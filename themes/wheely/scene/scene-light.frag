@@ -29,5 +29,9 @@ void main() {
     if (peak > 0.9) color *= (0.9 + 0.1 * (1.0 - exp(-(peak - 0.9) / 0.1))) / peak;
     float edge = length((qt_TexCoord0 - vec2(0.56, 0.48)) * vec2(0.85, 1.0));
     color *= 1.0 - 0.10 * smoothstep(0.40, 0.78, edge);
+    // The foreground falls into shade toward the bottom edge and its corners, in linear light.
+    float depth = pow(clamp((qt_TexCoord0.y - 0.729) / 0.271, 0.0, 1.0), 1.2);
+    float side = (qt_TexCoord0.x - 0.55) / 0.55;
+    color *= pow(1.0 - depth * (0.55 + 0.2 * side * side), 1.0 / 2.2);
     fragColor = vec4(clamp(color, 0.0, 1.0) * tex.a, tex.a) * qt_Opacity;
 }

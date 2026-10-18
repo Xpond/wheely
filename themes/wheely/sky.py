@@ -26,6 +26,13 @@ def flood(seed, allowed):
     return seed
 
 
+def trace(path, h, w):
+    """A rough hand trace's coverage, at half the scene's resolution."""
+    svg = subprocess.check_output(["magick", "-background", "none", "-density", "192",
+                                   str(path), "-depth", "8", "rgba:-"])
+    return np.frombuffer(svg, np.uint8).reshape(h, w, 4)[..., 3] / 255
+
+
 def cutout(scene, base, layout):
     """Everything but the sky as an RGBA crop, its origin, and the row where the storm ends.
 
@@ -33,13 +40,7 @@ def cutout(scene, base, layout):
     closer look; there the sky is separated at half resolution.
     """
     h, w = base.shape[0] // 2, base.shape[1] // 2
-
-    def trace(name):
-        svg = subprocess.check_output(["magick", "-background", "none", "-density", "192",
-                                       str(scene / name), "-depth", "8", "rgba:-"])
-        return np.frombuffer(svg, np.uint8).reshape(h, w, 4)[..., 3] / 255
-
-    skyline = np.argmax(trace("dunes.svg") > 0.5, 0)
+    skyline = np.argmax(trace(scene / "dunes.svg", h, w) > 0.5, 0)
     low = int(skyline.max()) + 4  # Below the traced skyline's lowest point, all is dune.
 
     # Everything 28 px beyond the rider trace and 40 px above the traced skyline is sky.
@@ -47,7 +48,7 @@ def cutout(scene, base, layout):
     # matching pixels connected to them; a second, closer estimate reaches the narrow
     # gaps. A seed frees the sky enclosed between the forearms. The front wheel's plate
     # holds sky copied from farther left, so the skyline continues straight across it.
-    inside = trace("rider-trace.svg")[:low] > 0.5
+    inside = trace(scene / "rider-trace.svg", h, w)[:low] > 0.5
     plate = base[:2 * low, :, :3].reshape(low, 2, w, 2, 3).mean((1, 3))
     near = inside
     for _ in range(28):

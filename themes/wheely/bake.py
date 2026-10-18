@@ -10,6 +10,7 @@ import numpy as np
 
 from wheels import load, prepare, save
 from chain import build_chain
+from dunes import shade
 from sky import cutout, photo, prints, storm_sky
 
 root = Path(__file__).resolve().parent
@@ -83,6 +84,7 @@ for name, center, radius in (("front", (3146.5, 1763.5), 322), ("rear", (4338, 2
 
 # The storm replaces only the sky; everything else is redrawn over it.
 rgba, layout["cutout"], layout["horizon"] = cutout(root / "scene", base, layout)
+shade(root / "scene", base, rgba, layout["cutout"][1])  # The dunes lie in the storm's shade.
 save(out / "cutout.png", rgba)
 # Three sky photos replace the plate's sky as full-width, white-framed prints. The scene
 # redraws the frames over the storm, so its thin dust never shows a frame through it.
