@@ -9,6 +9,17 @@ Item {
   // ImageParticle expects premultiplied color, like the rear-wheel dust.
   function tint(r, g, b, a) { return Qt.rgba(r * a, g * a, b * a, a) }
 
+  // A particle takes its tint, rotation and stretch only from a painter that has drawn; any
+  // emitted sooner, like a hot reload's pre-roll, stays opaque white for life. So emitting,
+  // pre-roll included, waits for this window's first few frames.
+  property int framesDrawn: 0
+  readonly property bool painted: framesDrawn >= 3
+  Connections {
+    target: root.Window.window
+    enabled: !root.painted
+    function onFrameSwapped() { root.framesDrawn++ }
+  }
+
   ParticleSystem { id: air; paused: !root.running }
   ImageParticle {
     system: air; groups: ["distant"]
@@ -37,7 +48,7 @@ Item {
 
   // Pre-roll fills the air immediately; emission also extends beyond the left edge.
   Emitter {
-    system: air; group: "distant"
+    system: air; group: "distant"; enabled: root.painted
     x: -0.15 * root.width; y: 0.10 * root.height
     width: 1.15 * root.width; height: 0.66 * root.height
     emitRate: 224; lifeSpan: 26000; lifeSpanVariation: 7000; startTime: 33000
@@ -45,7 +56,7 @@ Item {
     velocity: PointDirection { x: 24; xVariation: 18; y: -5; yVariation: 10 }
   }
   Emitter {
-    system: air; group: "near"
+    system: air; group: "near"; enabled: root.painted
     x: -0.2 * root.width; y: 0.42 * root.height
     width: 1.2 * root.width; height: 0.58 * root.height
     emitRate: 156; lifeSpan: 18000; lifeSpanVariation: 6000; startTime: 24000
@@ -53,7 +64,7 @@ Item {
     velocity: PointDirection { x: 85; xVariation: 40; y: -15; yVariation: 22 }
   }
   Emitter {
-    system: air; group: "wisp"
+    system: air; group: "wisp"; enabled: root.painted
     x: -0.25 * root.width; y: 0.68 * root.height
     width: 1.25 * root.width; height: 0.27 * root.height
     emitRate: 1; lifeSpan: 22000; lifeSpanVariation: 5000; startTime: 27000

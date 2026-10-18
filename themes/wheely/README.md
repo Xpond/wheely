@@ -35,9 +35,10 @@ ready for visual review; theme packaging and installation remain unfinished.
 Verified with a native still, QML lint, and frame comparisons: dust moves while
 running, holds identical frames while paused, and moves again after resuming.
 
-Known issue: for up to about 30 seconds after a hot reload, a few large ambient
-wisps show as bright white puffs instead of their faint tint. Fresh launches and
-offscreen stills do not show them.
+Emitting, pre-roll included, waits for the window's first three drawn frames. Qt's
+`ImageParticle` gives a particle its tint, rotation, and stretch only once its painter
+has drawn, so a hot reload's pre-roll otherwise showed as bright white puffs for ~15 s.
+Checked on hot reload, fresh launch, and offscreen stills.
 
 ## Horizon sandstorm
 
