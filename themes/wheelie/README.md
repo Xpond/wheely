@@ -21,8 +21,9 @@ omarchy theme set wheelie
 
 The installer rebakes the scene and copies the theme to `~/.config/omarchy/themes/wheelie`.
 The baked scene goes in `animated/`. A native still, `00-wheelie-animated.png`, is
-the theme's only background. Theme-change and post-boot hooks start the wallpaper
-controller, `scene/wallpaper.qml`. While that still is selected, the controller runs
+the theme's first background; two static night scenes follow it. Theme-change and
+post-boot hooks start the wallpaper controller, `scene/wallpaper.qml`. While that
+still is selected, the controller runs
 the live scene on every display. The scene is cropped to fill each screen and sits above
 the shell's static background and below windows. It takes no input or focus. Choosing
 another background or theme unloads it.
@@ -31,6 +32,15 @@ another background or theme unloads it.
 ~/.config/omarchy/themes/wheelie/wheelie pause
 ~/.config/omarchy/themes/wheelie/wheelie resume
 ```
+
+## Static backgrounds
+
+Darker than the live scene, each keeps a dark, quiet lower edge under the bar.
+
+| Background | Scene |
+|---|---|
+| [Night track](backgrounds/01-night-track.jpg) | A rider airborne over a floodlit motocross jump |
+| [Desert camp](backgrounds/03-desert-camp.jpg) | The bike parked by a campfire under the Milky Way |
 
 ## Sky prints
 
@@ -207,6 +217,10 @@ the old scratch path, `misc/bike/v3/out`, is not a source directory.
   preserved unaltered: blue at 8:1 (11712×1408), magenta and amber at 4:1
   (8256×2048). Prompts: [blue](prompts/sky-blue.txt), [magenta](prompts/sky-magenta.txt),
   [amber](prompts/sky-amber.txt).
+- `backgrounds/01-night-track.jpg` and `03-desert-camp.jpg`: original
+  5504×3072 outputs from `google/gemini-3-pro-image` via `rb imagen`, 4K, 16:9,
+  preserved unaltered. Prompts: [night track](prompts/01-night-track.txt),
+  [desert camp](prompts/03-desert-camp.txt).
 
 Contact shadows and lighting are code-defined. Generated source assets are kept
 unaltered; new bakes reproduce the compositing and motion layers from them.

@@ -10,6 +10,7 @@ case "${1:-help}" in
     mkdir -p "$destination/backgrounds" "$destination/hooks" "$destination/animated"
     cp "$theme"/{colors.toml,icons.theme,preview.jpg,wheelie} "$destination/"
     cp "$theme/hooks/wheelie-wallpaper" "$destination/hooks/"
+    cp "$theme"/backgrounds/* "$destination/backgrounds/"
     cp -a "$theme/build/." "$destination/animated/"
     # The poster is a still of the live scene; selecting it starts the animation.
     python3 "$theme/render.py" "$theme/build" "$destination/backgrounds/00-wheelie-animated.png"
