@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$(cat "$HOME/.local/state/omarchy/current/theme.name")" == wheelie ]]; then
+  exec "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/wheelie/wheelie" watch
+fi

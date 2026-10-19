@@ -1,9 +1,36 @@
-# Wheely desert scene — work in progress
+# Wheelie — work in progress
 
-Native **5504×3072** wallpaper scene checkpoint, 2026-10-18.
-This is a preview and rebuildable scene, not an installable Omarchy theme yet.
+A light Omarchy theme built around a live desert scene. A rider holds a wheelie
+while a sandstorm builds behind three framed sky prints. Native **5504×3072**.
 
 ![Current scene](preview.jpg)
+
+## Theme
+
+The palette in `colors.toml` comes from the scene. The base is `#FEE5D4`, the orange
+at the center left of the amber print lifted to a light peach. Text is `#1C222B`, the
+foreground sand's blue-grey darkened, at 13:1. The accent is the sand's own `#404651`.
+The terminal colors take their hues from the sky prints and dunes, deepened to 6:1;
+the bright ones read at 4.6:1. Omarchy generates the app configurations from
+`colors.toml`; icons use Yaru's orange set.
+
+```sh
+./themes/wheelie/wheelie install
+omarchy theme set wheelie
+```
+
+The installer rebakes the scene and copies the theme to `~/.config/omarchy/themes/wheelie`.
+The baked scene goes in `animated/`. A native still, `00-wheelie-animated.png`, is
+the theme's only background. Theme-change and post-boot hooks start the wallpaper
+controller, `scene/wallpaper.qml`. While that still is selected, the controller runs
+the live scene on every display. The scene is cropped to fill each screen and sits above
+the shell's static background and below windows. It takes no input or focus. Choosing
+another background or theme unloads it.
+
+```sh
+~/.config/omarchy/themes/wheelie/wheelie pause
+~/.config/omarchy/themes/wheelie/wheelie resume
+```
 
 ## Sky prints
 
@@ -31,7 +58,7 @@ populated when the preview opens. The existing rear-tire grains and puffs remain
 
 Tune density, tint, size, and motion in `scene/AmbientDust.qml`; all measurements
 use the native scene coordinates and share its sunset lighting. This pass is
-ready for visual review; theme packaging and installation remain unfinished.
+ready for visual review.
 Verified with a native still, QML lint, and frame comparisons: dust moves while
 running, holds identical frames while paused, and moves again after resuming.
 
@@ -82,7 +109,7 @@ color tells sand from the bike; along an edge, a pixel takes its share of the ch
 the sand beside it, so no pale line remains. The far foreground takes on some of the
 shade and cools toward the viewer over about 220 px, and the edge between them blends
 over 7 rows. The photo's darker crest lip there is scaled by its own color, so it never
-turns black. The shade is static. For the darker theme, `scene/scene-light.frag`
+turns black. The shade is static. `scene/scene-light.frag`
 darkens the foreground toward the bottom edge and its corners, in linear light; the
 sand ripples and the wheel trail stay.
 
@@ -110,9 +137,9 @@ move, float, or rearrange it.** The scene letterboxes in the preview window.
 From the repository root:
 
 ```sh
-python themes/wheely/bake.py
-qmllint themes/wheely/build/*.qml
-quickshell -n -p themes/wheely/build
+python themes/wheelie/bake.py
+/usr/lib/qt6/bin/qmllint themes/wheelie/build/*.qml
+quickshell -n -p themes/wheelie/build
 ```
 
 Dependencies: Python, NumPy, ImageMagick, Quickshell, and Qt's shader baker at
@@ -122,14 +149,15 @@ Edit `scene/`, then rebuild; `build/` is generated and Git-ignored.
 For a matching native still (optional final argument is wheel angle in degrees):
 
 ```sh
-python themes/wheely/render.py themes/wheely/build themes/wheely/wallpaper-4k.png
+python themes/wheelie/render.py themes/wheelie/build themes/wheelie/wallpaper-4k.png
 ```
 
 The renderer uses the same QML and shaders offscreen with OpenGL. It needs access
 to the graphics session but opens no desktop window. The still is Git-ignored.
 Particles run during capture while the wheels hold the requested angle, so dust
 positions vary between stills.
-`preview.jpg` is a small documentation image; it is not used by the scene.
+`preview.jpg` is a small documentation image and the theme picker's preview; the
+scene does not use it.
 
 ## Files and checks
 
@@ -148,9 +176,8 @@ approach, and restarting the live preview. The live preview was verified earlier
 with unchanged window geometry and consistent lighting at multiple wheel angles.
 
 The old experiments and detailed review captures remain local under
-`misc/bike/archive/v3-2026-10-17/`. The already-open legacy preview still reads
-`misc/bike/v3/out`; leave it in place until that window is closed. Start subsequent
-previews from `themes/wheely/build`. The old scratch path is not a source directory.
+`misc/bike/archive/v3-2026-10-17/`. Start previews from `themes/wheelie/build`;
+the old scratch path, `misc/bike/v3/out`, is not a source directory.
 
 ## Asset provenance
 

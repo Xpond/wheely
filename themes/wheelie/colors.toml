@@ -1,0 +1,36 @@
+# Wheelie — peach paper from the amber sky, storm-grey ink, and the sand's grey.
+# Base: the amber print, center left, lifted to a light peach; text is the sand's blue-grey, darkened.
+# Accent: the foreground sand's own grey.
+mode = "light"
+
+accent = "#404651"
+selection = "#B8BEC5"
+selection_background = "#EFC6AA"
+selection_foreground = "#0F141C"
+muted = "#64686F"
+
+background = "#FEE5D4"
+dark_background = "#F1D9C9"
+darker_background = "#E4CDBC"
+lighter_background = "#EDD4C4"
+
+foreground = "#1C222B"
+dark_foreground = "#575B61"
+light_foreground = "#33373E"
+bright_foreground = "#0F141C"
+
+red = "#A72123"
+yellow = "#725101"
+orange = "#944D02"
+green = "#1C6423"
+cyan = "#005F6E"
+blue = "#26559F"
+magenta = "#8B3677"
+brown = "#754E34"
+
+bright_red = "#BD3735"
+bright_yellow = "#876200"
+bright_green = "#317635"
+bright_cyan = "#047283"
+bright_blue = "#3867B3"
+bright_magenta = "#9F488A"

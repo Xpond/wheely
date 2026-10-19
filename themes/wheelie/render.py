@@ -11,9 +11,9 @@ env = os.environ | {
     "QT_QPA_PLATFORM": "offscreen",
     "QT_QUICK_BACKEND": "rhi",  # The default offscreen software backend cannot draw shaders.
     "QSG_RHI_BACKEND": "opengl",
-    "WHEELY_WIDTH": str(size[0]), "WHEELY_HEIGHT": str(size[1]),
-    "WHEELY_ANGLE": sys.argv[3] if len(sys.argv) > 3 else "0",
-    "WHEELY_OUTPUT": str(output),
+    "WHEELIE_WIDTH": str(size[0]), "WHEELIE_HEIGHT": str(size[1]),
+    "WHEELIE_ANGLE": sys.argv[3] if len(sys.argv) > 3 else "0",
+    "WHEELIE_OUTPUT": str(output),
 }
 subprocess.run(["quickshell", "-p", str(directory / "Render.qml")],
                env=env, check=True, timeout=60)

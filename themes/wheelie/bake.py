@@ -110,7 +110,7 @@ for name in ("wheel-light", "scene-light", "storm-wall"):
                     str(shader)], check=True)
 # An open preview reloads whenever its QML changes, even mid-bake. Write the QML last,
 # complete, and remove superseded storm shaders, so a reload never runs stale code.
-for name in ("Surface.qml", "AmbientDust.qml", "HorizonStorm.qml", "shell.qml", "Render.qml"):
+for name in ("Surface.qml", "AmbientDust.qml", "HorizonStorm.qml", "shell.qml", "Render.qml", "wallpaper.qml"):
     qml = (root / "scene" / name).read_text()
     (out / name).write_text(qml.replace("storm-wall.frag.qsb", storm_shader))
 for old in out.glob("storm-wall*.frag.qsb"):

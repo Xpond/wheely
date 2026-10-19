@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 
 FloatingWindow {
-  title: "Wheely 4K wallpaper preview"
+  title: "Wheelie 4K wallpaper preview"
   implicitWidth: 1376
   implicitHeight: 768
   color: "black"

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+theme=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+destination="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/wheelie"
+
+case "${1:-help}" in
+  install)
+    python3 "$theme/bake.py"
+    mkdir -p "$destination/backgrounds" "$destination/hooks" "$destination/animated"
+    cp "$theme"/{colors.toml,icons.theme,preview.jpg,wheelie} "$destination/"
+    cp "$theme/hooks/wheelie-wallpaper" "$destination/hooks/"
+    cp -a "$theme/build/." "$destination/animated/"
+    # The poster is a still of the live scene; selecting it starts the animation.
+    python3 "$theme/render.py" "$theme/build" "$destination/backgrounds/00-wheelie-animated.png"
+    # cp keeps the folder's old time, which hides a new preview from Omarchy's theme picker.
+    touch "$destination"
+    omarchy hook install theme-set "$destination/hooks/wheelie-wallpaper"
+    omarchy hook install post-boot "$destination/hooks/wheelie-wallpaper"
+    "$destination/wheelie" watch
+    printf 'Wheelie installed. Apply it with: omarchy theme set wheelie\n'
+    ;;
+  watch)
+    exec quickshell --no-duplicate --daemonize -p "$destination/animated/wallpaper.qml"
+    ;;
+  pause|resume)
+    exec quickshell ipc -p "$destination/animated/wallpaper.qml" call wheelie "$1"
+    ;;
+  *)
+    printf 'Usage: %s {install|pause|resume}\n' "$0"
+    ;;
+esac
