@@ -33,6 +33,30 @@ def trace(path, h, w):
     return np.frombuffer(svg, np.uint8).reshape(h, w, 4)[..., 3] / 255
 
 
+def unmix(pixels, kept, back):
+    """Colors and coverage for the kept pixels, freed of the sky estimate `back`.
+
+    Within two pixels either side of an outline, recover each pixel's coverage against the
+    sky and use the nearest solid color.
+    """
+    solid = ~grow(grow(~kept))
+    color, known = pixels * solid[..., None], solid.copy()
+    for _ in range(5):
+        total, count = np.zeros_like(color), np.zeros(known.shape)
+        for axis, step in ((0, 1), (0, -1), (1, 1), (1, -1)):
+            total += np.roll(color, step, axis)
+            count += np.roll(known, step, axis)
+        new = ~known & (count > 0)
+        color[new] = total[new] / count[new, None]
+        known |= new
+    color = np.where(known[..., None], color, pixels)  # Too thin to have a solid core.
+    gap = ((color - back) ** 2).sum(-1)
+    coverage = np.clip(((pixels - back) * (color - back)).sum(-1) / np.maximum(gap, 1e-3), 0, 1)
+    # Where a color is too close to the sky's, soften the outline instead.
+    edge = known & ~solid & grow(grow(kept))
+    return color, np.where(edge, np.where(gap < 0.01, blur(kept.astype(np.float32), 1), coverage), kept)
+
+
 def cutout(scene, base, layout):
     """Everything but the sky as an RGBA crop, its origin, and the row where the storm ends.
 
@@ -72,27 +96,9 @@ def cutout(scene, base, layout):
     freed = ~flood(~freed & (y == low - 1), ~freed)  # Stray specks unjoined to the dunes are sky.
 
     # Full resolution. The anti-aliased outlines still hold the plate's pale sky, which
-    # would outline them against the storm. Within two pixels either side of an outline,
-    # recover each pixel's coverage against the sky estimate and use the nearest solid color.
-    kept = ~np.repeat(np.repeat(freed, 2, 0), 2, 1)
-    back = np.repeat(np.repeat(sky, 2, 0), 2, 1)
-    pixels = base[:2 * low, :, :3]
-    solid = ~grow(grow(~kept))
-    color, known = pixels * solid[..., None], solid.copy()
-    for _ in range(5):
-        total, count = np.zeros_like(color), np.zeros(known.shape)
-        for axis, step in ((0, 1), (0, -1), (1, 1), (1, -1)):
-            total += np.roll(color, step, axis)
-            count += np.roll(known, step, axis)
-        new = ~known & (count > 0)
-        color[new] = total[new] / count[new, None]
-        known |= new
-    color = np.where(known[..., None], color, pixels)  # Too thin to have a solid core.
-    gap = ((color - back) ** 2).sum(-1)
-    coverage = np.clip(((pixels - back) * (color - back)).sum(-1) / np.maximum(gap, 1e-3), 0, 1)
-    # Where a color is too close to the sky's, soften the outline instead.
-    edge = known & ~solid & grow(grow(kept))
-    alpha = np.where(edge, np.where(gap < 0.01, blur(kept.astype(np.float32), 1), coverage), kept)
+    # would outline them against the storm.
+    color, alpha = unmix(base[:2 * low, :, :3], ~np.repeat(np.repeat(freed, 2, 0), 2, 1),
+                         np.repeat(np.repeat(sky, 2, 0), 2, 1))
     ys, xs = np.nonzero(alpha)
     rgba = np.dstack([color, alpha])[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
     # The storm ends a few rows inside the redrawn dunes, so none shows under their edge.

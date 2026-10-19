@@ -11,7 +11,7 @@ import numpy as np
 from wheels import load, prepare, save
 from chain import build_chain
 from dunes import shade
-from sky import cutout, photo, prints, storm_sky
+from sky import cutout, photo, prints, storm_sky, unmix
 
 root = Path(__file__).resolve().parent
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "build"
@@ -22,6 +22,17 @@ base = load(sources / "base.png")
 sheet = load(sources / "wheels.png")
 matte_sheet = load(sources / "matte-rims.png")
 layout = json.loads((sources / "layout.json").read_text())
+
+
+def shade_tube(rgba, left, top):
+    """Darken the fork tube's underside toward its lower edge, in a layer whose corner is
+    (left, top). Its warm reflection is the dust's own color, so against the storm it faded out."""
+    y, x = np.ogrid[top:top + rgba.shape[0], left:left + rgba.shape[1]]
+    depth = 1599 - 0.827 * (x - 3444) - y  # Rows above the lower edge.
+    along = np.clip((x - 3412) / 16, 0, 1) * np.clip((3568 - x) / 16, 0, 1)
+    dark = np.clip(1 - depth / 23, 0, 1) * np.clip(1 + depth / 5, 0, 1) * along
+    rgba[..., :3] *= (1 - 0.5 * dark ** 1.5)[..., None]
+
 
 for name, center, radius in (("front", (3146.5, 1763.5), 322), ("rear", (4338, 2314), 296)):
     size = prepare(sheet, matte_sheet, name, radius, out / f"{name}.png")
@@ -40,8 +51,8 @@ for name, center, radius in (("front", (3146.5, 1763.5), 322), ("rear", (4338, 2
     key_alpha = np.clip(1 - np.maximum(spill, 0) / 0.94, 0, 1)
     # Only the connected fork/swingarm belongs in front of the rotating wheel.
     if name == "front":
-        arm = (dx > -45) & (np.abs(dy + 0.88 * dx - 12) < 54)
-        outside = np.clip((0.85 - rgb.mean(-1)) / 0.08, 0, 1)
+        arm = (dx > -45) & (np.abs(dy + 0.88 * dx - 35) < 77)
+        outside = 1  # The photo's sky is unmixed from the fork's outlines below.
     else:
         arm = (dx < 42) & (np.abs(dy - 0.68 * dx + 5) < 57)
         outside = np.clip((0.77 - rgb.mean(-1)) / 0.10, 0, 1)
@@ -53,6 +64,19 @@ for name, center, radius in (("front", (3146.5, 1763.5), 322), ("rear", (4338, 2
     patch[..., :3] = np.where(((spill > 0.025) & arm)[..., None], np.clip(unkeyed, 0, 1), rgb)
     patch[..., 3] = alpha
     if name == "front":
+        # Beyond the old disk the fork and brake cable stand against the photo's pale sky,
+        # which their outlines hold; over the larger tire it showed as white edges. Free them
+        # of it as the cutout does. The old rim's unkeyed colors are too unreliable to be fork.
+        back = np.median(rgb[~arm & (old_dist > old_radius) & (y < 1850)], 0)
+        kept = (alpha > 0.5) & (inside | (spill <= 0.08)) & (np.abs(patch[..., :3] - back).max(-1) > 0.06)
+        color, coverage = unmix(patch[..., :3], kept, back)
+        patch[..., :3] = np.where(inside[..., None], patch[..., :3], color)
+        patch[..., 3] = np.where(inside, alpha, alpha * coverage)
+        # Inside the old disk the band's lower part holds only the fork leg's dark underside.
+        # A pale highlight on its edge showed as a smudge over the spokes; cap it.
+        underside = inside & (dy + 0.88 * dx > 66)
+        patch[underside, :3] = np.minimum(patch[underside, :3], 0.45)
+        shade_tube(patch, left, top)
         # The old row interpolation sampled the fork, leaving a grey stripe in the sky.
         # Use nearby clean sky texture above the dune, feathering into the existing plate.
         plate = base[region].copy()
@@ -85,6 +109,7 @@ for name, center, radius in (("front", (3146.5, 1763.5), 322), ("rear", (4338, 2
 # The storm replaces only the sky; everything else is redrawn over it.
 rgba, layout["cutout"], layout["horizon"] = cutout(root / "scene", base, layout)
 shade(root / "scene", base, rgba, layout["cutout"][1])  # The dunes lie in the storm's shade.
+shade_tube(rgba, *layout["cutout"])
 save(out / "cutout.png", rgba)
 # Three sky photos replace the plate's sky as full-width, white-framed prints. The scene
 # redraws the frames over the storm, so its thin dust never shows a frame through it.

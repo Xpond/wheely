@@ -118,6 +118,10 @@ sand ripples and the wheel trail stay.
 - Separate front/rear wheels with concentric hubs, round traced rim edges, matte rim
   finishes, and shading evened from the rim's inner edge outward, so no rotating
   white patch looks like wobble.
+- The front fork and brake cable are freed of the photo's sky where the larger tire
+  passes behind them, so they show no white outline over it, and the fork's lower side
+  is whole. The fork tube's underside darkens toward its edge; its warm reflection is the
+  dust's own color, so against the storm the tube seemed to fade out.
 - Animated drive chain, with links timed to the rear wheel and masked behind
   the boot and swingarm. The user marked this done.
 - A stronger stationary contact shadow beneath the rear tire, accepted for now.
