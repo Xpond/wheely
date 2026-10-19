@@ -21,7 +21,7 @@ omarchy theme set wheelie
 
 The installer rebakes the scene and copies the theme to `~/.config/omarchy/themes/wheelie`.
 The baked scene goes in `animated/`. A native still, `00-wheelie-animated.png`, is
-the theme's first background; two static night scenes follow it. Theme-change and
+the theme's first background; four static scenes follow it. Theme-change and
 post-boot hooks start the wallpaper controller, `scene/wallpaper.qml`. While that
 still is selected, the controller runs
 the live scene on every display. The scene is cropped to fill each screen and sits above
@@ -39,11 +39,17 @@ See [performance review](PERFORMANCE.md) for measurements and remaining costs.
 
 ## Static backgrounds
 
-Darker than the live scene, each keeps a dark, quiet lower edge under the bar.
+The static scenes include forest riding, hard enduro, and two night settings.
+Forest trail and hard enduro have a baked black bottom vignette for the bar.
+The smooth fade runs from 72% to 98% of the image height, starting up to 6% earlier
+at the corners. Both remain 5456×3072 as quality-100 JPEG, within 4 of 255 levels of
+the PNG; unaltered originals are kept in `sources/`.
 
 | Background | Scene |
 |---|---|
+| [Forest trail](backgrounds/01-forest-trail.jpg) | A rider on a mossy forest singletrack |
 | [Night track](backgrounds/01-night-track.jpg) | A rider airborne over a floodlit motocross jump |
+| [Hard enduro](backgrounds/02-hard-enduro.jpg) | A rider climbing an exposed rocky mountain slope |
 | [Desert camp](backgrounds/03-desert-camp.jpg) | The bike parked by a campfire under the Milky Way |
 
 ## Sky prints
@@ -225,6 +231,11 @@ the old scratch path, `misc/bike/v3/out`, is not a source directory.
   5504×3072 outputs from `google/gemini-3-pro-image` via `rb imagen`, 4K, 16:9,
   preserved unaltered. Prompts: [night track](prompts/01-night-track.txt),
   [desert camp](prompts/03-desert-camp.txt).
+- `sources/01-forest-trail.png` and `02-hard-enduro.png`: original
+  5456×3072 outputs from `black-forest-labs/flux-3-image` via `rb imagen`, 4K,
+  16:9, preserved unaltered. The JPEG copies in `backgrounds/` add the bottom vignette.
+  Prompts: [forest trail](prompts/01-forest-trail.txt),
+  [hard enduro](prompts/02-hard-enduro.txt).
 
 Contact shadows and lighting are code-defined. Generated source assets are kept
 unaltered; new bakes reproduce the compositing and motion layers from them.
