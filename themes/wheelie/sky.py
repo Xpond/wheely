@@ -4,6 +4,8 @@ import subprocess
 
 import numpy as np
 
+from wheels import sample
+
 
 def blur(a, r):
     """Approximate a Gaussian with three box passes along each axis."""
@@ -131,7 +133,7 @@ def storm_sky(storm):
     """The smooth dusk sky the storm plate was generated over, at an eighth of its size.
 
     Fit a smooth surface to the open sky well above the first warm dust, then hold it
-    constant down into the dust body. storm-wall.frag removes it from the plate.
+    constant down into the dust body. storm_cutout removes it from the plate.
     """
     h, w = storm.shape[0] // 8, storm.shape[1] // 8
     storm = storm[:h * 8, :w * 8, :3].reshape(h, 8, w, 8, 3).mean((1, 3))
@@ -143,3 +145,25 @@ def storm_sky(storm):
     for col, row in enumerate(np.minimum(crest + 12, h - 1)):
         sky[row:, col] = sky[row, col]
     return np.dstack([np.clip(blur(sky, 2), 0, 1), np.ones((h, w))])
+
+
+def storm_cutout(storm):
+    """Bake the shader's static sky removal once, keeping the native dust detail."""
+    sky = np.rint(storm_sky(storm) * 255) / 255
+    hue = np.array([0.465, 0.312, 0.222], dtype=np.float32)
+    hh = hue @ hue
+    result = np.empty_like(storm)
+    # Work in strips to avoid several full-size RGB intermediates during the bake.
+    for top in range(0, len(storm), 64):
+        plate = storm[top:top + 64, :, :3]
+        y, x = np.ogrid[top:top + len(plate), :storm.shape[1]]
+        back = sample(sky, (x + 0.5) / 8, (y + 0.5) / 8)[..., :3]
+        d = plate - back
+        hb = back @ hue
+        alpha = (hb * (d @ hue) - hh * (back * d).sum(-1)) / np.maximum(
+            hh * (back * back).sum(-1) - hb * hb, 1e-4)
+        alpha = np.clip((alpha - 0.04) / 0.86, 0, 1)[..., None]
+        dust = np.clip(plate - (1 - alpha) * back, 0, alpha)
+        result[top:top + len(plate), :, :3] = dust / np.maximum(alpha, 1e-8)
+        result[top:top + len(plate), :, 3:] = alpha
+    return result

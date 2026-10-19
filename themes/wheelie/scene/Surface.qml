@@ -8,13 +8,13 @@ Item {
   property bool running: true
   property bool particlesRunning: running
   property int revolution: 1200
-  property real wheelTurn: 0
+  property real wheelTurn
   property var layout: ({ size: [1, 1], wheels: {} })
   clip: true
 
   NumberAnimation on wheelTurn {
     from: 0; to: 1; duration: root.revolution
-    loops: Animation.Infinite; running: root.running
+    loops: Animation.Infinite; paused: !root.running
   }
 
   FileView {

@@ -10,8 +10,7 @@ layout(std140, binding = 0) uniform buf {
     float textureAspect;
     float extent;
 };
-layout(binding = 1) uniform sampler2D sky;
-layout(binding = 2) uniform sampler2D storm;
+layout(binding = 1) uniform sampler2D storm;
 
 float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -43,17 +42,5 @@ void main() {
     st += vec2(0.012 * (noise(p + drift) - 0.5),
                0.018 * (noise(p + drift + vec2(5.2, 1.7)) - 0.5));
     st = clamp(st, vec2(0.0), vec2(1.0));
-    vec3 plate = texture(storm, st).rgb;
-    vec3 back = texture(sky, st).rgb;
-    // The plate is one hue of dust over its own smooth sky (modelled by the bake):
-    // plate - back = a * hue - alpha * back. Solve for the dust's coverage, alpha;
-    // the hue was measured from the plate's dust body.
-    const vec3 hue = vec3(0.465, 0.312, 0.222);
-    vec3 d = plate - back;
-    float hh = dot(hue, hue), hb = dot(hue, back);
-    float alpha = (hb * dot(hue, d) - hh * dot(back, d)) / max(hh * dot(back, back) - hb * hb, 1e-4);
-    alpha = clamp((alpha - 0.04) / 0.86, 0.0, 1.0);
-    // Keep only the dust; the scene's sky shows through the rest.
-    vec3 dust = clamp(plate - (1.0 - alpha) * back, vec3(0.0), vec3(alpha));
-    fragColor = vec4(dust, alpha) * qt_Opacity;
+    fragColor = texture(storm, st) * qt_Opacity;
 }

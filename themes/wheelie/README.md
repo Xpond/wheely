@@ -27,6 +27,10 @@ still is selected, the controller runs
 the live scene on every display. The scene is cropped to fill each screen and sits above
 the shell's static background and below windows. It takes no input or focus. Choosing
 another background or theme unloads it.
+Display-off, session-lock, and compositor-confirmed fullscreen coverage pause that
+display's scene within one second. Waking it preserves the wheel angle and any manual
+pause. The controller checks monitor state in-process only while animation is selected.
+See [performance review](PERFORMANCE.md) for measurements and remaining costs.
 
 ```sh
 ~/.config/omarchy/themes/wheelie/wheelie pause
@@ -87,7 +91,7 @@ sprites, which ignore the scene's downscale and show as large soft blobs.
 
 The user judged the storm good on 2026-10-18. A blue-keyed plate always showed
 its cut crest, so the storm plate is generated over a dusk sky like the scene's;
-its crest fades into sky the way real dust does, and the shader removes that sky so
+its crest fades into sky the way real dust does, and the bake removes that sky so
 the sky prints show through. Keep the native 6336×2688 source and scene resolution.
 
 A dense, textured sand bank grows behind the distant dunes over four
@@ -95,11 +99,11 @@ minutes, then continues billowing there. Its ten-minute texture-flow loop is sea
 the approach does not reset or jump back. It pauses with the scene's particles.
 
 `scene/HorizonStorm.qml` controls the timing; `scene/storm-wall.frag` scales and
-gently distorts `sources/storm-wall-sky-4k.jpg`, keeping its original aspect ratio.
+gently distorts the baked `storm.png`, keeping the source's original aspect ratio.
 The 6336-pixel-wide source covers the native scene throughout the approach without
-enlargement. The bake fits a smooth model of the plate's own sky (`storm-sky.png`);
-the shader solves each pixel's dust coverage against it, using the dust hue measured
-from the plate, and draws only the dust.
+enlargement. The bake fits a smooth model of the plate's own sky and solves each
+pixel's dust coverage against it, using the dust hue measured from the plate. It saves
+the result as native RGBA; the shader only distorts and samples it each frame.
 
 The storm replaces only the sky. `scene/rider-trace.svg` and `scene/dunes.svg` are
 rough hand traces; near them `sky.py` separates the plate's sky from the rider,
@@ -211,7 +215,7 @@ the old scratch path, `misc/bike/v3/out`, is not a source directory.
   and constructs the measured route. Prompt: [chain](prompts/chain.txt).
 - `sources/storm-wall-sky-4k.jpg`: original 6336×2688 dust-bank plate over a
   dusk sky from `google/gemini-3-pro-image` via `rb imagen`, 4K, 21:9, preserved
-  unaltered. The shader removes its sky. Prompt: [sandstorm](prompts/storm-wall-sky-4k.txt).
+  unaltered. The bake removes its sky. Prompt: [sandstorm](prompts/storm-wall-sky-4k.txt).
 - `sources/sky-blue.png`, `sources/sky-magenta.png`, `sources/sky-amber.png`:
   original sky panoramas from `google/gemini-3.1-flash-image` via `rb imagen`, 4K,
   preserved unaltered: blue at 8:1 (11712×1408), magenta and amber at 4:1

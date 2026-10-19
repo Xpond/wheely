@@ -26,15 +26,9 @@ Item {
     property real phase: root.phase
     property real sceneAspect: root.width / Math.max(1, root.height)
     property real textureAspect: stormImage.implicitWidth / Math.max(1, stormImage.implicitHeight)
-    property var sky: Image {
-      source: "storm-sky.png"
-      cache: false
-      visible: false
-      smooth: true
-    }
     property var storm: Image {
       id: stormImage
-      source: "storm-wall-sky-4k.jpg"
+      source: "storm.png"
       cache: false
       visible: false
       smooth: true

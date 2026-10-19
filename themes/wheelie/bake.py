@@ -11,7 +11,7 @@ import numpy as np
 from wheels import load, prepare, save
 from chain import build_chain
 from dunes import shade
-from sky import cutout, photo, prints, storm_sky, unmix
+from sky import cutout, photo, prints, storm_cutout, unmix
 
 root = Path(__file__).resolve().parent
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "build"
@@ -119,8 +119,7 @@ base[:layout["horizon"], :, :3], layout["prints"] = prints(skies, layout["horizo
 save(out / "base.png", base)
 layout["chain"] = build_chain(root, out, scene)
 (out / "layout.json").write_text(json.dumps(layout, indent=1) + "\n")
-shutil.copy2(sources / "storm-wall-sky-4k.jpg", out / "storm-wall-sky-4k.jpg")
-save(out / "storm-sky.png", storm_sky(load(sources / "storm-wall-sky-4k.jpg")))
+save(out / "storm.png", storm_cutout(load(sources / "storm-wall-sky-4k.jpg")))
 for name in ("dust.svg", "sand-grain.svg", "contact-shadow.svg",
              "storm-wall.frag", "wheel-light.frag", "scene-light.frag"):
     shutil.copy2(root / "scene" / name, out / name)

@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 // The desktop wallpaper: the live scene on every display while Wheelie's animated poster is selected.
 Scope {
@@ -54,11 +55,25 @@ Scope {
     function resume(): void { root.paused = false }
   }
 
+  // Hyprland has no IPC events for DPMS or session locks. Refresh in-process,
+  // only while this background is selected, so paused displays can wake again.
+  Timer {
+    interval: 1000; repeat: true; running: root.animated; triggeredOnStart: true
+    onTriggered: Hyprland.refreshMonitors()
+  }
+
   Variants {
     model: root.animated ? Quickshell.screens : []
     PanelWindow {
+      id: wallpaper
       required property var modelData
       screen: modelData
+      readonly property var monitor: Hyprland.monitorFor(screen)
+      readonly property var monitorState: monitor ? monitor.lastIpcObject : ({})
+      readonly property bool suspended: monitorState.dpmsStatus === false
+          || (monitorState.solitaryBlockedBy || []).indexOf("LOCK") >= 0
+          // A solitary client is the only window Hyprland draws on this monitor.
+          || (!!monitorState.solitary && monitorState.solitary !== "0")
       anchors { top: true; bottom: true; left: true; right: true }
       color: "black"
       exclusionMode: ExclusionMode.Ignore
@@ -68,7 +83,7 @@ Scope {
       WlrLayershell.layer: WlrLayer.Bottom
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-      Surface { anchors.fill: parent; running: !root.paused }
+      Surface { anchors.fill: parent; running: !root.paused && !wallpaper.suspended }
     }
   }
 }
