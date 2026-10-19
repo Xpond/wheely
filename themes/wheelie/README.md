@@ -36,12 +36,13 @@ another background or theme unloads it.
 
 The user approved the sky on 2026-10-18. Three sky photos, deep blue, rose-magenta,
 and amber from top to bottom, replace the scene's sky as equal full-width strips,
-each framed in white like prints laid edge to edge. Together they fill the sky down
-to the `horizon` row; the amber print's lower edge lies behind the dunes. `sky.py`
+bordered in white above and below like prints laid edge to edge, running off the
+sides. Together they fill the sky down to the `horizon` row; the amber print's lower
+edge lies behind the dunes. `sky.py`
 cuts each strip from the middle of its photo, scaled to the scene width, and the
 bake writes them into `base.png`. The storm draws over the prints, and
-`scene/Surface.qml` redraws the frames over the storm from the `prints` rows and
-`printBorder` width in `layout.json`, so thin dust never ghosts a frame through it.
+`scene/Surface.qml` redraws the borders over the storm from the `prints` rows and
+`printBorder` width in `layout.json`, so thin dust never ghosts a border through it.
 The rider, bike, and dunes stay in front of everything. The border width is set in
 `bake.py`. The photos are native 8:1 and 4:1 panoramas, so every strip is
 downscaled to the scene width rather than cut from a soft 21:9 frame.

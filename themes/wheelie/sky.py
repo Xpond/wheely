@@ -112,8 +112,8 @@ def photo(path, width):
 
 
 def prints(photos, rows, border):
-    """Equal full-width strips cut from the middle of each photo, each framed in white like a
-    print, and the prints' edge rows.
+    """Equal full-width strips cut from the middle of each photo, each bordered in white above
+    and below like a print running off the sides, and the prints' edge rows.
 
     Together they fill the sky; the last print's lower border lies just past it, behind the dunes.
     """
@@ -123,7 +123,7 @@ def prints(photos, rows, border):
     for image, top, bottom in zip(photos, edges, edges[1:]):
         inner = bottom - top - 2 * border
         first = (len(image) - inner) // 2
-        sky[top + border:bottom - border, border:-border] = image[first:first + inner, border:-border]
+        sky[top + border:bottom - border] = image[first:first + inner]
     return sky[:rows], edges
 
 

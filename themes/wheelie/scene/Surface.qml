@@ -37,18 +37,17 @@ Item {
 
     Image { source: "base.png"; smooth: true }
     HorizonStorm { anchors.fill: parent; horizon: root.layout.horizon || 0; running: root.particlesRunning }
-    // The sky prints' white frames, over the storm; the last print's lower edge lies past the horizon.
+    // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
     Item {
       width: parent.width; height: root.layout.horizon || 0
       clip: true
       Repeater {
-        model: root.layout.prints ? root.layout.prints.length - 1 : 0
+        model: root.layout.prints || []
         Rectangle {
-          required property int index
-          y: root.layout.prints[index]
-          width: parent.width; height: root.layout.prints[index + 1] - y
-          color: "transparent"
-          border.color: "white"; border.width: root.layout.printBorder
+          required property int modelData
+          y: modelData - root.layout.printBorder
+          width: parent.width; height: 2 * root.layout.printBorder
+          color: "white"
         }
       }
     }
