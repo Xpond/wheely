@@ -33,5 +33,8 @@ void main() {
     float depth = pow(clamp((qt_TexCoord0.y - 0.729) / 0.271, 0.0, 1.0), 1.2);
     float side = (qt_TexCoord0.x - 0.55) / 0.55;
     color *= pow(1.0 - depth * (0.55 + 0.2 * side * side), 1.0 / 2.2);
+    // A vignette deepens the bottom edge, where the bar sits.
+    float low = smoothstep(0.74, 1.0, qt_TexCoord0.y);
+    color *= pow(1.0 - low * (0.75 + 0.15 * side * side), 1.0 / 2.2);
     fragColor = vec4(clamp(color, 0.0, 1.0) * tex.a, tex.a) * qt_Opacity;
 }

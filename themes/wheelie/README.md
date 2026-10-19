@@ -112,6 +112,8 @@ over 7 rows. The photo's darker crest lip there is scaled by its own color, so i
 turns black. The shade is static. `scene/scene-light.frag`
 darkens the foreground toward the bottom edge and its corners, in linear light; the
 sand ripples and the wheel trail stay.
+A vignette deepens the bottom edge behind the bar, keeping 25% of its light there,
+less in the corners.
 
 ## Current checkpoint
 
@@ -127,7 +129,7 @@ sand ripples and the wheel trail stay.
 - A stronger stationary contact shadow beneath the rear tire, accepted for now.
 - Pronounced warm sunset lighting across the scene, with cooler foreground sand.
   Wheel lighting stays fixed to the upper-left light source while the tires turn.
-- Dunes in the storm's shade, and a foreground that darkens toward the bottom.
+- Dunes in the storm's shade, and a foreground that darkens into a vignette at the bottom.
 - Existing rear-wheel sand grains and puffs remain a starting point for dust work.
 - Ambient airborne sand, sparkling glints, and low drifting wisps fill the wider scene.
 - A distant sandstorm slowly approaches, with moving billows behind the rider.
