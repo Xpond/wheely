@@ -10,17 +10,48 @@ case "${1:-help}" in
     # The poster is a still of the live scene; selecting it starts the animation.
     # Render it before touching the installed theme, so a failure leaves that intact.
     python3 "$theme/render.py" "$theme/build" "$theme/wallpaper-4k.png"
-    # Stop the scene first: replacing its files in place could reload it half-copied.
+    # Prepare the complete replacement on the same filesystem before stopping the scene.
+    mkdir -p "$(dirname -- "$destination")"
+    stage=$(mktemp -d "$(dirname -- "$destination")/.wheelie-install-XXXXXX")
+    stopped=false
+    finish_install() {
+      local status=$?
+      trap - EXIT INT TERM
+      if (( status != 0 )) && $stopped; then
+        quickshell kill -p "$destination/animated/wallpaper.qml" >/dev/null 2>&1 || true
+        if [[ -e "$stage/previous" ]]; then
+          if ! { rm -rf "$destination" && mv -T "$stage/previous" "$destination"; }; then
+            printf 'Restore failed; previous theme preserved at %s\n' "$stage/previous" >&2
+            exit "$status"
+          fi
+        elif [[ ! -d "$stage/new" ]]; then
+          rm -rf "$destination"
+        fi
+        if [[ -x "$destination/wheelie" ]]; then "$destination/wheelie" watch || true; fi
+      fi
+      rm -rf "$stage"
+      exit "$status"
+    }
+    trap finish_install EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    mkdir "$stage/new"
+    # Preserve any extra user files, replacing only the theme's own runtime and backgrounds.
+    if [[ -d "$destination" ]]; then cp -a "$destination/." "$stage/new/"; fi
+    rm -rf "$stage/new/animated" "$stage/new/backgrounds"
+    mkdir -p "$stage/new/backgrounds" "$stage/new/hooks"
+    cp "$theme"/{colors.toml,icons.theme,preview.jpg,wheelie} "$stage/new/"
+    cp "$theme/hooks/wheelie-wallpaper" "$stage/new/hooks/"
+    cp "$theme"/backgrounds/* "$stage/new/backgrounds/"
+    cp "$theme/wallpaper-4k.png" "$stage/new/backgrounds/00-wheelie-animated.png"
+    cp -a "$theme/build" "$stage/new/animated"
+    # The wallpaper loads none of the chain's bake intermediates or preview/still entry points.
+    rm -f "$stage/new"/animated/{chain.png,chain-link.png,chain.svg,shell.qml,Render.qml}
+    # Stop the scene only for the swap; failure restores and restarts the previous version.
+    stopped=true
     quickshell kill -p "$destination/animated/wallpaper.qml" >/dev/null 2>&1 || true
-    rm -rf "$destination/animated" "$destination/backgrounds"
-    mkdir -p "$destination/backgrounds" "$destination/hooks"
-    cp "$theme"/{colors.toml,icons.theme,preview.jpg,wheelie} "$destination/"
-    cp "$theme/hooks/wheelie-wallpaper" "$destination/hooks/"
-    cp "$theme"/backgrounds/* "$destination/backgrounds/"
-    cp "$theme/wallpaper-4k.png" "$destination/backgrounds/00-wheelie-animated.png"
-    cp -a "$theme/build" "$destination/animated"
-    # The wallpaper loads none of the chain's bake intermediates or the preview and still entry points.
-    rm -f "$destination"/animated/{chain.png,chain-link.png,chain.svg,shell.qml,Render.qml}
+    if [[ -e "$destination" ]]; then mv -T "$destination" "$stage/previous"; fi
+    mv -T "$stage/new" "$destination"
     # cp keeps the folder's old time, which hides a new preview from Omarchy's theme picker.
     touch "$destination"
     omarchy hook install theme-set "$destination/hooks/wheelie-wallpaper"
@@ -31,10 +62,10 @@ case "${1:-help}" in
   watch)
     exec quickshell --no-duplicate --daemonize -p "$destination/animated/wallpaper.qml"
     ;;
-  pause|resume)
+  pause|resume|toggle)
     exec quickshell ipc -p "$destination/animated/wallpaper.qml" call wheelie "$1"
     ;;
   *)
-    printf 'Usage: %s {install|watch|pause|resume}\n' "$0"
+    printf 'Usage: %s {install|watch|pause|resume|toggle}\n' "$0"
     ;;
 esac

@@ -20,7 +20,7 @@ Item {
   }
 
   FileView {
-    path: Qt.resolvedUrl("layout.json").toString().slice(7)
+    path: decodeURIComponent(Qt.resolvedUrl("layout.json").toString().slice(7))
     watchChanges: true
     onFileChanged: reload()
     onLoaded: root.layout = JSON.parse(text())

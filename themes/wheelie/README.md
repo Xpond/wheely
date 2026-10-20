@@ -19,8 +19,10 @@ the bright ones read at 4.6:1. Omarchy generates the app configurations from
 omarchy theme set wheelie
 ```
 
-The installer rebakes the scene, renders its still, and then replaces the theme in
-`~/.config/omarchy/themes/wheelie`, stopping the running scene while it copies.
+The installer rebakes the scene and validates its still, then stages the complete
+theme beside `~/.config/omarchy/themes/wheelie`. The running scene stops only for
+the directory swap. Failed swaps or activation restore the previous installation;
+failed copies leave it running. Extra user files in the theme directory are preserved.
 The baked scene goes in `animated/`. A native still, `00-wheelie-animated.png`, is
 the theme's first background; four static scenes follow it. Theme-change and
 post-boot hooks start the wallpaper controller, `scene/wallpaper.qml`. While that
@@ -37,6 +39,15 @@ See [performance review](PERFORMANCE.md) for measurements and remaining costs.
 ```sh
 ~/.config/omarchy/themes/wheelie/wheelie pause
 ~/.config/omarchy/themes/wheelie/wheelie resume
+~/.config/omarchy/themes/wheelie/wheelie toggle
+```
+
+For a Ctrl+Space pause/resume shortcut, add this to `~/.config/hypr/bindings.lua`
+after checking that the chord is free. It is separate from Omarchy's
+Super+Ctrl+Space background switcher.
+
+```lua
+o.bind("CTRL + SPACE", "Pause/resume Wheelie wallpaper", '"$HOME/.config/omarchy/themes/wheelie/wheelie" toggle')
 ```
 
 ## Static backgrounds
@@ -183,7 +194,8 @@ python themes/wheelie/render.py themes/wheelie/build themes/wheelie/wallpaper-4k
 The renderer uses the same QML and shaders offscreen with OpenGL. It needs access
 to the graphics session but opens no desktop window. The still is Git-ignored.
 Particles run during capture while the wheels hold the requested angle, so dust
-positions vary between stills.
+positions vary between stills. An incomplete transparent render fails and preserves
+the previous poster. Paths containing spaces, `#`, or `%` are supported.
 `preview.jpg` is a small documentation image and the theme picker's preview; the
 scene does not use it.
 

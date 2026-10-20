@@ -35,7 +35,7 @@ def stage(theme):
 
 with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
     output = Path(temp)
-    config, state = output / "controller", output / "state"
+    config, state = output / "controller #100%", output / "state"
     shutil.copytree(build, config)
     state.mkdir()
     (state / "theme.name").write_text("wheelie\n")
@@ -60,6 +60,7 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
     qml = patch(qml, 'function pause(): void', '''function status(): string {
       return JSON.stringify({animated: root.animated, loaded: !!root.testScene, scenes: root.scenes,
         running: root.testScene ? root.testScene.running : false,
+        ready: root.testScene ? !!root.testScene.layout.cutout : false,
         turn: root.testScene ? root.testScene.wheelTurn : 0, frames: root.frames})
     }
     function pause(): void''')
@@ -121,13 +122,17 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
                 replacement.symlink_to(state / "theme/backgrounds" / name)
                 replacement.replace(state / "background")
 
-            wait_for(lambda s: s["running"] and s["frames"] > 10)
+            wait_for(lambda s: s["ready"] and s["running"] and s["frames"] > 10)
             time.sleep(0.2)
             ipc("pause")
             turn = frozen()
             ipc("resume")
             resumed = wait_for(lambda s: s["running"] and s["turn"] != turn)
             assert (resumed["turn"] - turn) % 1 < 0.25, (turn, resumed)
+            ipc("toggle")
+            frozen()
+            ipc("toggle")
+            wait_for(lambda s: s["running"])
             set_activity({"dpmsStatus": True, "solitaryBlockedBy": ["LOCK"]})
             wait_for(lambda s: not s["running"])
             frozen()

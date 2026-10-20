@@ -60,6 +60,7 @@ Scope {
     target: "wheelie"
     function pause(): void { root.paused = true }
     function resume(): void { root.paused = false }
+    function toggle(): void { root.paused = !root.paused }
   }
 
   // Hyprland has no IPC events for DPMS or session locks. Refresh in-process,
