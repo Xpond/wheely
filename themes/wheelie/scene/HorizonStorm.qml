@@ -26,7 +26,9 @@ Item {
     property real approach: root.approach
     property real phase: root.phase
     property real sceneAspect: root.width / Math.max(1, root.height)
-    property real textureAspect: stormImage.implicitWidth / Math.max(1, stormImage.implicitHeight)
+    // storm.png keeps only the plate's top 1960 of 2688 rows, all the storm ever samples.
+    property real kept: 1960 / 2688
+    property real textureAspect: stormImage.implicitWidth / Math.max(1, stormImage.implicitHeight) * kept
     property var storm: Image {
       id: stormImage
       source: "storm.png"
