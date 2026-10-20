@@ -28,7 +28,8 @@ scenes follow it. Theme-change and post-boot hooks start the wallpaper controlle
 the live scene on every display. The scene is cropped to fill each screen and sits above
 the shell's static background and below windows. It takes no input or focus. Choosing
 another background unloads it; choosing another theme also ends the controller, until
-the theme-set hook starts it again. Re-applying Wheelie keeps the scene running.
+the theme-set hook starts it again. Re-applying Wheelie moves Omarchy on to the next
+background, as for any theme; select the poster again to resume the scene.
 Display-off, session-lock, and compositor-confirmed fullscreen coverage pause that
 display's scene within one second. Waking it preserves the wheel angle and any manual
 pause. The controller checks monitor state in-process only while animation is selected.
