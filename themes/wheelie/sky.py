@@ -144,7 +144,7 @@ def storm_sky(storm):
     sky = terms @ np.linalg.lstsq(terms[open_sky], storm[open_sky], rcond=None)[0]
     for col, row in enumerate(np.minimum(crest + 12, h - 1)):
         sky[row:, col] = sky[row, col]
-    return np.dstack([np.clip(blur(sky, 2), 0, 1), np.ones((h, w))])
+    return np.clip(blur(sky, 2), 0, 1)
 
 
 def storm_cutout(storm):
@@ -157,7 +157,7 @@ def storm_cutout(storm):
     for top in range(0, len(storm), 64):
         plate = storm[top:top + 64, :, :3]
         y, x = np.ogrid[top:top + len(plate), :storm.shape[1]]
-        back = sample(sky, (x + 0.5) / 8, (y + 0.5) / 8)[..., :3]
+        back = sample(sky, (x + 0.5) / 8, (y + 0.5) / 8)
         d = plate - back
         hb = back @ hue
         alpha = (hb * (d @ hue) - hh * (back * d).sum(-1)) / np.maximum(

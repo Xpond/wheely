@@ -19,49 +19,64 @@ build = Path(sys.argv[1]) if len(sys.argv) > 1 else repo / "themes/wheelie/build
 env = os.environ | {"QT_QPA_PLATFORM": "offscreen", "QT_QPA_PLATFORMTHEME": "generic",
                     "QT_QUICK_BACKEND": "rhi", "QSG_RHI_BACKEND": "opengl"}
 
+
+def patch(text, old, new, count=-1):
+    """Replace old, which must be present: a stale pattern would leave real Hyprland code running."""
+    assert old in text, old
+    return text.replace(old, new, count)
+
+
+def stage(theme):
+    """Omarchy's copy of the current theme, which the background link points into."""
+    (theme / "backgrounds").mkdir(parents=True)
+    for name in ("00-wheelie-animated.png", "static.png"):
+        (theme / "backgrounds" / name).touch()
+
+
 with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
     output = Path(temp)
     config, state = output / "controller", output / "state"
     shutil.copytree(build, config)
     state.mkdir()
     (state / "theme.name").write_text("wheelie\n")
-    for name in ("00-wheelie-animated.png", "static.png"):
-        (state / name).touch()
-    (state / "background").symlink_to(state / "00-wheelie-animated.png")
+    stage(state / "theme")
+    (state / "background").symlink_to(state / "theme/backgrounds/00-wheelie-animated.png")
     activity = output / "activity.json"
     activity.write_text('{"dpmsStatus": true}')
     shell = config / "wallpaper.qml"
-    qml = shell.read_text().replace('import QtQuick\n', 'import QtQuick\nimport QtQuick.Window\n', 1)
-    qml = qml.replace('Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
+    qml = patch(shell.read_text(), 'import QtQuick\n', 'import QtQuick\nimport QtQuick.Window\n', 1)
+    qml = patch(qml, 'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
     # Supply compositor snapshots without changing the user's display or lock state.
-    qml = qml.replace('id: root', '''id: root
+    qml = patch(qml, 'id: root', '''id: root
   property var activity: ({})
   property var testScene: null
+  property int scenes: 0
   property int frames: 0
   FileView {
     path: %s; watchChanges: true
     onFileChanged: reload()
     onLoaded: root.activity = JSON.parse(text())
   }''' % json.dumps(str(activity)), 1)
-    qml = qml.replace('function pause(): void', '''function status(): string {
-      return JSON.stringify({animated: root.animated, loaded: !!root.testScene,
+    qml = patch(qml, 'function pause(): void', '''function status(): string {
+      return JSON.stringify({animated: root.animated, loaded: !!root.testScene, scenes: root.scenes,
         running: root.testScene ? root.testScene.running : false,
         turn: root.testScene ? root.testScene.wheelTurn : 0, frames: root.frames})
     }
     function pause(): void''')
-    qml = qml.replace('onTriggered: Hyprland.refreshMonitors()', 'onTriggered: {}')
-    qml = qml.replace('PanelWindow {', 'Window {\n      width: 640; height: 360; visible: true')
-    qml = qml.replace('screen: modelData', '')
-    qml = qml.replace('monitor: Hyprland.monitorFor(screen)', 'monitor: null')
-    qml = qml.replace('monitorState: monitor ? monitor.lastIpcObject : ({})', 'monitorState: root.activity')
-    qml = re.sub(r'^      (anchors \{|exclusionMode:|mask:|WlrLayershell\.).*\n', '', qml, flags=re.M)
-    qml = qml.replace('Surface { anchors.fill:', '''Connections {
+    qml = patch(qml, 'onTriggered: Hyprland.refreshMonitors()', 'onTriggered: {}')
+    qml = patch(qml, 'PanelWindow {', 'Window {\n      width: 640; height: 360; visible: true')
+    qml = patch(qml, 'screen: modelData', '')
+    qml = patch(qml, 'monitor: Hyprland.monitorFor(screen)', 'monitor: null')
+    qml = patch(qml, 'monitorState: monitor ? monitor.lastIpcObject : ({})', 'monitorState: root.activity')
+    qml, removed = re.subn(r'^      (anchors \{|exclusionMode:|mask:|WlrLayershell\.).*\n', '', qml, flags=re.M)
+    assert removed == 6, removed
+    qml = patch(qml, 'Surface { anchors.fill:', '''Connections {
         target: wallpaper
         function onFrameSwapped() { root.frames++ }
       }
       Surface {
         id: scene
-        Component.onCompleted: root.testScene = scene
+        Component.onCompleted: { root.testScene = scene; root.scenes++ }
         Component.onDestruction: root.testScene = null
         anchors.fill:''')
     shell.write_text(qml)
@@ -103,7 +118,7 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
 
             def select(name):
                 replacement = state / "replacement"
-                replacement.symlink_to(state / name)
+                replacement.symlink_to(state / "theme/backgrounds" / name)
                 replacement.replace(state / "background")
 
             wait_for(lambda s: s["running"] and s["frames"] > 10)
@@ -132,13 +147,27 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
                 wait_for(lambda s: not s["animated"] and not s["loaded"])
                 select("00-wheelie-animated.png")
                 wait_for(lambda s: s["running"])
-            (state / "theme.name").write_text("other\n")
-            wait_for(lambda s: not s["loaded"])
+            # Setting the theme again replaces the folder the link points into, and empties
+            # theme.name before writing it. Neither may restart the scene or lift a pause.
+            ipc("pause")
+            turn, scenes = frozen(), ipc("status")["scenes"]
+            shutil.rmtree(state / "theme")
+            (state / "theme.name").write_text("")
+            time.sleep(0.3)
+            stage(state / "next")
+            (state / "next").rename(state / "theme")
             (state / "theme.name").write_text("wheelie\n")
+            time.sleep(0.3)
+            assert frozen() == turn and ipc("status")["scenes"] == scenes, ipc("status")
+            ipc("resume")
             wait_for(lambda s: s["running"])
+            # Another theme ends the process; the theme-set hook starts it when Wheelie returns.
+            (state / "theme.name").write_text("other\n")
+            assert process.wait(timeout=6) == 0, log_path.read_text()
             assert not re.search(r'(TypeError|ReferenceError|Error:|Failed to)', log_path.read_text()), log_path.read_text()
         finally:
             if process.poll() is None:
                 process.terminate()
                 process.wait(timeout=5)
-print("ok: frozen frames, continuous resume, lock/DPMS/fullscreen gating, manual pause, static/theme round trips")
+print("ok: frozen frames, continuous resume, lock/DPMS/fullscreen gating, manual pause, static round trips, "
+      "theme re-apply, exit on another theme")

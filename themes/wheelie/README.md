@@ -19,14 +19,16 @@ the bright ones read at 4.6:1. Omarchy generates the app configurations from
 omarchy theme set wheelie
 ```
 
-The installer rebakes the scene and copies the theme to `~/.config/omarchy/themes/wheelie`.
+The installer rebakes the scene, renders its still, and then replaces the theme in
+`~/.config/omarchy/themes/wheelie`, stopping the running scene while it copies.
 The baked scene goes in `animated/`. A native still, `00-wheelie-animated.png`, is
 the theme's first background; four static scenes follow it. Theme-change and
 post-boot hooks start the wallpaper controller, `scene/wallpaper.qml`. While that
 still is selected, the controller runs
 the live scene on every display. The scene is cropped to fill each screen and sits above
 the shell's static background and below windows. It takes no input or focus. Choosing
-another background or theme unloads it.
+another background unloads it; choosing another theme also ends the controller, until
+the theme-set hook starts it again. Re-applying Wheelie keeps the scene running.
 Display-off, session-lock, and compositor-confirmed fullscreen coverage pause that
 display's scene within one second. Waking it preserves the wheel angle and any manual
 pause. The controller checks monitor state in-process only while animation is selected.
@@ -170,7 +172,7 @@ quickshell -n -p themes/wheelie/build
 ```
 
 Dependencies: Python, NumPy, ImageMagick, Quickshell, and Qt's shader baker at
-`/usr/lib/qt6/bin/qsb`. Tested with Quickshell 0.3.1 and Qt 6.11.2.
+`/usr/lib/qt6/bin/qsb`. Tested with Quickshell 0.3.2 and Qt 6.12.0.
 Edit `scene/`, then rebuild; `build/` is generated and Git-ignored.
 
 For a matching native still (optional final argument is wheel angle in degrees):

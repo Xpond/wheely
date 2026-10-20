@@ -7,13 +7,20 @@ destination="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/wheelie"
 case "${1:-help}" in
   install)
     python3 "$theme/bake.py"
-    mkdir -p "$destination/backgrounds" "$destination/hooks" "$destination/animated"
+    # The poster is a still of the live scene; selecting it starts the animation.
+    # Render it before touching the installed theme, so a failure leaves that intact.
+    python3 "$theme/render.py" "$theme/build" "$theme/wallpaper-4k.png"
+    # Stop the scene first: replacing its files in place could reload it half-copied.
+    quickshell kill -p "$destination/animated/wallpaper.qml" >/dev/null 2>&1 || true
+    rm -rf "$destination/animated" "$destination/backgrounds"
+    mkdir -p "$destination/backgrounds" "$destination/hooks"
     cp "$theme"/{colors.toml,icons.theme,preview.jpg,wheelie} "$destination/"
     cp "$theme/hooks/wheelie-wallpaper" "$destination/hooks/"
     cp "$theme"/backgrounds/* "$destination/backgrounds/"
-    cp -a "$theme/build/." "$destination/animated/"
-    # The poster is a still of the live scene; selecting it starts the animation.
-    python3 "$theme/render.py" "$theme/build" "$destination/backgrounds/00-wheelie-animated.png"
+    cp "$theme/wallpaper-4k.png" "$destination/backgrounds/00-wheelie-animated.png"
+    cp -a "$theme/build" "$destination/animated"
+    # The wallpaper loads none of the chain's bake intermediates or the preview and still entry points.
+    rm -f "$destination"/animated/{chain.png,chain-link.png,chain.svg,shell.qml,Render.qml}
     # cp keeps the folder's old time, which hides a new preview from Omarchy's theme picker.
     touch "$destination"
     omarchy hook install theme-set "$destination/hooks/wheelie-wallpaper"
@@ -28,6 +35,6 @@ case "${1:-help}" in
     exec quickshell ipc -p "$destination/animated/wallpaper.qml" call wheelie "$1"
     ;;
   *)
-    printf 'Usage: %s {install|pause|resume}\n' "$0"
+    printf 'Usage: %s {install|watch|pause|resume}\n' "$0"
     ;;
 esac

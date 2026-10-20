@@ -111,6 +111,13 @@ rgba, layout["cutout"], layout["horizon"] = cutout(root / "scene", base, layout)
 shade(root / "scene", base, rgba, layout["cutout"][1])  # The dunes lie in the storm's shade.
 shade_tube(rgba, *layout["cutout"])
 save(out / "cutout.png", rgba)
+# Below the horizon the base hides stale, unshaded sand under the cutout. Decoded at screen
+# size, the base would average that sand into the visible edge, so it takes the cutout's colors.
+left, top = layout["cutout"]
+below = rgba[layout["horizon"] - top:]
+opaque = below[..., 3] * 255 >= 254.5  # Saved as fully opaque.
+base[layout["horizon"]:top + len(rgba), left:left + rgba.shape[1]][opaque] = below[opaque]
+layout["cutout"] += [rgba.shape[1], rgba.shape[0]]  # Its native size, for decoding smaller.
 # Three sky photos replace the plate's sky as full-width, white-framed prints. The scene
 # redraws the frames over the storm, so its thin dust never shows a frame through it.
 skies = [photo(sources / f"sky-{name}.png", base.shape[1]) for name in ("blue", "magenta", "amber")]
@@ -120,11 +127,10 @@ save(out / "base.png", base)
 layout["chain"] = build_chain(root, out, scene)
 (out / "layout.json").write_text(json.dumps(layout, indent=1) + "\n")
 save(out / "storm.png", storm_cutout(load(sources / "storm-wall-sky-4k.jpg")))
-for name in ("dust.svg", "sand-grain.svg", "contact-shadow.svg",
-             "storm-wall.frag", "wheel-light.frag", "scene-light.frag"):
+for name in ("dust.svg", "sand-grain.svg", "contact-shadow.svg"):
     shutil.copy2(root / "scene" / name, out / name)
 for name in ("wheel-light", "scene-light", "storm-wall"):
-    shader = out / f"{name}.frag"
+    shader = root / "scene" / f"{name}.frag"
     filename = f"{name}.frag.qsb"
     if name == "storm-wall":
         # Qt retains shaders by URL across reloads; changed code needs a fresh URL.

@@ -6,6 +6,7 @@ Item {
   property real horizon: 0 // Scene row where the storm ends, just inside the redrawn dunes.
   property real approach: 0
   property real phase: 0
+  property real decode: 1 // The share of native resolution to decode, as in Surface.qml.
 
   // Approach once over four minutes, then keep rolling at the distant dunes.
   NumberAnimation on approach {
@@ -32,6 +33,8 @@ Item {
       cache: false
       visible: false
       smooth: true
+      // Drawn up to 1.15 times the scene's width; 0 keeps the plate's native size.
+      sourceSize.width: root.decode < 1 ? Math.ceil(root.width * root.decode * 1.15) : 0
     }
     fragmentShader: Qt.resolvedUrl("storm-wall.frag.qsb")
   }

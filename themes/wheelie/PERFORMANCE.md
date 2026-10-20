@@ -1,4 +1,50 @@
-Performance review — 2026-10-19
+# Performance
+
+## 2026-10-20: images at screen size
+
+Same machine, measured offscreen at 1920×1080 like the component experiments below
+(uncapped, about 166 fps), two 16-second runs each:
+
+| Scene process | RSS | VRAM | CPU, one core |
+|---|---:|---:|---:|
+| Before | 418–424 MiB | 273 MiB | 26.4–28.0% |
+| After | 333–334 MiB | 191 MiB | 26.1–26.2% |
+
+- Images decode at twice the pixels they cover on screen, never above native size.
+  Before, 5504-pixel textures were sampled about 2.9 times minified without mipmaps.
+  From 16:9 screens 1536 pixels tall upward, the decode is native and saves nothing.
+- The scene is built once the screen's size and the layout are known, so each image
+  decodes once. Starting it peaks at 445 instead of 624 MiB, but takes 1.5 instead of
+  1.2 CPU seconds, for Qt's downscaling.
+- Lighting is applied to a screen-sized layer, pixel for pixel. Before, the layer kept
+  the scene's proportions and was stretched to the screen's: 0.8% at 16:9, 3.2 times on
+  a portrait screen.
+- Below the horizon the base takes the cutout's colors where the cutout is opaque.
+  Decoded smaller, the stale sand hidden there showed as a light line at the cutout's edge.
+- The idle controller held 167–171 MiB with a static background selected. It now exits
+  when another theme is set. On a static Wheelie background it stays, because Omarchy
+  has no background-change hook to start it again.
+- Forest trail and hard enduro are quality-100 JPEG without chroma subsampling instead
+  of PNG: 64.4 MB became 45.0 MB. No pixel moves more than 4 of 255 levels, natively or
+  as the shell samples them at 1080p.
+
+Fidelity was measured on deterministic 1080p stills (no particles; wheel angle 83°; storm
+approach 0 and 1) against an exact box-filtered downsample of the native render, the
+most detail a 1080p screen can show:
+
+| Still | PSNR | SSIM, luma | Local error, 99th percentile | Gradient energy vs. ideal |
+|---|---:|---:|---:|---:|
+| Before | 40.0 dB | 0.991 | 4.9 | 1.32 |
+| After | 45.3 dB | 0.997 | 2.6 | 1.11 |
+
+The rider and bike rose from 39.5 to 43.0 dB, the wheels from 37.7 to 42.1 dB. No
+neighborhood is worse by more than one level. Decoding at one times the screen size
+blurred the bike (gradient energy 0.83), mipmaps were blurrier still, and three times
+equals native at 1080p. Before, the extra gradient energy was aliasing on spokes, chain,
+sand, and sky. Qt's image scaler truncates, so decoded images average 0.47 of 255 levels
+darker than an exact mean, half the smallest 8-bit step. The native still is bit-identical.
+
+## 2026-10-19 review
 
 Wheelie sustains this machine's 144 Hz display, but is not fully optimized for
 active rendering. Ambient dust dominates CPU cost. The changes in this review
@@ -89,7 +135,5 @@ where Hyprland does not confirm a solitary client. Native-size stills were check
 but 4K animation and other GPUs were not benchmarked. This is not a long-duration
 memory/leak soak test; native test-process RSS was approximately 465–530 MiB.
 
-Raw samples, logs and visual comparisons are retained locally under
-`/tmp/wheelie-perf/`; installed-file backups are in its `installed-backup/` directory.
 Temporary benchmark scene copies were removed after the review.
 The installed animation was updated and left running. No source images were generated.

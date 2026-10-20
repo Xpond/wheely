@@ -12,7 +12,6 @@ Scope {
   property string background: ""
   property bool wheelieTheme: false
   readonly property bool animated: wheelieTheme && background.endsWith("/00-wheelie-animated.png")
-  onWheelieThemeChanged: backgroundRefresh.restart()
 
   // Watch the directory: watching the image misses replacement of its symlink.
   FileView {
@@ -36,6 +35,8 @@ Scope {
     stdout: StdioCollector {
       onStreamFinished: {
         const path = text.trim()
+        // Setting a theme replaces the folder the link points into; keep the scene meanwhile.
+        if (!path) return
         if (path !== root.background) root.paused = false
         root.background = path
       }
@@ -46,7 +47,13 @@ Scope {
     path: root.stateDir + "/theme.name"
     watchChanges: true
     onFileChanged: reload()
-    onLoaded: root.wheelieTheme = text().trim() === "wheelie"
+    onLoaded: {
+      const name = text().trim()
+      if (!name) return // Omarchy empties the file before writing the new name.
+      root.wheelieTheme = name === "wheelie"
+      // Another theme has no use for this process; the theme-set hook starts it again.
+      if (!root.wheelieTheme) Qt.quit()
+    }
   }
 
   IpcHandler {
