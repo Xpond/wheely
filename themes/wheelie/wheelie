@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+theme=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+destination="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/wheelie"
+
+case "${1:-help}" in
+  install)
+    # Prepare the complete replacement on the same filesystem before stopping the scene,
+    # outside the themes folder, where Omarchy would list it as a theme.
+    mkdir -p "$(dirname -- "$destination")"
+    stage=$(mktemp -d "${destination%/themes/wheelie}/.wheelie-install-XXXXXX")
+    trap 'rm -rf "$stage"' EXIT
+    new="$stage/wheelie"
+    mkdir "$new"
+    cp -a "$theme"/{colors.toml,icons.theme,preview.jpg,wheelie,hooks,backgrounds} "$new/"
+    cp -a "$theme/scene" "$new/animated"
+    # The wallpaper loads the compiled shaders, not their sources.
+    rm -f "$new"/animated/*.{frag,vert}
+    # Stop the scene only for the swap; the old copy leaves with the stage. kill returns
+    # before the scene exits, and until then --no-duplicate refuses to start the new one.
+    quickshell kill -p "$destination/animated/wallpaper.qml" >/dev/null 2>&1 || true
+    while [[ $(quickshell list -j -p "$destination/animated/wallpaper.qml") == *'"pid"'* ]]; do sleep 0.05; done
+    if [[ -e "$destination" ]]; then mv -T "$destination" "$stage/previous"; fi
+    mv -T "$new" "$destination"
+    omarchy hook install theme-set "$destination/hooks/wheelie-wallpaper"
+    omarchy hook install post-boot "$destination/hooks/wheelie-wallpaper"
+    "$destination/wheelie" watch
+    printf 'Wheelie installed. Apply it with: omarchy theme set wheelie\n'
+    ;;
+  watch)
+    exec quickshell --no-duplicate --daemonize -p "$destination/animated/wallpaper.qml"
+    ;;
+  pause|resume|toggle)
+    exec quickshell ipc -p "$destination/animated/wallpaper.qml" call wheelie "$1"
+    ;;
+  *)
+    printf 'Usage: %s {install|watch|pause|resume|toggle}\n' "$0"
+    ;;
+esac
