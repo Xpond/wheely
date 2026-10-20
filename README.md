@@ -43,6 +43,10 @@ shell, so it is not a plugin `omarchy plugin add` can install.
 animated coast in colorful and muted palettes, plus three static wallpapers.
 Preview it with `./themes/tidal/tidal preview`; its installation is separate.
 
+[Wheelie](themes/wheelie/README.md) is our light Omarchy theme around a live desert
+scene: a rider holds a wheelie while a sandstorm builds, plus four static wallpapers.
+Install it with `./themes/wheelie/wheelie install`; its installation is separate.
+
 ## Install
 
 Needs `jq`, `python3`, `git`, `hyprctl`, `sudo`, `fd`, `wl-copy`, `gio`,
