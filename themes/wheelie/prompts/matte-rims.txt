@@ -1,7 +1,0 @@
-Use case: precise-object-edit
-Asset type: transparent motorcycle wheel sprite sheet for an animated wallpaper.
-Edit target: the supplied existing two-wheel RGBA sheet. This is a narrowly targeted material edit, not a redesign.
-Primary request: eliminate the continuous bright white/silver concentric reflection lines around the black rims on BOTH wheels. These bright circular bands look stationary when the wheel spins. Make these rim lips and rim barrels subdued satin/matte charcoal-black, with faint irregular surface texture and small localized highlights, not bright uninterrupted circular outlines. Keep the separate spoke nipples and fine steel spokes readable so their rotation remains visible.
-Preserve exactly: two-wheel arrangement, image aspect ratio, identical tire contours and tread textures, dusty tire colors, absolute wheel sizes and positions, hub centers, round rim geometry, spoke arrangement, front brake rotor, rear sprocket, bearing openings, every transparent opening and outside transparency.
-Change ONLY the reflective finish of the black metal rims. The dark rubber tires must remain identical. Do not add labels, colored stripes, logos, text, or extra components. Do not remove spokes or blur the wheel. Keep fine photographic detail.
-Return the same complete sheet, two fully visible wheels, actual transparent RGBA background.

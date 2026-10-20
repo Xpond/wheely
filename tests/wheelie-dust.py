@@ -16,7 +16,7 @@ import tempfile
 import time
 
 repo = Path(__file__).resolve().parents[1]
-build = Path(sys.argv[1]) if len(sys.argv) > 1 else repo / "themes/wheelie/build"
+scene = Path(sys.argv[1]) if len(sys.argv) > 1 else repo / "themes/wheelie/scene"
 env = os.environ | {"QT_QPA_PLATFORM": "offscreen", "QT_QPA_PLATFORMTHEME": "generic",
                     "QT_QUICK_BACKEND": "rhi"}
 env.setdefault("QSG_RHI_BACKEND", "opengl")
@@ -24,7 +24,7 @@ env.setdefault("QSG_RHI_BACKEND", "opengl")
 with tempfile.TemporaryDirectory(prefix="wheelie-dust-") as temp:
     output = Path(temp)
     config = output / "scene"
-    shutil.copytree(build, config)
+    shutil.copytree(scene, config)
     shell = config / "dust-test.qml"
     qml = """import QtQuick
 import QtQuick.Window

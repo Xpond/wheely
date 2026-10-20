@@ -1,7 +1,0 @@
-Generate a native 4K, 4:1 ultra-wide panoramic photograph of open sky only, for one full-width strip of a 5504-pixel-wide photographic wallpaper. The sky fills the entire frame edge to edge, with consistent color and texture across it. It is one continuous, seamless single exposure: no panels, tiles, or repeated sections.
-
-A rose-magenta dusk sky: deep rose-magenta (#9b3c7b) toward the top, warm orchid pink (#cf6f9f) toward the bottom, slightly warmer toward the left. Scattered altocumulus cloudlets with crisp, well-defined edges and detailed texture drift across it in dusty pink and lavender, their left-facing undersides lit warm coral.
-
-Tack-sharp, high-resolution landscape photography, like a 60-megapixel medium-format camera at f/8: crisp, well-defined cloud edges and intricate fine texture that hold up at full resolution. Natural photographic color and a clean, low-noise sky. No blur, haze, painterly softness, upscaling artifacts, HDR halos, or oversharpening. Warm, low sunlight comes from the left, from a sun that has just set below the frame.
-
-No horizon line, ground, landscape, mountains, water, sun disc, moon, stars, birds, aircraft, contrails, people, buildings, text, border, frame, or watermark. Only sky.

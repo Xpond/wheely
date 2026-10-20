@@ -1,4 +1,4 @@
-# Wheelie — work in progress
+# Wheelie
 
 A light Omarchy theme built around a live desert scene. A rider holds a wheelie
 while a sandstorm builds behind three framed sky prints. Native **5504×3072**.
@@ -19,14 +19,12 @@ the bright ones read at 4.6:1. Omarchy generates the app configurations from
 omarchy theme set wheelie
 ```
 
-The installer rebakes the scene and validates its still, then stages the complete
-theme beside `~/.config/omarchy/themes/wheelie`. The running scene stops only for
-the directory swap. Failed swaps or activation restore the previous installation;
-failed copies leave it running. Extra user files in the theme directory are preserved.
-The baked scene goes in `animated/`. A native still, `00-wheelie-animated.png`, is
-the theme's first background; four static scenes follow it. Theme-change and
-post-boot hooks start the wallpaper controller, `scene/wallpaper.qml`. While that
-still is selected, the controller runs
+The installer prepares the complete theme before stopping the running one, so a failed
+copy leaves it untouched; the scene stops only for the directory swap. Rerun the
+installer if a later step fails. The baked scene in `scene/` goes in `animated/`.
+A native still, `00-wheelie-animated.png`, is the theme's first background; four static
+scenes follow it. Theme-change and post-boot hooks start the wallpaper controller,
+`scene/wallpaper.qml`. While that still is selected, the controller runs
 the live scene on every display. The scene is cropped to fill each screen and sits above
 the shell's static background and below windows. It takes no input or focus. Choosing
 another background unloads it; choosing another theme also ends the controller, until
@@ -34,7 +32,6 @@ the theme-set hook starts it again. Re-applying Wheelie keeps the scene running.
 Display-off, session-lock, and compositor-confirmed fullscreen coverage pause that
 display's scene within one second. Waking it preserves the wheel angle and any manual
 pause. The controller checks monitor state in-process only while animation is selected.
-See [performance review](PERFORMANCE.md) for measurements and remaining costs.
 
 ```sh
 ~/.config/omarchy/themes/wheelie/wheelie pause
@@ -55,200 +52,94 @@ o.bind("CTRL + SPACE", "Pause/resume Wheelie wallpaper", '"$HOME/.config/omarchy
 The static scenes include forest riding, hard enduro, and two night settings.
 Forest trail and hard enduro have a baked black bottom vignette for the bar.
 The smooth fade runs from 72% to 98% of the image height, starting up to 6% earlier
-at the corners. Both remain 5456×3072 as quality-100 JPEG, within 4 of 255 levels of
-the PNG; unaltered originals are kept in `sources/`.
+at the corners. Both are 5456×3072 quality-100 JPEGs.
 
 | Background | Scene |
 |---|---|
 | [Forest trail](backgrounds/01-forest-trail.jpg) | A rider on a mossy forest singletrack |
-| [Night track](backgrounds/01-night-track.jpg) | A rider airborne over a floodlit motocross jump |
-| [Hard enduro](backgrounds/02-hard-enduro.jpg) | A rider climbing an exposed rocky mountain slope |
-| [Desert camp](backgrounds/03-desert-camp.jpg) | The bike parked by a campfire under the Milky Way |
+| [Night track](backgrounds/02-night-track.jpg) | A rider airborne over a floodlit motocross jump |
+| [Hard enduro](backgrounds/03-hard-enduro.jpg) | A rider climbing an exposed rocky mountain slope |
+| [Desert camp](backgrounds/04-desert-camp.jpg) | The bike parked by a campfire under the Milky Way |
+
+## Bike
+
+Separate front and rear wheels turn over the plate under stationary covers. Their
+lighting stays fixed to the upper-left light source while the tires turn. An animated
+drive chain, timed to the rear wheel, runs behind the boot and swingarm, and a
+stationary contact shadow sits beneath the rear tire.
 
 ## Sky prints
 
-The user approved the sky on 2026-10-18. Three sky photos, deep blue, rose-magenta,
+Three sky photos, deep blue, rose-magenta,
 and amber from top to bottom, replace the scene's sky as equal full-width strips,
 bordered in white above and below like prints laid edge to edge, running off the
 sides. Together they fill the sky down to the `horizon` row; the amber print's lower
-edge lies behind the dunes. `sky.py`
-cuts each strip from the middle of its photo, scaled to the scene width, and the
-bake writes them into `base.png`. The storm draws over the prints, and
-`scene/Surface.qml` redraws the borders over the storm from the `prints` rows and
-`printBorder` width in `layout.json`, so thin dust never ghosts a border through it.
-The rider, bike, and dunes stay in front of everything. The border width is set in
-`bake.py`. The photos are native 8:1 and 4:1 panoramas, so every strip is
-downscaled to the scene width rather than cut from a soft 21:9 frame.
-
-An open preview reloads only when its QML changes, so restart it after a bake
-that changes only the sky.
+edge lies behind the dunes. The strips are baked into `base.png`. The storm draws
+over the prints, and `scene/Surface.qml` redraws the borders over the storm from the
+`prints` rows and `printBorder` width in `layout.json`, so thin dust never ghosts a
+border through it. The rider, bike, and dunes stay in front of everything.
 
 ## Ambient dust
 
 Fine airborne sand, softer nearby flecks, and faint low wisps fill the scene.
 Nearby sand moves faster than distant grains, with varied sizes, lifetimes, and
-wind speeds. The existing rear-tire grains and puffs remain.
+wind speeds. Rear-tire grains and puffs lift beside the wheel's trail.
 
-`scene/AmbientDust.qml` retains the original emission rates, tints, size ranges,
-lifetimes, and velocities. `ambient-dust.vert` moves fixed meshes on the GPU;
-`ambient-dust.frag` samples the original grain and wisp SVG textures. Slots stagger
-new randomized lives at the original emission rate, avoiding geometry uploads for
-thousands of particles every frame. The air starts populated.
+`scene/AmbientDust.qml` sets each layer's emission rate, tint, sizes, lifetimes, and
+velocities. `ambient-dust.vert` moves fixed meshes on the GPU, so thousands of particles
+need no geometry uploads each frame; `ambient-dust.frag` samples the grain and wisp SVG
+textures. Slots stagger new randomized lives at each layer's emission rate, and the air
+starts populated.
 
 The clock wraps every 2376 seconds, a common multiple of the particle-slot periods;
 the generation counter continues the random sequence across that boundary.
-Pausing holds the clock and every particle in place. The shader matches Qt's
-original fade curve, size interpolation, and minimum grain size.
+Pausing holds the clock and every particle in place.
 
-Untinted glints ride with the distant and near grains at half their rates, mirroring
-their area and motion, with their original size and random orientation on scaled quads.
-Run `python3 tests/wheelie-dust.py` after baking to check visible dust, pause/resume,
-and clock rollover. See [dust performance measurements](PERFORMANCE-DUST.md).
+Untinted glints ride with the distant and near grains at half their rates, sharing
+their area and motion.
 
 ## Horizon sandstorm
-
-The user judged the storm good on 2026-10-18. A blue-keyed plate always showed
-its cut crest, so the storm plate is generated over a dusk sky like the scene's;
-its crest fades into sky the way real dust does, and the bake removes that sky so
-the sky prints show through. Keep the native 6336×2688 source and scene resolution.
 
 A dense, textured sand bank grows behind the distant dunes over four
 minutes, then continues billowing there. Its ten-minute texture-flow loop is seamless;
 the approach does not reset or jump back. It pauses with the scene's particles.
 
 `scene/HorizonStorm.qml` controls the timing; `scene/storm-wall.frag` scales and
-gently distorts the baked `storm.png`, keeping the source's original aspect ratio.
-The 6336-pixel-wide source covers the native scene throughout the approach without
-enlargement. The bake fits a smooth model of the plate's own sky and solves each
-pixel's dust coverage against it, using the dust hue measured from the plate. It saves
-the result as native RGBA; the shader only distorts and samples it each frame.
+gently distorts the baked `storm.png`, keeping the plate's original aspect ratio.
+The 6336-pixel-wide plate covers the native scene throughout the approach without
+enlargement. Its own sky is baked out, so `storm.png` holds only the dust.
 
-The storm replaces only the sky. `scene/rider-trace.svg` and `scene/dunes.svg` are
-rough hand traces; near them `sky.py` separates the plate's sky from the rider,
-bike, and dunes, and writes everything else to `cutout.png`, drawn over the storm
-with decontaminated anti-aliased edges. The storm ends just inside the redrawn
-dunes, at the `horizon` row in `layout.json`. The sky enclosed between the forearms is
-seeded explicitly. The front wheel's plate holds borrowed sky, so the dunes'
-skyline continues straight behind it. The wheel layers draw above the storm.
-The bake gives changed storm shaders a new filename so Qt reloads their code
-in the existing preview window. It writes the QML last and deletes superseded storm
-shaders, so a reload during the bake cannot run stale shader code.
+The storm replaces only the sky. `cutout.png` holds everything else, with
+anti-aliased edges, and is drawn over the storm, which ends just inside the redrawn
+dunes at the `horizon` row in `layout.json`. The wheel layers draw above the storm.
 
 ## Storm shade
 
-The user approved the shade on 2026-10-19. `dunes.py` regrades the dunes in the bake to
-the storm's dust hue, a little lighter and duller, with no lit crest. Near the rider,
-color tells sand from the bike; along an edge, a pixel takes its share of the change to
-the sand beside it, so no pale line remains. The far foreground takes on some of the
-shade and cools toward the viewer over about 220 px, and the edge between them blends
-over 7 rows. The photo's darker crest lip there is scaled by its own color, so it never
-turns black. The shade is static. `scene/scene-light.frag`
+The dunes lie in the storm's shade, regraded to its dust hue, a little lighter and
+duller, with no lit crest. The far foreground takes on some of the shade and cools
+toward the viewer. This shade is baked. `scene/scene-light.frag`
 darkens the foreground toward the bottom edge and its corners, in linear light; the
 sand ripples and the wheel trail stay.
 A vignette deepens the bottom edge behind the bar, keeping 25% of its light there,
 less in the corners.
 
-## Current checkpoint
+## Editing
 
-- Separate front/rear wheels with concentric hubs, round traced rim edges, matte rim
-  finishes, and shading evened from the rim's inner edge outward, so no rotating
-  white patch looks like wobble.
-- The front fork and brake cable are freed of the photo's sky where the larger tire
-  passes behind them, so they show no white outline over it, and the fork's lower side
-  is whole. The fork tube's underside darkens toward its edge; its warm reflection is the
-  dust's own color, so against the storm the tube seemed to fade out.
-- Animated drive chain, with links timed to the rear wheel and masked behind
-  the boot and swingarm. The user marked this done.
-- A stronger stationary contact shadow beneath the rear tire, accepted for now.
-- Pronounced warm sunset lighting across the scene, with cooler foreground sand.
-  Wheel lighting stays fixed to the upper-left light source while the tires turn.
-- Dunes in the storm's shade, and a foreground that darkens into a vignette at the bottom.
-- Existing rear-wheel sand grains and puffs remain a starting point for dust work.
-- Ambient airborne sand, sparkling glints, and low drifting wisps fill the wider scene.
-- A distant sandstorm slowly approaches, with moving billows behind the rider.
-- Three white-framed sky prints, blue, magenta, and amber, replace the original sky.
-
-Keep the native resolution. Use one ordinary preview window. **Never resize,
-move, float, or rearrange it.** The scene letterboxes in the preview window.
-
-## Build and preview
-
-From the repository root:
+The scene's images and `layout.json` in `scene/` are baked outside this repository.
+After editing a shader in `scene/`, recompile it:
 
 ```sh
-python themes/wheelie/bake.py
-/usr/lib/qt6/bin/qmllint themes/wheelie/build/*.qml
-quickshell -n -p themes/wheelie/build
+for f in themes/wheelie/scene/*.{frag,vert}; do /usr/lib/qt6/bin/qsb --qt6 -o "$f.qsb" "$f"; done
 ```
-
-Dependencies: Python, NumPy, ImageMagick, Quickshell, and Qt's shader baker at
-`/usr/lib/qt6/bin/qsb`. Tested with Quickshell 0.3.2 and Qt 6.12.0.
-Edit `scene/`, then rebuild; `build/` is generated and Git-ignored.
-
-For a matching native still (optional final argument is wheel angle in degrees):
-
-```sh
-python themes/wheelie/render.py themes/wheelie/build themes/wheelie/wallpaper-4k.png
-```
-
-The renderer uses the same QML and shaders offscreen with OpenGL. It needs access
-to the graphics session but opens no desktop window. The still is Git-ignored.
-Particles run during capture while the wheels hold the requested angle, so dust
-positions vary between stills. An incomplete transparent render fails and preserves
-the previous poster. Paths containing spaces, `#`, or `%` are supported.
-`preview.jpg` is a small documentation image and the theme picker's preview; the
-scene does not use it.
-
-## Files and checks
-
-`scene/` owns the QML, lighting and storm shaders, dust textures, traces, and contact shadow.
-`sources/` contains every rebuild input; no scratch-directory inputs are required.
-`bake.py` builds wheel layers, stationary covers, the chain atlas, and compiled shaders.
-`wheels.py` aligns and rounds sprites and evens their shading; `chain.py` places the links;
-`sky.py` builds the sky-free cutout, the storm plate's sky model, and the sky prints;
-`dunes.py` puts the dunes in the storm's shade.
-`render.py` captures the assembled scene without duplicating its lighting code.
-
-The sky prints checkpoint was checked by rebuilding from these inputs, confirming the
-decoded bake outputs were identical before and after cleanup, linting QML, compiling
-Python and shaders, rendering native stills at the start and end of the storm's
-approach, and restarting the live preview. The live preview was verified earlier
-with unchanged window geometry and consistent lighting at multiple wheel angles.
-
-The old experiments and detailed review captures remain local under
-`misc/bike/archive/v3-2026-10-17/`. Start previews from `themes/wheelie/build`;
-the old scratch path, `misc/bike/v3/out`, is not a source directory.
 
 ## Asset provenance
 
-- `sources/scene.jpg`: original 5504×3072 output from
-  `google/gemini-3-pro-image` via `rb imagen`, 4K, 16:9. Its decoded pixels exactly
-  match the PNG used during development. Prompt: [scene](prompts/scene.txt).
-- `sources/base.png` and `sources/layout.json`: preserved compositing plate and
-  original wheel geometry derived from that scene. Required by the mask rebuild.
-- `sources/wheels.png`: separate front/rear wheel sprites generated using the
-  built-in imagegen tool. Prompt: [wheels](prompts/wheels.txt).
-- `sources/matte-rims.png`: imagegen edit; only the rim finish is used by the bake.
-  Prompt: [matte rims](prompts/matte-rims.txt).
-- `sources/chain.png`: imagegen chain material. The bake extracts a single link
-  and constructs the measured route. Prompt: [chain](prompts/chain.txt).
-- `sources/storm-wall-sky-4k.jpg`: original 6336×2688 dust-bank plate over a
-  dusk sky from `google/gemini-3-pro-image` via `rb imagen`, 4K, 21:9, preserved
-  unaltered. The bake removes its sky. Prompt: [sandstorm](prompts/storm-wall-sky-4k.txt).
-- `sources/sky-blue.png`, `sources/sky-magenta.png`, `sources/sky-amber.png`:
-  original sky panoramas from `google/gemini-3.1-flash-image` via `rb imagen`, 4K,
-  preserved unaltered: blue at 8:1 (11712×1408), magenta and amber at 4:1
-  (8256×2048). Prompts: [blue](prompts/sky-blue.txt), [magenta](prompts/sky-magenta.txt),
-  [amber](prompts/sky-amber.txt).
-- `backgrounds/01-night-track.jpg` and `03-desert-camp.jpg`: original
-  5504×3072 outputs from `google/gemini-3-pro-image` via `rb imagen`, 4K, 16:9,
-  preserved unaltered. Prompts: [night track](prompts/01-night-track.txt),
-  [desert camp](prompts/03-desert-camp.txt).
-- `sources/01-forest-trail.png` and `02-hard-enduro.png`: original
-  5456×3072 outputs from `black-forest-labs/flux-3-image` via `rb imagen`, 4K,
-  16:9, preserved unaltered. The JPEG copies in `backgrounds/` add the bottom vignette.
-  Prompts: [forest trail](prompts/01-forest-trail.txt),
-  [hard enduro](prompts/02-hard-enduro.txt).
+- Scene, storm plate, and the night track and desert camp backgrounds:
+  `google/gemini-3-pro-image` via `rb imagen`, 4K.
+- Sky prints: `google/gemini-3.1-flash-image` via `rb imagen`, 4K.
+- Wheel sprites, rim finish, and chain material: the built-in imagegen tool.
+- `backgrounds/01-forest-trail.jpg` and `03-hard-enduro.jpg`: 5456×3072 outputs
+  from `black-forest-labs/flux-3-image` via `rb imagen`, 4K, 16:9, with the bottom
+  vignette added.
 
-Contact shadows and lighting are code-defined. Generated source assets are kept
-unaltered; new bakes reproduce the compositing and motion layers from them.
+Contact shadows and lighting are code-defined.

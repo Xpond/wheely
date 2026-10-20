@@ -21,25 +21,14 @@ with tempfile.TemporaryDirectory(prefix="wheelie-install-") as temp:
     source.mkdir()
     commands.mkdir()
     shutil.copy2(repo / "wheelie", source / "wheelie")
-    for folder in ("hooks", "backgrounds"):
+    for folder in ("hooks", "backgrounds", "scene"):
         (source / folder).mkdir()
     shutil.copy2(repo / "hooks/wheelie-wallpaper", source / "hooks/wheelie-wallpaper")
-    for name in ("colors.toml", "icons.theme", "preview.jpg", "backgrounds/static.jpg"):
+    for name in ("colors.toml", "icons.theme", "preview.jpg", "backgrounds/00-wheelie-animated.png",
+                 "backgrounds/static.jpg", "scene/wallpaper.qml", "scene/ambient-dust.vert.qsb",
+                 "scene/ambient-dust.frag.qsb", "scene/ambient-dust.vert", "scene/ambient-dust.frag"):
         (source / name).write_text("new " + name)
-    (source / "bake.py").write_text("""import os, sys
-from pathlib import Path
-if os.environ["WHEELIE_FAIL"] == "bake": sys.exit(41)
-build = Path(__file__).parent / "build"
-build.mkdir(exist_ok=True)
-for name in ("wallpaper.qml", "ambient-dust.vert.qsb", "ambient-dust.frag.qsb",
-             "chain.png", "chain-link.png", "chain.svg", "shell.qml", "Render.qml"):
-    (build / name).write_text("new " + name)
-""")
-    (source / "render.py").write_text("""import os, sys
-from pathlib import Path
-if os.environ["WHEELIE_FAIL"] == "render": sys.exit(42)
-Path(sys.argv[2]).write_text("new poster")
-""")
+    os.utime(source, (0, 0))
     stub = """#!/usr/bin/env python3
 import os, signal, subprocess, sys
 from pathlib import Path
@@ -47,38 +36,29 @@ name, args = Path(sys.argv[0]).name, sys.argv[1:]
 failure = os.environ["WHEELIE_FAIL"]
 with open(os.environ["WHEELIE_LOG"], "a") as log:
     log.write(name + " " + " ".join(args) + "\\n")
-if name == "cp" and args[0] == "-a" and args[-2].endswith("/build"):
-    if failure in ("copy", "interrupt"):
-        Path(args[-1]).mkdir(exist_ok=True)
-        (Path(args[-1]) / "partial").touch()
-        if failure == "interrupt": os.kill(os.getppid(), signal.SIGTERM)
-        sys.exit(43)
-if name == "mv" and Path(args[-2]).name == "new" and failure == "swap":
-    sys.exit(44)
-if name == "mv" and failure == "restore" and Path(args[-2]).name != "wheelie":
-    sys.exit(44)
-if name == "omarchy" and failure == "hook": sys.exit(45)
+if name == "cp" and args[0] == "-a" and args[-2].endswith("/scene") and failure != "none":
+    Path(args[-1]).mkdir(exist_ok=True)
+    (Path(args[-1]) / "partial").touch()
+    if failure == "interrupt": os.kill(os.getppid(), signal.SIGTERM)
+    sys.exit(43)
 if name == "quickshell" and "--daemonize" in args:
-    if failure == "start": sys.exit(46)
     assert Path(args[-1]).is_file()
-if name in ("cp", "mv"):
-    sys.exit(subprocess.call(["/usr/bin/" + name, *args]))
+if name == "cp":
+    sys.exit(subprocess.call(["/usr/bin/cp", *args]))
 """
-    for name in ("cp", "mv", "omarchy", "quickshell"):
+    for name in ("cp", "omarchy", "quickshell"):
         command = commands / name
         command.write_text(stub)
         command.chmod(0o755)
 
-    for failure in ("bake", "render", "copy", "interrupt", "swap", "hook", "start", "restore", "none"):
+    for failure in ("copy", "interrupt", "none"):
         config = root / failure
         destination = config / "omarchy/themes/wheelie"
         (destination / "animated").mkdir(parents=True)
         (destination / "backgrounds").mkdir()
-        for name in ("animated/wallpaper.qml", "animated/obsolete", "backgrounds/old.jpg", "personal.txt"):
+        for name in ("animated/wallpaper.qml", "animated/obsolete", "backgrounds/old.jpg"):
             (destination / name).write_text("old " + name)
-        launcher = destination / "wheelie"
-        launcher.write_text('#!/bin/sh\nprintf "restored watch\\n" >> "$WHEELIE_LOG"\n')
-        launcher.chmod(0o755)
+        os.utime(destination, (0, 0))
         original = snapshot(destination)
         log = root / f"{failure}.log"
         env = os.environ | {
@@ -87,35 +67,29 @@ if name in ("cp", "mv"):
         }
         result = subprocess.run([str(source / "wheelie"), "install"], env=env,
                                 capture_output=True, text=True, timeout=20)
-        calls = log.read_text() if log.exists() else ""
+        calls = log.read_text()
         if failure == "none":
             assert result.returncode == 0, result.stderr
-            assert (destination / "animated/wallpaper.qml").read_text() == "new wallpaper.qml"
-            assert (destination / "personal.txt").read_text() == "old personal.txt"
-            assert (destination / "backgrounds/00-wheelie-animated.png").read_text() == "new poster"
+            assert (destination / "animated/wallpaper.qml").read_text() == "new scene/wallpaper.qml"
+            poster = "backgrounds/00-wheelie-animated.png"
+            assert (destination / poster).read_text() == "new " + poster
             for name in ("ambient-dust.vert.qsb", "ambient-dust.frag.qsb"):
                 assert (destination / "animated" / name).is_file()
-            for name in ("obsolete", "chain.png", "chain-link.png", "chain.svg", "shell.qml", "Render.qml"):
-                assert not (destination / "animated" / name).exists(), name
+            for name in ("animated/obsolete", "animated/ambient-dust.vert", "animated/ambient-dust.frag",
+                         "backgrounds/old.jpg"):
+                assert not (destination / name).exists(), name
+            # Omarchy's theme picker rebuilds a theme's preview only when its folder's time changes.
+            assert destination.stat().st_mtime > 0
             assert "--daemonize" in calls and "post-boot" in calls and "theme-set" in calls
-        elif failure == "restore":
-            backups = list(destination.parent.glob(".wheelie-install-*/previous"))
-            assert result.returncode != 0 and len(backups) == 1, result.stderr
-            assert snapshot(backups[0]) == original
-            assert str(backups[0]) in result.stderr, result.stderr
-            print("ok: failed restore retains the previous theme and reports its location")
-            continue
         else:
+            # A failed copy leaves the installed theme and its running scene untouched.
             assert result.returncode != 0, failure
             assert snapshot(destination) == original, (failure, result.stderr, calls)
-            if failure in ("bake", "render", "copy", "interrupt"):
-                assert "quickshell kill" not in calls, (failure, calls)
-            else:
-                assert "restored watch" in calls, (failure, calls)
-        assert not list(destination.parent.glob(".wheelie-install-*")), failure
+            assert "quickshell kill" not in calls, (failure, calls)
+        assert not list(destination.parent.parent.glob(".wheelie-install-*")), failure
         print(f"ok: Wheelie install {failure}")
 
-    for failure in ("copy", "start", "none"):
+    for failure in ("copy", "none"):
         config = root / f"fresh-{failure}"
         destination = config / "omarchy/themes/wheelie"
         env.update(XDG_CONFIG_HOME=str(config), WHEELIE_FAIL=failure)
@@ -123,5 +97,5 @@ if name in ("cp", "mv"):
                                 capture_output=True, text=True, timeout=20)
         assert (result.returncode == 0) == (failure == "none"), result.stderr
         assert destination.exists() == (failure == "none")
-        assert not list(destination.parent.glob(".wheelie-install-*"))
+        assert not list(destination.parent.parent.glob(".wheelie-install-*"))
         print(f"ok: first Wheelie install {failure}")

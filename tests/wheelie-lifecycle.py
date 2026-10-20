@@ -15,7 +15,7 @@ import tempfile
 import time
 
 repo = Path(__file__).resolve().parents[1]
-build = Path(sys.argv[1]) if len(sys.argv) > 1 else repo / "themes/wheelie/build"
+scene = Path(sys.argv[1]) if len(sys.argv) > 1 else repo / "themes/wheelie/scene"
 env = os.environ | {"QT_QPA_PLATFORM": "offscreen", "QT_QPA_PLATFORMTHEME": "generic",
                     "QT_QUICK_BACKEND": "rhi", "QSG_RHI_BACKEND": "opengl"}
 
@@ -36,7 +36,7 @@ def stage(theme):
 with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
     output = Path(temp)
     config, state = output / "controller #100%", output / "state"
-    shutil.copytree(build, config)
+    shutil.copytree(scene, config)
     state.mkdir()
     (state / "theme.name").write_text("wheelie\n")
     stage(state / "theme")

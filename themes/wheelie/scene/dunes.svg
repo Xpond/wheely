@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1376" height="768" viewBox="0 0 1376 768">
-  <!-- Keep the sunlit dunes in front of the distant storm, along their actual skyline. -->
-  <path fill="white" d="M0 489 Q47 489 98 494 Q151 483 172 489 L226 498
-    Q374 470 520 469 Q634 466 710 482 Q806 495 902 495
-    Q1070 493 1160 486 Q1265 482 1376 490 V768 H0Z"/>
-</svg>
