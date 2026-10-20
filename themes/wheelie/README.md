@@ -74,26 +74,25 @@ that changes only the sky.
 
 ## Ambient dust
 
-The first ambient pass adds fine airborne sand, softer nearby flecks, and faint
-low wisps across the scene. Nearby sand moves faster than distant grains, with
-varied sizes, lifetimes, and wind speeds. Emitters pre-roll so the air is already
-populated when the preview opens. The existing rear-tire grains and puffs remain.
+Fine airborne sand, softer nearby flecks, and faint low wisps fill the scene.
+Nearby sand moves faster than distant grains, with varied sizes, lifetimes, and
+wind speeds. The existing rear-tire grains and puffs remain.
 
-Tune density, tint, size, and motion in `scene/AmbientDust.qml`; all measurements
-use the native scene coordinates and share its sunset lighting. This pass is
-ready for visual review.
-Verified with a native still, QML lint, and frame comparisons: dust moves while
-running, holds identical frames while paused, and moves again after resuming.
+`scene/AmbientDust.qml` retains the original emission rates, tints, size ranges,
+lifetimes, and velocities. `ambient-dust.vert` moves fixed meshes on the GPU;
+`ambient-dust.frag` samples the original grain and wisp SVG textures. Slots stagger
+new randomized lives at the original emission rate, avoiding geometry uploads for
+thousands of particles every frame. The air starts populated.
 
-Emitting, pre-roll included, waits for the window's first three drawn frames. Qt's
-`ImageParticle` gives a particle its tint, rotation, and stretch only once its painter
-has drawn, so a hot reload's pre-roll otherwise showed as bright white puffs for ~15 s.
-Checked on hot reload, fresh launch, and offscreen stills.
+The clock wraps every 2376 seconds, a common multiple of the particle-slot periods;
+the generation counter continues the random sequence across that boundary.
+Pausing holds the clock and every particle in place. The shader matches Qt's
+original fade curve, size interpolation, and minimum grain size.
 
-The user liked how those white grains sparkled and approved untinted glints on
-2026-10-18: they ride with the distant and near grains at half their rates, mirroring
-their area and motion. The glint painter needs a rotation; without one Qt draws point
-sprites, which ignore the scene's downscale and show as large soft blobs.
+Untinted glints ride with the distant and near grains at half their rates, mirroring
+their area and motion, with their original size and random orientation on scaled quads.
+Run `python3 tests/wheelie-dust.py` after baking to check visible dust, pause/resume,
+and clock rollover. See [dust performance measurements](PERFORMANCE-DUST.md).
 
 ## Horizon sandstorm
 

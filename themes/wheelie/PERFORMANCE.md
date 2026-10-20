@@ -1,5 +1,65 @@
 # Performance
 
+Latest: [ambient dust renderer measurements](PERFORMANCE-DUST.md).
+
+## 2026-10-20 follow-up: share decoded images
+
+Before the dust renderer change linked above, ambient dust dominated active CPU
+cost. Removing it in an isolated diagnostic reduced CPU from 39.4–39.8% at about
+169 fps to 7.7% at 179 fps: approximately 2.35 versus 0.43 CPU milliseconds per
+frame. The image-sharing changes measured below preserved particle density.
+
+Four `cache: false` overrides prevented the cutout, wheel, shadow and storm images
+from sharing decoded data between windows. Removing them uses Qt's normal image
+cache, as the base and wheel covers already do. Identical image URLs and decode
+sizes can share their decoded data. See [Qt's Image documentation](https://doc.qt.io/qt-6/qml-qtquick-image.html#performance).
+
+First comparison, using one or two 1920×1080 offscreen windows in one process:
+
+| Scene | Before RSS | After RSS | Before fps | After fps |
+|---|---:|---:|---:|---:|
+| One window | 335.5 MiB | 335.9 MiB | 168.8 | 169.0 |
+| Two windows | 461.8 MiB | 411.3 MiB | 168.0 | 168.0 |
+
+The two-window saving was 50.5 MiB, about 11%; peak RSS fell from 514.0 to
+460.2 MiB. This is a memory improvement for matching displays, not an active CPU
+or GPU-memory improvement. Different decode sizes still need separate images.
+CPU for the two-window comparison was 111.4% before and 110.0% after, within
+run-to-run variation. FPS is per window, not the sum of both windows.
+
+Measurements used the same GTX 1080 Ti, Quickshell 0.3.2, Qt 6.12.0 and OpenGL
+as the earlier review, with five seconds of warm-up and twelve seconds of sampling.
+CPU percentages use one core. CPU time and RSS came from `/proc`, and frame counts
+from `frameSwapped`.
+The installed wallpaper and other desktop applications remained running.
+The offscreen loop is uncapped; these are not native Wayland presentation rates.
+Today's absolute CPU readings should not be treated as a regression against
+earlier sessions: the before and after comparisons here used the same environment.
+
+Pausing produced zero frames and no CPU ticks during each five-second sample.
+The real controller still polls monitor state once per second. Unloading scenes
+also stopped rendering. Qt's default unused decoded-image cache limit is 2 MiB; it
+evicts excess data on release; OS/driver allocation retention can keep process
+RSS or VRAM above their initial values. See the [Qt cache implementation](https://raw.githubusercontent.com/qt/qtdeclarative/6.12/src/quick/util/qquickpixmapcache.cpp).
+
+Deterministic before/after renders were pixel-identical at 1920×1080, 1080×1920
+and 3840×2160, at wheel angle 83°, storm phase 1.7, and storm approach 0 and 1.
+Random particles were disabled; this comparison preceded the dust renderer change.
+The initial 30-cycle scene reload experiment settled around 366–370 MiB after
+warm-up, rather than growing with every reload.
+
+Both versions passed 30 full controller unload/reload cycles, including lifecycle
+assertions; after-change RSS stayed around 360–367 MiB. A second two-window run,
+in reverse order, saved 47.5 MiB. Destroying both windows removed the process from
+NVIDIA's graphics-process list and left RSS at 238.5 versus 243.8 MiB before.
+Validation also passed `node tests/check.js`, shell syntax and `git diff --check`;
+QML lint retained the same 49 warnings and zero errors.
+
+This review preserves 2× decoding, particle density, animation timing and all
+baked assets. The installed wallpaper was unchanged during this comparison.
+Physical multiple displays, lock/unlock, DPMS cycling and suspend/resume remain
+untested. The 4K checks cover still-image fidelity, not animation performance.
+
 ## 2026-10-20: images at screen size
 
 Same machine, measured offscreen at 1920×1080 like the component experiments below

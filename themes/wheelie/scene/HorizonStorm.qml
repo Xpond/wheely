@@ -30,7 +30,6 @@ Item {
     property var storm: Image {
       id: stormImage
       source: "storm.png"
-      cache: false
       visible: false
       smooth: true
       // Drawn up to 1.15 times the scene's width; 0 keeps the plate's native size.

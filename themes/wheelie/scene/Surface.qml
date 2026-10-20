@@ -83,7 +83,6 @@ Item {
         // Everything but the sky, redrawn over the storm.
         Image {
           source: "cutout.png"
-          cache: false
           x: root.layout.cutout[0]; y: root.layout.cutout[1]
           width: root.layout.cutout[2]; height: root.layout.cutout[3]
           sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
@@ -104,7 +103,6 @@ Item {
               property real exposure: modelData === "rear" ? 0.92 : 1.0
               property var source: Image {
                 source: modelData + ".png"
-                cache: false
                 visible: false
                 smooth: true
                 sourceSize: Qt.size(decoded, decoded)
@@ -138,7 +136,6 @@ Item {
         Image {
           readonly property var rear: root.layout.wheels.rear
           source: "contact-shadow.svg"
-          cache: false
           x: rear ? rear.center[0] - 240 : 0
           y: rear ? rear.contactY - 12 : 0
           visible: !!rear

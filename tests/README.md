@@ -28,7 +28,10 @@ dependencies are documented with the features:
 - [Wheelie theme](../themes/wheelie/README.md): after `python3 themes/wheelie/bake.py`,
   `python3 tests/wheelie-lifecycle.py` checks pause/resume, lock/DPMS/fullscreen gating,
   static-background round trips, re-applying the theme, and exiting for another theme.
+  `python3 tests/wheelie-dust.py` checks visible GPU dust, paused pixels, continuous
+  resume, and clock rollover; `QSG_RHI_BACKEND=vulkan` uses a temporary Wayland
+  background window because Qt's offscreen platform cannot initialize Vulkan.
 
 `lock-render.py`, `tidal.py`, and `tidal-geometry.py` use native Wayland windows;
-the other rendering suites use offscreen fixtures. `lock-process.py` simulates
+the other rendering suites default to offscreen fixtures. `lock-process.py` simulates
 the compositor and authentication.

@@ -129,20 +129,27 @@ layout["chain"] = build_chain(root, out, scene)
 save(out / "storm.png", storm_cutout(load(sources / "storm-wall-sky-4k.jpg")))
 for name in ("dust.svg", "sand-grain.svg", "contact-shadow.svg"):
     shutil.copy2(root / "scene" / name, out / name)
-for name in ("wheel-light", "scene-light", "storm-wall"):
-    shader = root / "scene" / f"{name}.frag"
-    filename = f"{name}.frag.qsb"
-    if name == "storm-wall":
+shaders = {}
+for name in ("wheel-light.frag", "scene-light.frag", "storm-wall.frag",
+             "ambient-dust.vert", "ambient-dust.frag"):
+    shader = root / "scene" / name
+    filename = f"{name}.qsb"
+    if name.startswith(("storm-wall.", "ambient-dust.")):
         # Qt retains shaders by URL across reloads; changed code needs a fresh URL.
         digest = hashlib.sha256(shader.read_bytes()).hexdigest()[:12]
-        filename = storm_shader = f"{name}-{digest}.frag.qsb"
+        stem, suffix = name.rsplit(".", 1)
+        filename = f"{stem}-{digest}.{suffix}.qsb"
+    shaders[f"{name}.qsb"] = filename
     subprocess.run(["/usr/lib/qt6/bin/qsb", "--qt6", "-o", str(out / filename),
                     str(shader)], check=True)
 # An open preview reloads whenever its QML changes, even mid-bake. Write the QML last,
-# complete, and remove superseded storm shaders, so a reload never runs stale code.
+# complete, and remove superseded shaders, so a reload never runs stale code.
 for name in ("Surface.qml", "AmbientDust.qml", "HorizonStorm.qml", "shell.qml", "Render.qml", "wallpaper.qml"):
     qml = (root / "scene" / name).read_text()
-    (out / name).write_text(qml.replace("storm-wall.frag.qsb", storm_shader))
-for old in out.glob("storm-wall*.frag.qsb"):
-    if old.name != storm_shader:
-        old.unlink()
+    for source, filename in shaders.items():
+        qml = qml.replace(source, filename)
+    (out / name).write_text(qml)
+for pattern in ("storm-wall*.frag.qsb", "ambient-dust*.vert.qsb", "ambient-dust*.frag.qsb"):
+    for old in out.glob(pattern):
+        if old.name not in shaders.values():
+            old.unlink()
