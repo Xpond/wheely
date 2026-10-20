@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="100" viewBox="0 0 520 100">
+  <defs>
+    <radialGradient id="soft">
+      <stop stop-color="#242b36" stop-opacity=".44"/>
+      <stop offset=".45" stop-color="#242b36" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#242b36" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="contact">
+      <stop stop-color="#191f27" stop-opacity=".82"/>
+      <stop offset=".55" stop-color="#191f27" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#191f27" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ground" x1="0" y1="8" x2="0" y2="15" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0"/>
+      <stop offset="1" stop-color="white"/>
+    </linearGradient>
+    <mask id="sand" maskUnits="userSpaceOnUse" x="0" y="0" width="520" height="100">
+      <rect width="520" height="100" fill="url(#ground)"/>
+    </mask>
+  </defs>
+  <!-- The origin of the contact patch is (240, 12); follow the sand's slight slope. -->
+  <g transform="matrix(1 .014 0 1 0 -3.36)" mask="url(#sand)">
+    <ellipse cx="270" cy="34" rx="240" ry="48" fill="url(#soft)"/>
+    <ellipse cx="240" cy="20" rx="158" ry="24" fill="url(#contact)"/>
+  </g>
+</svg>
