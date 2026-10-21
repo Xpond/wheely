@@ -36,7 +36,7 @@ Item {
             "files", src, dst]
   }
 
-  function inHere(name) { return panel.listedDir.replace(/\/+$/, "") + "/" + name }
+  function inHere(name) { return root.panel.listedDir.replace(/\/+$/, "") + "/" + name }
 
   function paste() {
     if (!root.held) return
@@ -58,21 +58,21 @@ Item {
         root.note(exitCode === 17 ? "a " + o.name + " is already here" : o.fail)
         return
       }
-      if (o.land) panel.pending = o.name
+      if (o.land) root.panel.pending = o.name
       root.note(o.done)
       if (o.spend) root.held = null
     }
   }
   function copyPath() {
-    if (!panel.sel || panel.editing) return
-    root.run(["sh", "-c", 'printf %s "$1" | wl-copy', "files", panel.sel.path],
-             { done: "copied " + FilesIndex.display(panel.sel.path, panel.home),
+    if (!root.panel.sel || root.panel.editing) return
+    root.run(["sh", "-c", 'printf %s "$1" | wl-copy', "files", root.panel.sel.path],
+             { done: "copied " + FilesIndex.display(root.panel.sel.path, root.panel.home),
                fail: "copy path failed" })
   }
   // A terminal in the folder being browsed; the panel unmaps before it asks for the keyboard.
   function terminal() {
-    panel.close()
-    Quickshell.execDetached(["uwsm-app", "--", "xdg-terminal-exec", "--dir=" + panel.dir])
+    root.panel.close()
+    Quickshell.execDetached(["uwsm-app", "--", "xdg-terminal-exec", "--dir=" + root.panel.dir])
   }
   // Deletion uses trash, requires two presses, and stays visibly red across themes.
   readonly property color danger: "#ff2222"
@@ -81,8 +81,8 @@ Item {
     root.doomed ? root.doomed.slice(root.doomed.lastIndexOf("/") + 1) : ""
   Timer { id: doomArmed; interval: 3000; onTriggered: root.doomed = "" }
   function remove() {
-    var e = panel.sel
-    if (!e || e.missing || panel.editing) return
+    var e = root.panel.sel
+    if (!e || e.missing || root.panel.editing) return
     if (root.doomed !== e.path) {
       root.doomed = e.path
       doomArmed.restart()
@@ -95,9 +95,9 @@ Item {
   // Keep the panel open unless another application accepts the file.
   property var opening: null
   function activate(e) {
-    if (!e || panel.editing) return
-    if (e.isDir) { panel.enter(e.path); return }
-    if (e.missing) { panel.diffMode = true; return }
+    if (!e || root.panel.editing) return
+    if (e.isDir) { root.panel.enter(e.path); return }
+    if (e.missing) { root.panel.diffMode = true; return }
     root.opening = e
     opener.command = ["omarchy-open-path", e.path]
     opener.running = true
@@ -106,7 +106,7 @@ Item {
   Process {
     id: opener
     onExited: function (exitCode) {
-      if (exitCode === 0) { panel.close(); return }
+      if (exitCode === 0) { root.panel.close(); return }
       // Exit 3 is a quiet decline; exit 4 means no application claimed the file.
       if (exitCode !== 4) return
       root.note("nothing here opens " + root.opening.name)

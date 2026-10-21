@@ -6,7 +6,7 @@ Item {
   id: root
 
   // The lock screen's view (LockView.qml): whether the display is on.
-  property Item host
+  property var host
 
   // Seconds of surf, from a random point in its hour so each lock shows other waves, and the
   // tide's rise on unlock, in screen heights.

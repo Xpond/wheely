@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 import qs.Commons as Commons
@@ -10,43 +11,43 @@ Item {
   implicitHeight: hints.height
 
   // Delete confirmation takes priority over the key legend.
-  readonly property bool arming: !!panel && !!panel.doomed
-  readonly property var listKey: ["ctrl+b", !!panel && panel.listShown ? "hide list" : "show list"]
+  readonly property bool arming: !!panel && !!root.panel.doomed
+  readonly property var listKey: ["ctrl+b", !!panel && root.panel.listShown ? "hide list" : "show list"]
   // Offered where there is something to diff, or a diff to leave. Lit while the diff is on,
   // since the browser reopens in it and a diff unexplained looks like a broken file.
-  readonly property var diffKey: !panel || !panel.diffMode && !Object.keys(panel.changes).length ? []
-    : [["ctrl+d", panel.diffMode ? "hide diff" : "show diff", panel.diffMode]]
+  readonly property var diffKey: !panel || !root.panel.diffMode && !Object.keys(root.panel.changes).length ? []
+    : [["ctrl+d", root.panel.diffMode ? "hide diff" : "show diff", root.panel.diffMode]]
   // With the list hidden the bare keys scroll the preview; see FilesKeys.
-  readonly property var moves: (!panel || panel.listShown
+  readonly property var moves: (!panel || root.panel.listShown
     ? [["↑↓", "select"], ["enter", "open"], ["←", "up"], ["shift+↑↓", "scroll"]]
     : [["↑↓", "scroll"], ["enter", "open"], ["←", "list"]])
-      .concat(panel && panel.showsVideo ? [["space", "play/pause"]] : [])
+      .concat(panel && root.panel.showsVideo ? [["space", "play/pause"]] : [])
   // A window closes like any other, so only the overlay offers esc.
-  readonly property var leave: !panel ? [] : panel.host ? [["esc", "search"]] : panel.windowed ? [] : [["esc", "close"]]
+  readonly property var leave: !panel ? [] : root.panel.host ? [["esc", "search"]] : root.panel.windowed ? [] : [["esc", "close"]]
 
   readonly property var pairs:
     !panel ? []
-    : root.arming ? [["del", "again to trash " + panel.doomedName],
+    : root.arming ? [["del", "again to trash " + root.panel.doomedName],
                      ["any other key", "cancel"]]
-    : panel.editing
+    : root.panel.editing
       ? [["ctrl+s", "save"], ["ctrl+c/x/v", "clipboard"],
-         ["esc", panel.discarding ? "again to discard"
-                 : panel.dirty ? "discard" : "back"]]
-    : panel.naming
-      ? (panel.naming === "new"
+         ["esc", root.panel.discarding ? "again to discard"
+                 : root.panel.dirty ? "discard" : "back"]]
+    : root.panel.naming
+      ? (root.panel.naming === "new"
          ? [["type", "a name; a dot in it makes a file"],
             ["/ at the end", "a folder"], [". at the end", "a file"],
             ["enter", "make it"], ["esc", "cancel"]]
          : [["type", "the new name"], ["enter", "rename"], ["esc", "cancel"]])
-    : panel.held
-      ? root.moves.concat([["ctrl+v", (panel.held.move ? "move " : "copy ") + panel.held.name + " here"],
+    : root.panel.held
+      ? root.moves.concat([["ctrl+v", (root.panel.held.move ? "move " : "copy ") + root.panel.held.name + " here"],
          ["ctrl+e", "edit"]], root.leave)
     // The everyday keys by default; F1 swaps in every key.
-    : panel.allKeys
+    : root.panel.allKeys
       ? root.moves.concat([["ctrl+x/c/v", "move/copy"],
          ["ctrl+e", "edit"], ["ctrl+enter", "terminal"], ["ctrl+y", "copy path"],
          ["ctrl+o", "sort"], ["f2", "rename"], ["ctrl+shift+n", "new"], ["del", "trash"], root.listKey],
-         root.diffKey, [["ctrl+t", panel.host || panel.windowed ? "unpin" : "window"]], root.leave,
+         root.diffKey, [["ctrl+t", root.panel.host || root.panel.windowed ? "unpin" : "window"]], root.leave,
          [["f1", "fewer keys"]])
     : root.moves.concat([["ctrl+e", "edit"], root.listKey], root.diffKey, root.leave, [["f1", "all keys"]])
 
@@ -64,6 +65,7 @@ Item {
       model: root.lines
 
       delegate: Row {
+        id: hintLine
         required property var modelData
         anchors.horizontalCenter: parent.horizontalCenter
         // Shrink rather than clip when a tiled window is narrower than the line.
@@ -71,24 +73,25 @@ Item {
         spacing: Style.spacing.xxl
 
         Repeater {
-          model: modelData
+          model: hintLine.modelData
 
           delegate: Row {
+            id: hint
             required property var modelData
             spacing: Style.spacing.xs
 
             Text {
-              text: modelData[0]
-              color: root.arming ? panel.danger : modelData[2] ? Commons.Color.accent : Commons.Color.menu.text
-              opacity: root.arming || modelData[2] ? 1.0 : 0.72
+              text: hint.modelData[0]
+              color: root.arming ? root.panel.danger : hint.modelData[2] ? Commons.Color.accent : Commons.Color.menu.text
+              opacity: root.arming || hint.modelData[2] ? 1.0 : 0.72
               font.family: Style.font.menuFamily
               font.pixelSize: Style.font.caption
             }
 
             Text {
-              text: modelData[1]
-              color: root.arming ? panel.danger : modelData[2] ? Commons.Color.accent : Commons.Color.menu.text
-              opacity: root.arming || modelData[2] ? 0.9 : 0.36
+              text: hint.modelData[1]
+              color: root.arming ? root.panel.danger : hint.modelData[2] ? Commons.Color.accent : Commons.Color.menu.text
+              opacity: root.arming || hint.modelData[2] ? 0.9 : 0.36
               font.family: Style.font.menuFamily
               font.pixelSize: Style.font.caption
             }

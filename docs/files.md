@@ -203,8 +203,8 @@ fullscreen at the current position. Leaving a video releases its player.
 
 Previews decode in software: Qt picks hardware decoding even for codecs the GPU
 lacks (AV1 on older cards) and shows black. The install sets
-`QT_FFMPEG_DECODING_HW_DEVICE_TYPES=none` in the Hyprland block; it takes effect
-at the next login.
+`QT_FFMPEG_DECODING_HW_DEVICE_TYPES=,` (an empty device list) in the Hyprland block;
+it takes effect at the next login.
 
 A folder previews in the same scroller a file does, rather than in a second
 `ListView` with its own delegate and its own way of being navigated. Its rows

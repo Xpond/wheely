@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 import qs.Commons as Commons
@@ -12,8 +13,8 @@ Item {
   property var wheel: null
   property alias filterSlot: filter
 
-  readonly property var rows: wheel.manualRows.filter(function (r) { return !!r.section })
-  readonly property string term: wheel.query.trim()
+  readonly property var rows: sheet.wheel.manualRows.filter(function (r) { return !!r.section })
+  readonly property string term: sheet.wheel.query.trim()
   // Rows by what they say: a model hands each delegate its own copy, so identity is no test.
   function idOf(row) { return row.section + "\n" + row.keys + "\n" + row.label }
   readonly property var found: sheet.term ? MenuIndex.search(sheet.rows, sheet.term, sheet.rows.length, {}).map(sheet.idOf) : []
@@ -26,7 +27,7 @@ Item {
   readonly property int keySize: Style.font.subtitle
   readonly property int capHeight: sheet.keySize + Style.spacing.xs * 3
   // On the overlay the panel keeps clear of the screen's edges; a window is its own frame.
-  readonly property real room: sheet.width * (wheel.windowed ? 1 : 0.88)
+  readonly property real room: sheet.width * (sheet.wheel.windowed ? 1 : 0.88)
   // Up to three columns, as wide as the room allows: outer margins, the panel's padding, and gaps.
   readonly property int count: Math.max(1, Math.min(3, Math.floor((sheet.room - sheet.gap) / (Style.space(400) + sheet.gap))))
   readonly property int columnWidth: Math.min(Style.space(560), Math.floor((sheet.room - sheet.gap * (sheet.count + 3)) / sheet.count))
@@ -40,9 +41,9 @@ Item {
   }
 
   anchors.fill: parent
-  opacity: wheel.reading ? 1 : 0
+  opacity: sheet.wheel.reading ? 1 : 0
   visible: opacity > 0
-  Behavior on opacity { NumberAnimation { duration: wheel.fadeDuration; easing.type: Easing.OutCubic } }
+  Behavior on opacity { NumberAnimation { duration: sheet.wheel.fadeDuration; easing.type: Easing.OutCubic } }
   onVisibleChanged: scroller.contentY = 0
 
   Flickable {
