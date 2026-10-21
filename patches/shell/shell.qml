@@ -361,7 +361,7 @@ ShellRoot {
 
   function pluginHasVisualCapabilities(manifest) {
     var kinds = ["bar-widget", "panel", "overlay", "menu"]
-    for (var i = 0; i < kinds.length; i++)
+    for (let i = 0; i < kinds.length; i++)
       if (shell.manifestHasKind(manifest, kinds[i])) return true
     return false
   }
@@ -557,7 +557,7 @@ ShellRoot {
     var current = _pluginSurfaceStates[key] === true
     if (current === nextShown) return
     var next = ({})
-    for (var id in _pluginSurfaceStates)
+    for (let id in _pluginSurfaceStates)
       if (id !== key) next[id] = true
     if (nextShown) next[key] = true
     _pluginSurfaceStates = next
@@ -1222,11 +1222,11 @@ ShellRoot {
                  source: String((m.omarchy && m.omarchy.clonedFrom) || id) })
     }
     var entries = shell.panelEntries
-    for (var i = 0; i < entries.length; i++)
+    for (let i = 0; i < entries.length; i++)
       if (!entries[i].manifest.__isFirstParty) add(entries[i].id, entries[i].manifest)
     if (!shell.bar || typeof shell.bar.findPanelWidget !== "function") return out
     var plugins = shell.pluginRegistry.installedPlugins
-    for (var id in plugins)
+    for (let id in plugins)
       if (shell.isBarWidgetPanelPlugin(id) && shell.bar.findPanelWidget(id)) add(id, plugins[id])
     return out
   }
@@ -1250,14 +1250,14 @@ ShellRoot {
       else if ("close" in popout) popout.close()
     }
     var candidates = ({})
-    for (var openId in openPanelIds) candidates[openId] = true
-    for (var loadedId in panelLoaders) candidates[loadedId] = true
+    for (let openId in openPanelIds) candidates[openId] = true
+    for (let loadedId in panelLoaders) candidates[loadedId] = true
     var ids = []
-    for (var id in candidates)
+    for (let id in candidates)
       if (id !== key && shell.isPluginOpen(id)) ids.push(id)
     var clear = !shell.bar || !shell.bar.activePopout
       || (ownership && shell.bar.pluginOwnsBarObject(key, shell.bar.activePopout))
-    for (var i = 0; i < ids.length; i++) {
+    for (let i = 0; i < ids.length; i++) {
       shell.hide(ids[i])
       acted = true
       if (shell.isPluginOpen(ids[i])) clear = false

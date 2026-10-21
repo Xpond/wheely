@@ -419,9 +419,11 @@ against this machine's real menu files:
 - every call site in the plugin names something `MenuIndex.js` defines
 - the one batched script answers every `when` and `checked` the way each
   answers when asked alone
-- the shipped bar and this machine's bar both give an even ring
 - every keybinding, read with the wheel's own command, is found by its
   description on a row that runs it
+
+It also notes, without failing, a bar whose slices are not even on the wheel:
+an odd ring has no slice at 3 or 9 o'clock.
 
 Run it after touching `MenuIndex.js`, and against a new Omarchy release — the
 menu file is upstream's, and a new entry shape is exactly what would slip

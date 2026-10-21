@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 import qs.Commons as Commons
@@ -14,7 +15,7 @@ Item {
   // Path, filter and rename share one caret timer.
   property bool caretLit: true
   Timer {
-    running: panel.shown && (!!panel.naming || panel.filter.length > 0)
+    running: root.panel.shown && (!!root.panel.naming || root.panel.filter.length > 0)
     interval: 530
     repeat: true
     onTriggered: root.caretLit = !root.caretLit
@@ -25,7 +26,7 @@ Item {
     width: Style.space(2)
     height: Style.font.subtitle
     color: Commons.Color.accent
-    opacity: caretLit ? 0.85 : 0.0
+    opacity: root.caretLit ? 0.85 : 0.0
   }
 
   component Separator: Text {
@@ -50,27 +51,28 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
 
       Repeater {
-        model: panel.crumbs
+        model: root.panel.crumbs
 
         delegate: Row {
+          id: crumb
           required property int index
           required property string modelData
 
           Separator {
-            visible: index > 0
+            visible: crumb.index > 0
           }
 
           Text {
             // The last crumb gives way to everything after it, so the facts never overlap the path.
-            width: index < panel.crumbs.length - 1 ? implicitWidth
+            width: crumb.index < root.panel.crumbs.length - 1 ? implicitWidth
               : Math.max(0, Math.min(implicitWidth, root.width - parent.x - x - (typed.visible ? typed.width : 0)
                   - (pill.visible ? pill.width + trail.spacing : 0) - count.width - trail.spacing
                   - (facts.visible ? facts.width + trail.spacing : 0)))
             elide: Text.ElideMiddle
-            text: modelData
+            text: crumb.modelData
             color: Commons.Color.menu.text
             // Only the unfinished path segment is active during completion.
-            opacity: !panel.pathMode && index === panel.crumbs.length - 1 ? 0.95 : 0.5
+            opacity: !root.panel.pathMode && crumb.index === root.panel.crumbs.length - 1 ? 0.95 : 0.5
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.subtitle
           }
@@ -80,12 +82,12 @@ Item {
       // Completed segments are already in the breadcrumbs.
       Row {
         id: typed
-        visible: panel.pathMode
+        visible: root.panel.pathMode
 
         Separator {}
 
         Text {
-          text: panel.typedLeaf
+          text: root.panel.typedLeaf
           color: Commons.Color.accent
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.subtitle
@@ -99,12 +101,12 @@ Item {
     Rectangle {
       id: pill
       // Rename uses a separate colour so it cannot be mistaken for filtering.
-      visible: !!panel.naming || (panel.filter.length > 0 && !panel.pathMode)
+      visible: !!root.panel.naming || (root.panel.filter.length > 0 && !root.panel.pathMode)
       anchors.verticalCenter: parent.verticalCenter
       width: field.width + Style.spacing.md * 2
       height: Style.font.subtitle + Style.spacing.sm * 2
       radius: height / 2
-      color: panel.naming ? Util.alpha(Commons.Color.accent, 0.16)
+      color: root.panel.naming ? Util.alpha(Commons.Color.accent, 0.16)
                             : Util.alpha(Commons.Color.menu.text, 0.07)
 
       // Rename has a movable caret; filtering appends at the end.
@@ -116,7 +118,7 @@ Item {
 
         Text {
           anchors.verticalCenter: parent.verticalCenter
-          text: panel.naming ? panel.renameTo.slice(0, panel.renameAt) : panel.filter
+          text: root.panel.naming ? root.panel.renameTo.slice(0, root.panel.renameAt) : root.panel.filter
           color: Commons.Color.accent
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.subtitle
@@ -126,7 +128,7 @@ Item {
 
         Text {
           anchors.verticalCenter: parent.verticalCenter
-          text: panel.naming ? panel.renameTo.slice(panel.renameAt) : ""
+          text: root.panel.naming ? root.panel.renameTo.slice(root.panel.renameAt) : ""
           color: Commons.Color.accent
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.subtitle
@@ -137,8 +139,8 @@ Item {
     Text {
       id: count
       anchors.verticalCenter: parent.verticalCenter
-      text: FilesIndex.countLabel(panel.rows.length, panel.listedEntries.length,
-                                  panel.query, panel.showHidden, panel.order)
+      text: FilesIndex.countLabel(root.panel.rows.length, root.panel.listedEntries.length,
+                                  root.panel.query, root.panel.showHidden, root.panel.order)
       color: Commons.Color.menu.text
       opacity: 0.5
       font.family: Style.font.menuFamily
@@ -151,17 +153,17 @@ Item {
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
     spacing: Style.spacing.lg
-    visible: !!panel.settledSel
+    visible: !!root.panel.settledSel
 
     Text {
       anchors.verticalCenter: parent.verticalCenter
-      visible: panel.editing || !!panel.fileNote
-      text: !panel.editing ? panel.fileNote
-            : panel.saveError ? "write failed"
-            : panel.fileNote ? panel.fileNote
-            : savedFlash.running ? "saved"
-            : panel.dirty ? "unsaved" : "editing"
-      color: panel.saveError ? Commons.Color.menu.text : Commons.Color.accent
+      visible: root.panel.editing || !!root.panel.fileNote
+      text: !root.panel.editing ? root.panel.fileNote
+            : root.panel.saveError ? "write failed"
+            : root.panel.fileNote ? root.panel.fileNote
+            : root.panel.justSaved ? "saved"
+            : root.panel.dirty ? "unsaved" : "editing"
+      color: root.panel.saveError ? Commons.Color.menu.text : Commons.Color.accent
       opacity: 0.85
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.bodySmall
@@ -173,7 +175,7 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
 
       Text {
-        readonly property var counts: FilesIndex.diffStat(panel.diffText)
+        readonly property var counts: FilesIndex.diffStat(root.panel.diffText)
         anchors.verticalCenter: parent.verticalCenter
         visible: counts[0] + counts[1] > 0
         textFormat: Text.StyledText
@@ -186,9 +188,9 @@ Item {
 
       Text {
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.min(implicitWidth, Math.round(panel.previewWidth * 0.6))
+        width: Math.min(implicitWidth, Math.round(root.panel.previewWidth * 0.6))
         elide: Text.ElideMiddle
-        text: panel.settledSel ? panel.settledSel.name : ""
+        text: root.panel.settledSel ? root.panel.settledSel.name : ""
         color: Commons.Color.menu.text
         opacity: 0.9
         font.family: Style.font.menuFamily
@@ -198,7 +200,7 @@ Item {
 
     Text {
       anchors.verticalCenter: parent.verticalCenter
-      text: panel.metaLine
+      text: root.panel.metaLine
       color: Commons.Color.menu.text
       opacity: 0.5
       font.family: Style.font.menuFamily

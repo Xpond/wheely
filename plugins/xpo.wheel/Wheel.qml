@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQml.WorkerScript
 import Quickshell
@@ -126,8 +127,8 @@ Item {
   property string listing: ""
   readonly property var listed: root.listing === "skipped" ? root.skipped : root.listing === "folders" ? root.folders : []
   readonly property var subfolderPaths: {
-    var model = subfolders.item, out = []
-    for (var i = 0; model && i < model.count; i++) out.push(model.get(i, "filePath"))
+    var model = subfolders.item as FolderListModel, out = []
+    for (let i = 0; model && i < model.count; i++) out.push(model.get(i, "filePath"))
     return out
   }
   // The folder whose subfolders a path typed into the folders list would add. Made only then:
@@ -368,7 +369,7 @@ Item {
     var m = Hyprland.focusedMonitor
     if (!m) return null
     var screens = Quickshell.screens
-    for (var i = 0; i < screens.length; i++)
+    for (let i = 0; i < screens.length; i++)
       if (screens[i].name === m.name) return screens[i]
     return null
   }
@@ -447,7 +448,7 @@ Item {
   property bool windowed: false
   function popOut() {
     if (root.windowed) {
-      var query = root.query, reading = root.reading
+      const query = root.query, reading = root.reading
       root.windowed = false
       root.open()
       root.query = query
@@ -463,8 +464,8 @@ Item {
 
   function raise() {
     var all = Hyprland.toplevels.values
-    for (var i = 0; i < all.length; i++) {
-      var t = all[i]
+    for (let i = 0; i < all.length; i++) {
+      const t = all[i]
       if (t.wayland && t.wayland.appId === "org.quickshell" && t.title === pinned.title)
         Hyprland.dispatch("hl.dsp.focus({ window = \"address:0x" + t.address + "\" })")
     }
@@ -488,7 +489,7 @@ Item {
     if (!root.justOpened) { root.dismiss(); return "dismissed" }
     root.justOpened = false
     if (!root.searching && root.armed && root.selected >= 0) {
-      var label = root.slices[root.selected].label
+      const label = root.slices[root.selected].label
       root.run(root.slices[root.selected])
       return "fired:" + label
     }
@@ -651,7 +652,7 @@ Item {
   function pin(e) {
     var keys = root.ringKeys, key = MenuIndex.keyOf(e)
     if (keys.indexOf(key) < 0) {
-      var at = root.selected >= 0 ? keys.indexOf(MenuIndex.keyOf(root.ring[root.selected])) + 1 : keys.length
+      const at = root.selected >= 0 ? keys.indexOf(MenuIndex.keyOf(root.ring[root.selected])) + 1 : keys.length
       root.saveRing(keys.slice(0, at).concat([key], keys.slice(at)))
     }
     root.query = ""
@@ -804,7 +805,7 @@ Item {
     if (!root.activeWindow) return
     var address = root.activeWindow.address
     var next = [address]
-    for (var i = 0; i < root.focusOrder.length; i++)
+    for (let i = 0; i < root.focusOrder.length; i++)
       if (root.focusOrder[i] !== address) next.push(root.focusOrder[i])
     root.focusOrder = next
   }
@@ -851,7 +852,7 @@ Item {
         root.fileResultRequest = message.request
         root.fileResults = message.rows
         if (root.fileAction && (message.rows.length || !homeScan.running && !folderScan.running && !root.fileQueue.length)) {
-          var action = root.fileAction
+          const action = root.fileAction
           root.fileAction = ""
           if (action === "copy") root.takePath()
           else if (action !== "terminal" || !root.terminal()) root.run(root.results[root.resultIndex])
@@ -1218,8 +1219,8 @@ Item {
         if (root.searching) return
         if (root.originX < 0) { root.originX = mouse.x; root.originY = mouse.y; return }
         if (!root.armed) {
-          var dx = mouse.x - root.originX
-          var dy = mouse.y - root.originY
+          const dx = mouse.x - root.originX
+          const dy = mouse.y - root.originY
           if (dx * dx + dy * dy < root.moveThreshold * root.moveThreshold) return
         }
         root.select(root.sliceAt(mouse.x, mouse.y))

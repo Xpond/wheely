@@ -15,7 +15,7 @@ end }
 dofile(arg[1])
 
 assert(env.QSG_RENDER_LOOP == "threaded")
-assert(env.QT_FFMPEG_DECODING_HW_DEVICE_TYPES == "none")
+assert(env.QT_FFMPEG_DECODING_HW_DEVICE_TYPES == ",")
 assert(#binds[key] == 1 and binds[key][1].command.global == "xpo.wheel:toggle",
   "wheel shortcut must deliver press/release directly without a subprocess")
 assert(key == "SUPER + A" or binds["SUPER + A"] == nil, "SUPER + A was taken as well as " .. key)
