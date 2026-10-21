@@ -105,6 +105,7 @@ PanelWindow {
   function startEntryMotion() {
     if (entryPlayed) return
     entryPlayed = true
+    exitMotion.stop()
     var dir = 0
     if (bar && bar.lastSwitchDirection !== undefined) {
       dir = bar.lastSwitchDirection
@@ -293,6 +294,7 @@ PanelWindow {
       if (backingWindowVisible) startEntryMotion()
       syncSurfaceCount()
     } else {
+      entryMotion.stop()
       popoutSwitchClosing = !!(owner && owner.popoutSwitchClosing)
       popoutSwitching = false
       if (bar.activePopout === coordinatorKey) bar.releasePopout(coordinatorKey)
