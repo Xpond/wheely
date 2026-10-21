@@ -85,6 +85,7 @@ Esc or Backspace with an empty filter returns from a setting.
 | Setting | What it does |
 |---|---|
 | Wheely shortcut | Enter, then a combo with SUPER |
+| Wallpaper pause | Enter, then a combo for Wheelie |
 | Wheely ring | Enter to edit the ring |
 | Backdrop | Enter, then ←/→ for the blur |
 | Centered panels | Enter: centered or by the bar |

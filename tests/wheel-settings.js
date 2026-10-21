@@ -15,13 +15,14 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     "SUPER + X                 → \t\t"].join("\n")
   assert.deepEqual(M.bindRows(records).map(r => r.label), ["Omarchy menu", "Theme menu"],
     "the wheel's own bindings are rows")
-  const rows = M.withBindings(M.settingRows("SUPER + A", false, [], M.SKIPPED, 0, true), M.bindRows(records), {})
+  const rows = M.withBindings(M.settingRows("SUPER + A", false, [], M.SKIPPED, 0, true, "CTRL + SPACE"), M.bindRows(records), {})
   for (const query of ["wheely settings", "wheel", "preferences"])
     assert.deepEqual(M.search(rows, query, 40, {}).map(r => r.setting).filter(s => s !== "history").sort(),
-      ["backdrop", "folders", "forget", "panels", "ring", "shortcut", "skipped"], query)
+      ["backdrop", "folders", "forget", "panels", "pause", "ring", "shortcut", "skipped"], query)
   assert.deepEqual(M.search(rows, "wheely settings", 40, {}).filter(r => r.setting === "history"), [],
     "history passed for a setting")
   for (const [setting, queries] of Object.entries({ shortcut: ["wheely shortcut", "shortcut", "keybind"],
+       pause: ["wallpaper pause", "pause", "wheelie"],
        ring: ["wheely ring", "ring", "slices", "pin"], backdrop: ["backdrop", "blur", "dim"], folders: ["searched folders"],
        skipped: ["skip"], forget: ["forget", "clear picks"], panels: ["centered panels", "panels", "center"],
        history: ["history", "wheely history", "recent"] }))
@@ -29,6 +30,12 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   assert.equal(M.indexOfEntry(M.settingRows("ALT + SPACE", false, [], M.SKIPPED, 0, true), rows[0]), 0, "saving a key lost the row")
   assert.deepEqual(M.settingRows("SUPER + A", true, ["/mnt"], ["a", "b"], 57, false).map(r => r.trail),
     ["SUPER + A", "Custom", "", "Off", "Home + 1", "2", "57", "57"])
+  // The pause row comes with Wheelie, as `omarchy theme list` names it, and ends in its key.
+  const wh = { shortcut: "SUPER + A", pauseKey: "ALT + P", uses: {}, folders: [], skipped: [], themeText: "Tidal\nWhite\n" }
+  derive(wh, "wheelieInstalled", "settingRows")
+  assert.equal(wh.settingRows.some(r => r.setting === "pause"), false, "the pause row showed without Wheelie")
+  wh.themeText = "Tidal\nWheelie\nWhite\n"
+  assert.equal(wh.settingRows[1].setting + " " + wh.settingRows[1].trail, "pause ALT + P", "Wheelie hid the pause row")
 
   assert.equal(M.comboOf("SUPER SHIFT CTRL + space"), "SUPER + CTRL + SHIFT + SPACE")
   assert.equal(M.bindingAt(records, "SUPER + CTRL + SHIFT + SPACE"), "Theme menu", "another spelling hid a binding")
@@ -42,7 +49,8 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   for (const [saved, key] of [[undefined, "SUPER + A"], ["SUPER + SHIFT + B\n", "SUPER + SHIFT + B"],
        ["  ALT + SPACE \r\n", "ALT + SPACE"], ["SPACE\n", "SUPER + A"], ["", "SUPER + A"],
        ['super + b") os.execute("touch pwned\n', "SUPER + A"]])
-    assert.equal(M.shortcutIn(saved), key, JSON.stringify(saved))
+    assert.equal(M.shortcutIn(saved, M.SHORTCUT), key, JSON.stringify(saved))
+  assert.equal(M.shortcutIn("SPACE\n", M.PAUSE_KEY), "CTRL + SPACE", "an unreadable pause key is not CTRL + SPACE")
 
   // The backdrop sets one key of the user's shell.toml, as the shell's own reader reads it, and keeps the rest.
   const parseShell = method(fs.readFileSync((process.env.OMARCHY_PATH || "/usr/share/omarchy")
@@ -164,6 +172,21 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     record({ key, modifiers: 0 })
     assert.equal(rec.editing + saved.at(-1), "SUPER + B", "canceling saved the candidate")
   }
+
+  // The pause row records the same way, but may do without SUPER, as CTRL + SPACE does; it still needs
+  // CTRL, ALT or SUPER, and leaves the wheel's keys alone. Enter saves to the pause row's own file.
+  const pauseFile = { raw: "", setText(raw) { this.raw = raw } }
+  const pz = { shortcut: "SUPER + A", pauseKey: "CTRL + SPACE", bindText: records }
+  derive(pz, "refused", "pending", "taken", "editValue", "editNote")
+  pz.saveShortcut = method(wheelSource, "saveShortcut", { root: pz, pauseFile })
+  const pauseRecord = method(wheelSource, "record", { root: pz, Qt: Q, MenuKeys: { shortcutOf: event => event.combo } })
+  method(wheelSource, "edit", { root: pz })({ setting: "pause" })
+  assert.deepEqual(["SHIFT + B", "F13", "CTRL + SPACE", "SUPER + W", "SUPER + A", "SUPER + SPACE", "ALT + P"]
+    .map(combo => { pauseRecord({ combo, key: 0, modifiers: Q.ControlModifier }); return pz.editNote }),
+    ["add CTRL, ALT or SUPER", "add CTRL, ALT or SUPER", "already set", "closes the wheel", "opens the wheel",
+     "replaces Omarchy menu", "enter saves"])
+  pauseRecord({ key: Q.Key_Return, modifiers: 0 })
+  assert.deepEqual([pz.editing, pz.pauseKey, pauseFile.raw], ["", "ALT + P", "ALT + P\n"], "enter did not save the pause key")
 
   // While a row records, every key is the row's: none types, moves or closes.
   const recorded = []

@@ -40,13 +40,10 @@ pause. The controller checks monitor state in-process only while animation is se
 ~/.config/omarchy/themes/wheelie/wheelie toggle
 ```
 
-For a Ctrl+Space pause/resume shortcut, add this to `~/.config/hypr/bindings.lua`
-after checking that the chord is free. It is separate from Omarchy's
-Super+Ctrl+Space background switcher.
-
-```lua
-o.bind("CTRL + SPACE", "Pause/resume Wheelie wallpaper", '"$HOME/.config/omarchy/themes/wheelie/wheelie" toggle')
-```
+Wheely binds Ctrl+Space to `toggle` while Wheelie is installed. For an app that
+needs Ctrl+Space, change the key with Wheely's Wallpaper pause setting
+(`wheely settings`). It is separate from Omarchy's Super+Ctrl+Space background
+switcher.
 
 ## Static backgrounds
 
