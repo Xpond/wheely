@@ -26,16 +26,28 @@ hl.layer_rule({
   animation = "none",
 })
 
--- The wheel's shortcut row saves its key here, as data; anything unreadable keeps SUPER+A.
-local wheel_key = "SUPER + A"
-do
-  local file = io.open(os.getenv("HOME") .. "/.config/omarchy/wheel-shortcut")
+-- The wheel's shortcut rows save their keys in ~/.config/omarchy, as data; anything unreadable keeps
+-- the default.
+local function saved_key(name, default)
+  local file = io.open(os.getenv("HOME") .. "/.config/omarchy/" .. name)
   local saved = (file and file:read("*l") or ""):match("^%s*(.-)%s*$")
   if file then file:close() end
-  if saved:match("^[%u%d_][%u%d_ +]*[%u%d_]$") and saved:find(" + ", 1, true) then wheel_key = saved end
+  if saved:match("^[%u%d_][%u%d_ +]*[%u%d_]$") and saved:find(" + ", 1, true) then return saved end
+  return default
+end
+
+-- With Wheelie installed, the wallpaper pause row's key pauses and resumes its scene. It is bound
+-- before the wheel's keys, so they win a clash.
+local wheelie = io.open(os.getenv("HOME") .. "/.config/omarchy/themes/wheelie/wheelie")
+if wheelie then
+  wheelie:close()
+  local pause_key = saved_key("wallpaper-pause-shortcut", "CTRL + SPACE")
+  hl.unbind(pause_key)
+  o.bind(pause_key, "Pause/resume Wheelie wallpaper", '"$HOME/.config/omarchy/themes/wheelie/wheelie" toggle')
 end
 
 -- The global shortcut delivers both press and release directly to the wheel.
+local wheel_key = saved_key("wheel-shortcut", "SUPER + A")
 hl.unbind(wheel_key)
 o.bind(wheel_key, "Wheel", hl.dsp.global("xpo.wheel:toggle"))
 

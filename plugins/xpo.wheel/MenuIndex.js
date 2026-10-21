@@ -480,10 +480,13 @@ function withBindings(rows, binds, items) {
 var SETTING_ICON = "󱥸"
 
 // Wheel settings are search rows: `wheely settings` lists them, and each is changed in place.
-// Wheely history rides along, answering to `history` rather than `settings`.
-function settingRows(shortcut, customRing, folders, skipped, picks, centered) {
+// Wheely history rides along, answering to `history` rather than `settings`. The wallpaper pause
+// row comes with Wheelie, the theme whose scene it pauses: without its key, the row is left out.
+function settingRows(shortcut, customRing, folders, skipped, picks, centered, pauseKey) {
   return [{ icon: SETTING_ICON, label: "Wheely shortcut", trail: shortcut, kind: KIND.slice, setting: "shortcut",
             keywords: "wheely settings preferences shortcut keybinding keybind hotkey key launch open" },
+          { icon: SETTING_ICON, label: "Wallpaper pause", trail: pauseKey, kind: KIND.slice, setting: "pause",
+            keywords: "wheely settings preferences wallpaper wheelie pause resume shortcut keybinding keybind hotkey key" },
           { icon: SETTING_ICON, label: "Wheely ring", trail: customRing ? "Custom" : "Bar", kind: KIND.slice,
             setting: "ring", keywords: "wheely settings preferences ring slices discs pin unpin order favorites" },
           { icon: SETTING_ICON, label: "Backdrop", trail: "", kind: KIND.slice, setting: "backdrop",
@@ -498,6 +501,7 @@ function settingRows(shortcut, customRing, folders, skipped, picks, centered) {
             keywords: "wheely settings preferences forget clear picks history remembered ranking uses" },
           { icon: "󰅐", label: "Wheely history", trail: String(picks), kind: KIND.slice, setting: "history",
             keywords: "wheely history recent picks used opened launched" }]
+    .filter(function (r) { return r.setting !== "pause" || pauseKey })
 }
 
 var MANUAL_ICON = "󰋗"
@@ -567,11 +571,12 @@ function withShellValue(raw, name, key, value) {
 }
 
 var SHORTCUT = "SUPER + A"
+var PAUSE_KEY = "CTRL + SPACE"
 
-// The saved shortcut by the rule the Hyprland block reads it with; anything else is the default.
-function shortcutIn(raw) {
+// A saved shortcut by the rule the Hyprland block reads it with; anything else is the default.
+function shortcutIn(raw, fallback) {
   var saved = String(raw || "").split("\n")[0].trim()
-  return /^[A-Z0-9_][A-Z0-9_ +]*[A-Z0-9_]$/.test(saved) && saved.indexOf(" + ") >= 0 ? saved : SHORTCUT
+  return /^[A-Z0-9_][A-Z0-9_ +]*[A-Z0-9_]$/.test(saved) && saved.indexOf(" + ") >= 0 ? saved : fallback
 }
 
 // One spelling for a combo however it was written: "SUPER SHIFT + b" is "SUPER + SHIFT + B".

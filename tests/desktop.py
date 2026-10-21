@@ -170,21 +170,32 @@ def check():
         print("ok: failed reload validation rolls back fresh setup, updates, and removals")
 
     # The shortcut and blur files are data: a key the row could have written is bound, anything else is
-    # SUPER+A, and "off" turns the backdrop's blur, and Hyprland's, off.
-    for name, saved, key, blur in [("wheel-shortcut", None, "SUPER + A", "on"),
-                                   ("wheel-shortcut", "SUPER + SHIFT + B\n", "SUPER + SHIFT + B", "on"),
-                                   ("wheel-shortcut", "  ALT + SPACE \r\n", "ALT + SPACE", "on"),
-                                   ("wheel-shortcut", "SPACE\n", "SUPER + A", "on"), ("wheel-shortcut", "", "SUPER + A", "on"),
-                                   ("wheel-shortcut", 'super + b") os.execute("touch pwned\n', "SUPER + A", "on"),
-                                   ("wheel-blur", "off\n", "SUPER + A", "off"), ("wheel-blur", "on\n", "SUPER + A", "on")]:
+    # the default, and "off" turns the backdrop's blur, and Hyprland's, off. The pause key is bound only
+    # with Wheelie installed, and the wheel's key wins a clash.
+    for name, saved, key, blur, pause in [("wheel-shortcut", None, "SUPER + A", "on", None),
+                                          ("wheel-shortcut", "SUPER + SHIFT + B\n", "SUPER + SHIFT + B", "on", None),
+                                          ("wheel-shortcut", "  ALT + SPACE \r\n", "ALT + SPACE", "on", None),
+                                          ("wheel-shortcut", "SPACE\n", "SUPER + A", "on", None),
+                                          ("wheel-shortcut", "", "SUPER + A", "on", None),
+                                          ("wheel-shortcut", 'super + b") os.execute("touch pwned\n', "SUPER + A", "on", None),
+                                          ("wheel-blur", "off\n", "SUPER + A", "off", None),
+                                          ("wheel-blur", "on\n", "SUPER + A", "on", None),
+                                          ("wallpaper-pause-shortcut", None, "SUPER + A", "on", "CTRL + SPACE"),
+                                          ("wallpaper-pause-shortcut", "ALT + P\n", "SUPER + A", "on", "ALT + P"),
+                                          ("wallpaper-pause-shortcut", "SPACE\n", "SUPER + A", "on", "CTRL + SPACE"),
+                                          ("wallpaper-pause-shortcut", "SUPER + A\n", "SUPER + A", "on", "SUPER + A")]:
         with tempfile.TemporaryDirectory(prefix="omarchy-desktop-home-") as home:
             if saved is not None:
                 (Path(home) / ".config/omarchy").mkdir(parents=True)
                 (Path(home) / ".config/omarchy" / name).write_text(saved)
-            subprocess.run(["lua", str(source / "tests/desktop.lua"), str(source / "config/hyprland.lua"), key, blur],
+            if pause:
+                (Path(home) / ".config/omarchy/themes/wheelie").mkdir(parents=True)
+                (Path(home) / ".config/omarchy/themes/wheelie/wheelie").touch()
+            subprocess.run(["lua", str(source / "tests/desktop.lua"), str(source / "config/hyprland.lua"), key, blur,
+                            *([pause] if pause else [])],
                            check=True, cwd=home, env=dict(os.environ, HOME=home))
             assert not (Path(home) / "pwned").exists()
-    print("ok: shipped Lua installs the direct shortcut on the saved key, render environment and shared blur")
+    print("ok: shipped Lua binds the direct shortcut and pause key as saved, render environment and shared blur")
 
 
 if __name__ == "__main__":
