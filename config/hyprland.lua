@@ -8,8 +8,14 @@ hl.env("QT_FFMPEG_DECODING_HW_DEVICE_TYPES", ",")
 local blur_file = io.open(os.getenv("HOME") .. "/.config/omarchy/wheel-blur")
 local backdrop_blur = not (blur_file and blur_file:read("*l") or ""):match("^%s*off%s*$")
 if blur_file then blur_file:close() end
--- Omarchy leaves Hyprland's blur off; only the backdrop turns it on.
-if backdrop_blur then hl.config({ decoration = { blur = { enabled = true, size = 4, passes = 2 } } }) end
+-- Omarchy leaves Hyprland's blur off; only the backdrop turns it on, so windows stay unblurred unless the
+-- user's own config blurs them.
+if backdrop_blur then
+  if not hl.get_config("decoration.blur.enabled") then
+    hl.window_rule({ match = { class = ".*" }, no_blur = true })
+  end
+  hl.config({ decoration = { blur = { enabled = true, size = 4, passes = 2 } } })
+end
 
 -- Blur only the shared backdrop; blurring the overlays doubles the work. No ignore_alpha, so a light
 -- dim keeps its blur.

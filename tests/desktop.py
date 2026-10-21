@@ -182,8 +182,8 @@ def check():
         print("ok: configuration errors the user already had block neither install nor revert")
 
     # The shortcut and blur files are data: a key the row could have written is bound, anything else is
-    # the default, and "off" turns the backdrop's blur, and Hyprland's, off. The pause key is bound only
-    # with Wheelie installed, and the wheel's key wins a clash.
+    # the default, and "off" turns the backdrop's blur, and Hyprland's, off. Windows keep the blur they
+    # had. The pause key is bound only with Wheelie installed, and the wheel's key wins a clash.
     for name, saved, key, blur, pause in [("wheel-shortcut", None, "SUPER + A", "on", None),
                                           ("wheel-shortcut", "SUPER + SHIFT + B\n", "SUPER + SHIFT + B", "on", None),
                                           ("wheel-shortcut", "  ALT + SPACE \r\n", "ALT + SPACE", "on", None),
@@ -192,6 +192,7 @@ def check():
                                           ("wheel-shortcut", 'super + b") os.execute("touch pwned\n', "SUPER + A", "on", None),
                                           ("wheel-blur", "off\n", "SUPER + A", "off", None),
                                           ("wheel-blur", "on\n", "SUPER + A", "on", None),
+                                          ("wheel-blur", None, "SUPER + A", "user", None),
                                           ("wallpaper-pause-shortcut", None, "SUPER + A", "on", "CTRL + SPACE"),
                                           ("wallpaper-pause-shortcut", "ALT + P\n", "SUPER + A", "on", "ALT + P"),
                                           ("wallpaper-pause-shortcut", "SPACE\n", "SUPER + A", "on", "CTRL + SPACE"),
