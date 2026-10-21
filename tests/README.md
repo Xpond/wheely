@@ -1,10 +1,15 @@
 # Tests
 
-Run the existing entry points from the repository root:
+Run `./tests/all.sh` before release from an Omarchy Wayland desktop. It runs all
+existing checks, stops on the first failure, and removes its temporary render
+outputs. It needs Node.js, Python 3 with Pygments, Quickshell, Qt's `qsb`, ImageMagick, and the
+normal Omarchy tools. GPU checks open temporary preview windows.
+
+For focused checks, run these entry points from the repository root:
 
 | Command | Coverage and layout |
 | --- | --- |
-| `node tests/check.js` | File indexing/navigation, wheel menus/input/settings/manual/ring/folders/pointer, shell panels, actions, closing, file operations, lock-design choice, sky and trails. Imports the focused JavaScript suites. |
+| `node tests/check.js` | 26 JavaScript logic suites: file operations, wheel menus/search/calculator/bindings/conditions/input/settings, shell panels, lock lifecycle/designs, mycelium, sky and trails. |
 | `node tests/wheel-live.js` | Wheel invariants against this machine's installed Omarchy menu and keybindings; requires a running desktop session. |
 | `python3 tests/runtime.py` | Offscreen QML behavior. Calls `plugin_shell.py`, `wheel_refresh.py`, `wheel_scans.py`, `wheel_menu.py`, `file_runtime.py` (including `file_edits.py`), `files_lifecycle.py`, `files_git_runtime.py`, and `wheel_settings.py`. |
 | `python3 tests/install.py` | Install/revert, package updates and failure recovery using temporary paths. `install_fixture.py` supplies the isolated system and command stubs. |
@@ -15,16 +20,16 @@ Each JavaScript suite can also run alone, for example
 source-loading helpers; the Python modules listed above are called by their
 entry points, rather than run separately.
 
-These four commands are not the entire suite. Additional checks and their
-dependencies are documented with the features:
+The release command also runs `open-path.py` and `wheelie-install.py` in temporary
+directories. Additional checks and their dependencies are documented with the features:
 
 - [Wheel](../docs/wheel.md)
 - [Files](../docs/files.md)
 - [Shell panels](../docs/centered-panels.md)
 - [Lock screen](../docs/lockscreen.md)
 - [Tidal theme](../themes/tidal/README.md): `python3 tests/tidal.py` checks the palette,
-  Omarchy app templates, both animated palettes, continuity, and the collection gallery;
-  `tidal-lifecycle.py` checks colorful/muted/static switching, theme changes, lock/DPMS/fullscreen
+  Omarchy app templates, both animated palettes, continuity, and the collection gallery, then calls
+  `tidal-lifecycle.py` for colorful/muted/static switching, theme changes, lock/DPMS/fullscreen
   pausing, manual pause/resume/toggle, theme re-apply, and CLI selection;
   `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 - [Wheelie theme](../themes/wheelie/README.md):
