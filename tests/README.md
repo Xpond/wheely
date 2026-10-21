@@ -23,7 +23,8 @@ dependencies are documented with the features:
 - [Lock screen](../docs/lockscreen.md)
 - [Tidal theme](../themes/tidal/README.md): `python3 tests/tidal.py` checks the palette,
   Omarchy app templates, both animated palettes, continuity, and the collection gallery;
-  `tidal-lifecycle.py` checks colorful/muted/static switching, theme changes, and CLI selection;
+  `tidal-lifecycle.py` checks colorful/muted/static switching, theme changes, lock/DPMS/fullscreen
+  pausing, theme re-apply, and CLI selection;
   `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 - [Wheelie theme](../themes/wheelie/README.md):
   `python3 tests/wheelie-lifecycle.py` checks pause/resume/toggle, lock/DPMS/fullscreen

@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""Check animated/static round trips against temporary Omarchy state."""
+"""Check animated/static round trips and pausing against temporary Omarchy and monitor state."""
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
 import time
 import qslog
+
+
+def patch(text, old, new, count=-1):
+    """Replace old, which must be present: a stale pattern would leave real desktop state in use."""
+    assert old in text, old
+    return text.replace(old, new, count)
+
 
 repo = Path(__file__).resolve().parents[1]
 output = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/tidal-lifecycle").resolve()
@@ -23,14 +31,31 @@ background.unlink(missing_ok=True)
 background.symlink_to(state / "one.jpg")
 theme = state / "theme.name"
 theme.write_text("tidal\n")
+activity = state / "activity.json"
+activity.write_text('{"dpmsStatus": true}')
 shell = config / "shell.qml"
-source = shell.read_text().replace(
-    'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
-source = source.replace("model: root.animated ? Quickshell.screens : []", "model: []")
-source = source.replace("id: root", '''id: root
+source = patch(shell.read_text(), 'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
+# One windowless surface stands for the displays, and the compositor's monitor state comes from a file.
+source = patch(source, "model: root.animated ? Quickshell.screens : []", "model: root.animated ? [0] : []")
+source = patch(source, "PanelWindow {", "Item {")
+source, removed = re.subn(r"^      (screen:|anchors \{|color:|exclusionMode:|mask:|WlrLayershell\.).*\n", "", source, flags=re.M)
+assert removed == 8, removed
+source = patch(source, "monitor: Hyprland.monitorFor(screen)", "monitor: null")
+source = patch(source, "monitorState: monitor ? monitor.lastIpcObject : ({})", "monitorState: root.activity")
+source = patch(source, "onTriggered: Hyprland.refreshMonitors()", "onTriggered: {}")
+source = patch(source, "Surface {", '''Surface {
+        Component.onCompleted: console.log("SURFACE")
+        onRunningChanged: console.log("RUNNING", running)''')
+source = patch(source, "id: root", '''id: root
+  property var activity: ({})
+  FileView {
+    path: %s; watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.activity = JSON.parse(text())
+  }
   onAnimatedChanged: console.log("STATE", root.animated)
-  Component.onCompleted: console.log("STATE", root.animated)''', 1)
-source = source.replace("root.background = path", '''root.background = path
+  Component.onCompleted: console.log("STATE", root.animated)''' % json.dumps(str(activity)), 1)
+source = patch(source, "root.background = path", '''root.background = path
         console.log("SELECTION", path, root.animated, root.muted)
         if (root.tidalTheme) console.log("READY watching")''')
 shell.write_text(source)
@@ -81,12 +106,42 @@ with log_path.open("w") as log:
         after = len(log_path.read_text())
         (state / "unrelated").write_text("changed")
         wait_for(f"SELECTION {background.resolve()} true true", after)
+
+        # Display-off, the session lock and a fullscreen client pause the surface until they clear.
+        for value, running in [({"solitaryBlockedBy": ["LOCK"]}, False), ({}, True), ({"dpmsStatus": False}, False),
+                               ({}, True), ({"solitary": "abcdef"}, False), ({"solitary": "0"}, True)]:
+            after = len(log_path.read_text())
+            activity.write_text(json.dumps({"dpmsStatus": True, **value}))
+            wait_for(f"RUNNING {str(running).lower()}", after)
+
+        # Waking the display keeps a manual pause, and re-applying the theme, which empties theme.name
+        # and replaces the folder the link points into, neither recreates the surface nor lifts it.
+        (state / "theme").mkdir(exist_ok=True)
+        (state / "theme/00-living-coast-animated.png").touch()
+        select("theme/00-living-coast-animated.png", True)
+        after = len(log_path.read_text())
+        subprocess.run(["quickshell", "ipc", "-p", str(config), "call", "tidal", "pause"], check=True, timeout=5)
+        wait_for("RUNNING false", after)
+        activity.write_text('{"dpmsStatus": false}')
+        time.sleep(0.2)
+        activity.write_text('{"dpmsStatus": true}')
+        shutil.rmtree(state / "theme")
+        theme.write_text("")
+        time.sleep(0.3)
+        (state / "theme").mkdir()
+        (state / "theme/00-living-coast-animated.png").touch()
+        theme.write_text("tidal\n")
+        time.sleep(0.3)
+        assert not re.search(r"SURFACE|RUNNING true|STATE false", log_path.read_text()[after:]), log_path.read_text()
+        subprocess.run(["quickshell", "ipc", "-p", str(config), "call", "tidal", "resume"], check=True, timeout=5)
+        wait_for("RUNNING true", after)
         qslog.check(log_path.read_text())
     finally:
         if process.poll() is None:
             process.terminate()
             process.wait(timeout=3)
-print("ok: colorful/muted/static selections and theme changes resume the same controller", flush=True)
+print("ok: colorful/muted/static selections and theme changes resume the same controller; lock/DPMS/fullscreen "
+      "pause it, and waking or re-applying the theme keeps a manual pause", flush=True)
 
 # Check the CLI's wallpaper paths without changing the desktop selection.
 installed = output / "config/omarchy/themes/tidal"

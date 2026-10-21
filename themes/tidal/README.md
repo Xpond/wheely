@@ -75,6 +75,8 @@ Selecting a static wallpaper or changing theme unloads the animated surfaces.
 The small controller stays idle, watching Omarchy's selection, so choosing either
 coast starts it again. The hooks restore this behavior after login and theme changes.
 The `stop` command selects the last static wallpaper; pause freezes the animation.
+Display-off, session-lock, and compositor-confirmed fullscreen coverage pause that
+display's coast within one second. Waking it preserves the tide and any manual pause.
 
 ## Static collection
 
