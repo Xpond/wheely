@@ -486,7 +486,7 @@ function settingRows(shortcut, customRing, folders, skipped, picks, centered, pa
   return [{ icon: SETTING_ICON, label: "Wheely shortcut", trail: shortcut, kind: KIND.slice, setting: "shortcut",
             keywords: "wheely settings preferences shortcut keybinding keybind hotkey key launch open" },
           { icon: SETTING_ICON, label: "Wallpaper pause", trail: pauseKey, kind: KIND.slice, setting: "pause",
-            keywords: "wheely settings preferences wallpaper wheelie pause resume shortcut keybinding keybind hotkey key" },
+            keywords: "wheely settings preferences wallpaper wheelie tidal pause resume shortcut keybinding keybind hotkey key" },
           { icon: SETTING_ICON, label: "Wheely ring", trail: customRing ? "Custom" : "Bar", kind: KIND.slice,
             setting: "ring", keywords: "wheely settings preferences ring slices discs pin unpin order favorites" },
           { icon: SETTING_ICON, label: "Backdrop", trail: "", kind: KIND.slice, setting: "backdrop",

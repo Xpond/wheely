@@ -73,9 +73,9 @@ Item {
                                                     MenuIndex.lines(root.fontText), root.currentFont)
   readonly property var bindRows: MenuIndex.bindRows(root.bindText)
   property string shortcut: MenuIndex.SHORTCUT
-  // Wheelie's pause key is a setting while the theme is installed, as the Hyprland block binds it then.
+  // The pause key is a setting while either animated theme is installed, matching the Hyprland block.
   property string pauseKey: MenuIndex.PAUSE_KEY
-  readonly property bool wheelieInstalled: MenuIndex.lines(root.themeText).indexOf("Wheelie") >= 0
+  readonly property bool animatedThemeInstalled: MenuIndex.lines(root.themeText).some(name => name === "Wheelie" || name === "Tidal")
   // The backdrop in percent as the shell draws it; while changed, the value the shell reads back next.
   property int backdropDraft: 0
   readonly property int backdrop: root.editing === "backdrop" ? root.backdropDraft
@@ -94,7 +94,7 @@ Item {
   property string readFrom: ""
   readonly property var settingRows: MenuIndex.settingRows(root.shortcut, !!root.ringIds, root.folders, root.skipped,
                                                         Object.keys(root.uses).length, root.panelsCentered,
-                                                        root.wheelieInstalled ? root.pauseKey : "")
+                                                        root.animatedThemeInstalled ? root.pauseKey : "")
   // The setting row being changed in place: the field shows the value, the row what saving would do.
   property string editing: ""
   // The combo a shortcut row last heard: null before any, "" for a key with no name here.

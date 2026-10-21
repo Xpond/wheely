@@ -42,14 +42,17 @@ local function saved_key(name, default)
   return default
 end
 
--- With Wheelie installed, the wallpaper pause row's key pauses and resumes its scene. It is bound
+-- With an animated theme installed, the wallpaper pause key toggles the active theme. It is bound
 -- before the wheel's keys, so they win a clash.
-local wheelie = io.open(os.getenv("HOME") .. "/.config/omarchy/themes/wheelie/wheelie")
-if wheelie then
-  wheelie:close()
-  local pause_key = saved_key("wallpaper-pause-shortcut", "CTRL + SPACE")
-  hl.unbind(pause_key)
-  o.bind(pause_key, "Pause/resume Wheelie wallpaper", '"$HOME/.config/omarchy/themes/wheelie/wheelie" toggle')
+for _, theme in ipairs({ "wheelie", "tidal" }) do
+  local controller = io.open(os.getenv("HOME") .. "/.config/omarchy/themes/" .. theme .. "/" .. theme)
+  if controller then
+    controller:close()
+    local pause_key = saved_key("wallpaper-pause-shortcut", "CTRL + SPACE")
+    hl.unbind(pause_key)
+    o.bind(pause_key, "Pause/resume wallpaper", "omarchy-wallpaper-toggle")
+    break
+  end
 end
 
 -- The global shortcut delivers both press and release directly to the wheel.

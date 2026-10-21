@@ -135,13 +135,17 @@ with log_path.open("w") as log:
         assert not re.search(r"SURFACE|RUNNING true|STATE false", log_path.read_text()[after:]), log_path.read_text()
         subprocess.run(["quickshell", "ipc", "-p", str(config), "call", "tidal", "resume"], check=True, timeout=5)
         wait_for("RUNNING true", after)
+        for running in (False, True):
+            after = len(log_path.read_text())
+            subprocess.run(["quickshell", "ipc", "-p", str(config), "call", "tidal", "toggle"], check=True, timeout=5)
+            wait_for(f"RUNNING {str(running).lower()}", after)
         qslog.check(log_path.read_text())
     finally:
         if process.poll() is None:
             process.terminate()
             process.wait(timeout=3)
 print("ok: colorful/muted/static selections and theme changes resume the same controller; lock/DPMS/fullscreen "
-      "pause it, and waking or re-applying the theme keeps a manual pause", flush=True)
+      "pause it, waking or re-applying keeps a manual pause, and toggle pauses/resumes", flush=True)
 
 # Check the CLI's wallpaper paths without changing the desktop selection.
 installed = output / "config/omarchy/themes/tidal"

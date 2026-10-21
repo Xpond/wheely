@@ -10,7 +10,7 @@ import tempfile
 REPO = Path(__file__).resolve().parents[1]
 BEGIN = "-- BEGIN wheely\n"
 END = "-- END wheely\n"
-HELPERS = ("omarchy-open-path", "omarchy-wheel-close", "omarchy-lock-design")
+HELPERS = ("omarchy-open-path", "omarchy-wheel-close", "omarchy-lock-design", "omarchy-wallpaper-toggle")
 
 
 def write(path, text):

@@ -29,13 +29,13 @@ case "${1:-help}" in
   watch)
     exec quickshell --no-duplicate --daemonize -p "$destination/animated"
     ;;
-  stop|pause|resume)
+  stop|pause|resume|toggle)
     exec quickshell ipc -p "$destination/animated" call tidal "$1"
     ;;
   preview)
     exec quickshell --no-duplicate -p "$theme/preview.qml"
     ;;
   *)
-    printf 'Usage: %s {install|animate|stop|pause|resume|preview}\n       %s animate [colorful|muted]\n' "$0" "$0"
+    printf 'Usage: %s {install|animate|stop|pause|resume|toggle|preview}\n       %s animate [colorful|muted]\n' "$0" "$0"
     ;;
 esac

@@ -24,7 +24,7 @@ dependencies are documented with the features:
 - [Tidal theme](../themes/tidal/README.md): `python3 tests/tidal.py` checks the palette,
   Omarchy app templates, both animated palettes, continuity, and the collection gallery;
   `tidal-lifecycle.py` checks colorful/muted/static switching, theme changes, lock/DPMS/fullscreen
-  pausing, theme re-apply, and CLI selection;
+  pausing, manual pause/resume/toggle, theme re-apply, and CLI selection;
   `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 - [Wheelie theme](../themes/wheelie/README.md):
   `python3 tests/wheelie-lifecycle.py` checks pause/resume/toggle, lock/DPMS/fullscreen
@@ -35,6 +35,8 @@ dependencies are documented with the features:
   `python3 tests/wheelie-install.py` checks staged installation and that failed copies
   leave the installed theme untouched, with temporary paths and command stubs; it needs
   no graphics session.
+- `python3 tests/wallpaper-toggle.py` checks that the shared pause shortcut routes
+  to the active Tidal or Wheelie CLI and leaves other or missing themes alone.
 
 `lock-render.py`, `tidal.py`, and `tidal-geometry.py` use native Wayland windows;
 the other rendering suites default to offscreen fixtures. `lock-process.py` simulates
