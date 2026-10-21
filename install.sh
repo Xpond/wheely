@@ -103,6 +103,14 @@ for f in "${FILES[@]}"; do
   ready+=("$f")
 done
 
+lock_backup=
+lock_written=()
+if [[ " ${ready[*]}" == *" plugins/lock/"* ]]; then
+  lock_backup=$(mktemp -d "$STATE/lock-backup.XXXXXX") &&
+    cp "$SHELL_DIR/plugins/lock/"{LockView,Service}.qml "$lock_backup/" ||
+    { rm -rf "$lock_backup"; alert "Could not back up the lock screen's files"; exit 1; }
+fi
+
 for f in "${ready[@]}"; do
   # The lock's view and service only load as a pair, so one left untouched holds back the other.
   if [[ $f == plugins/lock/* && " ${conflicts[*]} ${foreign[*]} ${failed[*]}" == *" plugins/lock/"* ]]; then
@@ -118,12 +126,33 @@ for f in "${ready[@]}"; do
     rm -f "$written.new"
     failed+=("$f"); continue
   fi
+  [[ $f == plugins/lock/* ]] && lock_written+=("$f")
   if sudo cp "$ours" "$installed" && cmp -s "$ours" "$installed" && rm -f "$written.pending"; then
     applied+=("$f")
   else
     failed+=("$f")
   fi
 done
+
+# A failed copy may have truncated its target after its partner was already installed.
+if [[ " ${failed[*]}" == *" plugins/lock/"* ]]; then
+  for f in "${lock_written[@]}"; do
+    saved="$lock_backup/${f##*/}"
+    installed="$SHELL_DIR/$f"
+    written="$STATE/installed/$f"
+    if ! { { cmp -s "$saved" "$installed" || sudo cp "$saved" "$installed"; } &&
+           cmp -s "$saved" "$installed" && cp "$saved" "$written" && rm -f "$written.pending"; }; then
+      alert "Could not restore the lock screen; shell not restarted. Backups: $lock_backup"
+      exit 1
+    fi
+  done
+  for i in "${!applied[@]}"; do
+    if [[ ${applied[i]} == plugins/lock/* ]]; then
+      held+=("${applied[i]}"); unset 'applied[i]'
+    fi
+  done
+fi
+[[ -z $lock_backup ]] || rm -rf "$lock_backup"
 
 (( ${#rebased[@]} )) && printf 'rebased onto new upstream: %s\n' "${rebased[*]}"
 (( ${#applied[@]} )) && printf 'installed: %s\n' "${applied[*]}"
