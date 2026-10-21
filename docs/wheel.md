@@ -633,6 +633,12 @@ chosen; the row says what it would replace. Enter saves; Esc or bare Backspace
 cancels. Saved to `~/.config/omarchy/wheel-shortcut`, then Hyprland reloads.
 Pressing the shortcut with the wheel up closes it.
 
+**Wallpaper pause** (`CTRL + SPACE`), while the Wheelie theme is installed: the
+key that pauses and resumes its scene, recorded the same way. SUPER is optional
+here, as the default shows, but the combo needs CTRL, ALT or SUPER, and the
+wheel's own keys are refused. Saved to
+`~/.config/omarchy/wallpaper-pause-shortcut`, then Hyprland reloads.
+
 **Wheely ring** (`Bar` or `Custom`): Enter edits the ring (The ring).
 
 **Backdrop**: Enter, then ←/→ change how much the backdrop hides the desktop,
