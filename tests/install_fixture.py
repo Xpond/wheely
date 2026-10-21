@@ -105,8 +105,8 @@ exit 0''',
                         "-C", str(root), "usr"], check=True)
 
     def git(self, *args):
-        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=test", "-c", "user.email=test@example.com",
-                        *args], check=True, capture_output=True)
+        return subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=test", "-c", "user.email=test@example.com",
+                               *args], check=True, capture_output=True)
 
     def run(self, script="install.sh", failure=""):
         return subprocess.run([str(self.repo / script)], cwd=self.base,

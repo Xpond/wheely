@@ -12,7 +12,7 @@ panel-to-panel handoff, and the open/close animation.
 ## 1. How to work on this
 
 ```
-orig/     upstream merge bases, updated by successful rebases
+orig/     upstream merge bases
 shell/    patched copies, mirroring /usr/share/omarchy/shell/
 ```
 
@@ -45,7 +45,7 @@ checkout's patch history:
 | `shell/` | already patched — skip |
 | any recorded or committed version of our patch | our previous version — replace it |
 | stock, same as `orig/` | upstream unchanged — copy the patch in |
-| stock, different from `orig/` | new upstream version — **three-way merge**, then re-baseline `orig/` |
+| stock, different from `orig/` | new upstream version — **three-way merge** into `~/.local/state/wheely/rebased/`, never this checkout |
 | anything else | changed outside this project — left untouched and reported |
 
 A merge that conflicts leaves the installed file untouched, reports
@@ -53,14 +53,19 @@ it on stderr *and* via `notify-send`, and exits non-zero so the hook logs
 `Hook failed`. It never writes conflict markers into a QML file — that would
 break the entire shell, which is far worse than losing the patch.
 
+Until `orig/` matches the installed package again, every run redoes the merge
+from this checkout's patch, so pulled fixes still apply, and keeps the stock
+file beside it for revert. To publish a clean rebase, copy its `orig/` and
+`shell/` files from there into `patches/`.
+
 The lock screen's `LockView.qml` and `Service.qml` only load as a pair (our
 `Service.qml` sets properties only our `LockView.qml` has), so when either is
 left untouched, the other is held back too.
 
 `revert.sh` writes stock back only over files that are ours, and only bytes
-matching pacman's checksum: `orig/` when it matches, otherwise the file from the
-cached package. Anything else stays in place and produces an error. See the
-[install and revert summary](../README.md#revert).
+matching pacman's checksum: `orig/` or a rebase's kept stock when one matches,
+otherwise the file from the cached package. Anything else stays in place and
+produces an error. See the [install and revert summary](../README.md#revert).
 
 ---
 

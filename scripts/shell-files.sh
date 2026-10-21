@@ -23,10 +23,12 @@ is_ours() {
             -- "patches/shell/$1" 2>/dev/null) ]]
 }
 
-# Write verified stock bytes to $2: the checkout's merge base, else the cached package.
+# Write verified stock bytes to $2: the checkout's merge base, the copy a rebase kept, else the cached package.
 stock_copy() {
-  local archive
-  if is_stock "$1" "$REPO/patches/orig/$1"; then cp "$REPO/patches/orig/$1" "$2"; return; fi
+  local archive copy
+  for copy in "$REPO/patches/orig/$1" "$STATE/rebased/orig/$1"; do
+    if is_stock "$1" "$copy"; then cp "$copy" "$2"; return; fi
+  done
   archive=$(ls "$PACKAGE_CACHE/${PACKAGE_DB##*/}"-*.pkg.tar.zst 2>/dev/null | head -n 1)
   [[ -n $archive ]] && bsdtar -xOf "$archive" "usr/share/omarchy/shell/$1" > "$2" 2>/dev/null &&
     is_stock "$1" "$2"

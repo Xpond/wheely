@@ -73,41 +73,43 @@ foreign=()   # neither stock nor ours; installed file left untouched
 held=()      # lock file whose partner was left untouched; left untouched too
 failed=()    # recording or installation failed
 ready=()     # patch due to be copied in
+declare -A from=()  # the patch each ready file gets
 
 for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
   ours="$REPO/patches/shell/$f"
   base="$REPO/patches/orig/$f"
-  cmp -s "$installed" "$ours" && continue
+  stock="$STATE/rebased/orig/$f"
+  merged="$STATE/rebased/shell/$f"
 
-  # Stock that differs from the merge base is a new upstream version to rebase onto.
-  # Any version of our patch is simply replaced; anything else is not ours to touch.
-  if is_stock "$f" "$installed"; then
-    if ! cmp -s "$installed" "$base"; then
-      merged=$(mktemp)
-      cp "$ours" "$merged"
-      git merge-file -q "$merged" "$base" "$installed"; ok=$?
-      if (( ok == 0 )); then
-        cp "$merged" "$ours"      # patch, now on the new base
-        cp "$installed" "$base"   # new pristine baseline
-        rebased+=("$f")
-      fi
-      rm -f "$merged"
-      (( ok == 0 )) || { conflicts+=("$f"); continue; }
-    fi
-  elif ! is_ours "$f" "$installed"; then
-    foreign+=("$f"); continue
+  # A patch made for another Omarchy version is rebased onto the installed one in the state, never in
+  # the checkout, so git pull keeps working. Stock is kept there for reruns once the patch covers it.
+  if is_stock "$f" "$base"; then
+    rm -f "$stock" "$merged"
+  elif ! cmp -s "$installed" "$ours"; then
+    mkdir -p "$(dirname "$stock")" "$(dirname "$merged")"
+    is_stock "$f" "$installed" && cp "$installed" "$stock"
+    is_stock "$f" "$stock" || stock_copy "$f" "$stock" || { rm -f "$stock"; failed+=("$f"); continue; }
+    cp "$ours" "$merged" && git merge-file -q "$merged" "$base" "$stock" ||
+      { rm -f "$merged"; conflicts+=("$f"); continue; }
+    ours=$merged
   fi
+  cmp -s "$installed" "$ours" && continue
+  [[ $ours == "$merged" ]] && rebased+=("$f")
+
+  # Stock and any version of our patch are replaced; anything else is not ours to touch.
+  is_stock "$f" "$installed" || is_ours "$f" "$installed" || { foreign+=("$f"); continue; }
+  from[$f]=$ours
   ready+=("$f")
 done
 
 for f in "${ready[@]}"; do
   # The lock's view and service only load as a pair, so one left untouched holds back the other.
-  if [[ $f == plugins/lock/* && " ${conflicts[*]} ${foreign[*]}" == *" plugins/lock/"* ]]; then
+  if [[ $f == plugins/lock/* && " ${conflicts[*]} ${foreign[*]} ${failed[*]}" == *" plugins/lock/"* ]]; then
     held+=("$f"); continue
   fi
   installed="$SHELL_DIR/$f"
-  ours="$REPO/patches/shell/$f"
+  ours=${from[$f]}
   written="$STATE/installed/$f"
 
   # Record the bytes, then mark the copy pending, so an interrupted copy is still ours.

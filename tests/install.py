@@ -106,14 +106,19 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     (fixture.shell / relative).write_bytes(update)  # the package update replaced our patch
     result = fixture.run()
     assert result.returncode == 0 and "rebased onto new upstream: shell.qml" in result.stdout, result.stderr
-    assert (fixture.repo / "patches/orig" / relative).read_bytes() == update
     assert fixture.installed(relative) != update and fixture.installed(relative).endswith(b"// upstream addition\n")
+    # The rebase is kept in the state, never in the checkout, so git pull keeps working.
+    assert not fixture.git("status", "--porcelain", "patches").stdout
+    rebased = fixture.user / ".local/state/wheely/rebased"
+    assert (rebased / "orig" / relative).read_bytes() == update
+    assert (rebased / "shell" / relative).read_bytes() == fixture.installed(relative)
+    assert "already up to date" in fixture.run().stdout
+    shutil.rmtree(fixture.package / "cache")
     assert fixture.run("revert.sh").returncode == 0 and fixture.installed(relative) == update
+    assert not rebased.exists()
     fixture.publish(fixture.stock)
-    for directory in ("orig", "shell"):
-        (fixture.repo / "patches" / directory / relative).write_bytes((source / "patches" / directory / relative).read_bytes())
     (fixture.shell / relative).write_bytes(fixture.stock[relative])
-    print("ok: a package update is rebased onto, and revert restores the updated stock file")
+    print("ok: a package update is rebased onto outside the checkout, and revert restores the updated stock file")
 
     # A lock file left stock holds back its partner, even one that rebased cleanly.
     lock = ["plugins/lock/LockView.qml", "plugins/lock/Service.qml"]
@@ -127,12 +132,11 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
         assert result.returncode == 1 and f"rebased onto new upstream: {partner}" in result.stdout, result.stderr
         assert all(fixture.installed(relative) == update[relative] for relative in lock), partner
         assert "Held back" in result.stderr and partner in result.stderr, result.stderr
+        assert not (rebased / "shell" / conflicted).exists()  # no conflict markers to publish
         assert fixture.installed("shell.qml") == fixture.patched("shell.qml")
         assert fixture.run("revert.sh").returncode == 0
         fixture.publish(fixture.stock)
         for relative in lock:
-            for directory in ("orig", "shell"):
-                (fixture.repo / "patches" / directory / relative).write_bytes((source / "patches" / directory / relative).read_bytes())
             (fixture.shell / relative).write_bytes(fixture.stock[relative])
     print("ok: a lock file that cannot be patched holds back its partner, keeping the stock lock")
 

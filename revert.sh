@@ -57,7 +57,7 @@ for f in Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml \
     fi
     echo "restored $f"
   fi
-  rm -f "$written" "$written.pending"
+  rm -f "$written" "$written.pending" "$STATE/rebased/orig/$f" "$STATE/rebased/shell/$f"
 done
 find "$STATE" -depth -type d -empty -delete 2>/dev/null || true
 
