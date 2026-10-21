@@ -19,7 +19,7 @@ A design is a folder in `lock/` holding a `Scene.qml`, plus whatever QML, JavaSc
 shaders and images it loads relative to itself. The scene fills the screen behind the field,
 which is frosted glass: the scene blurred under a dark tint, edged in the design's accent with a
 faint glow.
-Every design declares `property Item host`: the host sets it before the scene's bindings
+Every design declares `property var host`: the host sets it before the scene's bindings
 run, and the log warns if it's missing. The rest is optional:
 
 | Member | Use |

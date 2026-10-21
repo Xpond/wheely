@@ -47,7 +47,7 @@ assert.equal(browsers[1].iconFont, "omarchy")
 const marked = M.menuRows(defaults, answered)
 assert.deepEqual(M.search(marked, "brave", 40, {}).map(r => r.label), ["Brave ✓"])
 for (const delegate of ["WheelResults.qml", "WheelRing.qml"])
-  assert.match(read("plugins/xpo.wheel/" + delegate), /font\.family: modelData\.iconFont \|\| Style\.font\.menuFamily/,
+  assert.match(read("plugins/xpo.wheel/" + delegate), /font\.family: \w+\.modelData\.iconFont \|\| Style\.font\.menuFamily/,
     delegate + " draws every icon in the menu font")
 assert.deepEqual(M.styles(["Catppuccin", "Osaka Jade"], "Osaka Jade", ["Geist"], "Geist")
   .map(r => r.label + "|" + r.action), ["Catppuccin|omarchy theme set 'Catppuccin'",

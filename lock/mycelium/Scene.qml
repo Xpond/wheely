@@ -4,7 +4,7 @@ import "grow.js" as Grow
 Item {
   id: root
 
-  property Item host
+  property var host
   // Edges the password field.
   readonly property color accent: "#8ee8e0"
 
@@ -78,7 +78,7 @@ Item {
         c.beginPath()
         runs.forEach(function(run) {
           c.moveTo(run[0], run[1])
-          for (var i = 2; i < run.length; i += 2) c.lineTo(run[i], run[i + 1])
+          for (let i = 2; i < run.length; i += 2) c.lineTo(run[i], run[i + 1])
         })
         c.stroke()
       })
@@ -101,13 +101,13 @@ Item {
       c.setTransform(k, 0, 0, k, width / 2, height / 2)
       c.lineCap = "square"
       var fronts = root.colony.fronts
-      for (var s = fronts.length - 1; s > 0; s--) {
+      for (let s = fronts.length - 1; s > 0; s--) {
         if (!fronts[s]) continue
         c.strokeStyle = "rgb(" + (s >> 8) + "," + (s & 255) + ",0)"
         fronts[s].forEach(function(f, bin) {
           c.lineWidth = bin / 4 + 3 / k
           c.beginPath()
-          for (var i = 0; i < f.length; i += 4) { c.moveTo(f[i], f[i + 1]); c.lineTo(f[i + 2], f[i + 3]) }
+          for (let i = 0; i < f.length; i += 4) { c.moveTo(f[i], f[i + 1]); c.lineTo(f[i + 2], f[i + 3]) }
           c.stroke()
         })
       }
@@ -130,11 +130,11 @@ Item {
       c.lineCap = "square"
       c.lineWidth = 3
       var fronts = root.colony.fronts
-      for (var e = fronts.length >> 3; e >= 0; e--) {
+      for (let e = fronts.length >> 3; e >= 0; e--) {
         c.strokeStyle = "rgb(" + Math.min(e, 255) + ",0,0)"
         c.beginPath()
-        for (var s = 8 * e; s < 8 * e + 8; s++) if (fronts[s]) fronts[s].forEach(function(f) {
-          for (var i = 0; i < f.length; i += 4) { c.moveTo(f[i], f[i + 1]); c.lineTo(f[i + 2], f[i + 3]) }
+        for (let s = 8 * e; s < 8 * e + 8; s++) if (fronts[s]) fronts[s].forEach(function(f) {
+          for (let i = 0; i < f.length; i += 4) { c.moveTo(f[i], f[i + 1]); c.lineTo(f[i + 2], f[i + 3]) }
         })
         c.stroke()
       }
@@ -152,7 +152,7 @@ Item {
     onPaint: {
       if (!root.colony) return
       var c = getContext("2d"), image = c.createImageData(width, height), px = root.colony.light.px
-      for (var i = 0; i < px.length; i++) image.data[i] = px[i]
+      for (let i = 0; i < px.length; i++) image.data[i] = px[i]
       c.putImageData(image, 0, 0)
     }
   }

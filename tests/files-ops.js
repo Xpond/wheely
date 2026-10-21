@@ -14,13 +14,13 @@ try {
   fs.mkdirSync(incoming); fs.mkdirSync(destination)
   const panel = { listedDir: destination, editing: false, sel: null }
   const calls = []
-  const ops = { held: null, doomed: "", note() {} }
+  const ops = { held: null, doomed: "", panel, note() {} }
   ops.run = command => {
     // Never invoke the desktop's trash service.
     const result = command[0] === "gio" ? null : spawnSync(command[0], command.slice(1), { cwd: base })
     calls.push({ command: [...command], status: result && result.status })
   }
-  const scope = { root: ops, panel, doomArmed: { restart() {} } }
+  const scope = { root: ops, doomArmed: { restart() {} } }
   for (const name of ["guarded", "inHere", "hold", "paste", "remove"])
     ops[name] = method(opsSource, name, scope)
   const commitName = method(panelSource, "commitName", { root: panel, ops })

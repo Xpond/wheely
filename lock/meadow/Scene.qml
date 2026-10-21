@@ -1,10 +1,11 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import "garden.js" as Garden
 import "foreground.js" as Foreground
 
 Item {
   id: root
-  property Item host
+  property var host
   // Edges the password field.
   readonly property color accent: "#ffd7a3"
   property var garden: null
@@ -57,6 +58,7 @@ Item {
     onPaint: Garden.encode(getContext("2d"), root.near)
   }
   component Plants: ShaderEffect {
+    id: plantShader
     property real group
     property real part
     property real count: root.garden ? root.garden.length : 0
@@ -72,7 +74,7 @@ Item {
     y: -parent.y
     width: root.width
     height: root.height
-    mesh: GridMesh { resolution: Qt.size(1, Math.max(1, count * rows)) }
+    mesh: GridMesh { resolution: Qt.size(1, Math.max(1, plantShader.count * plantShader.rows)) }
     vertexShader: Qt.resolvedUrl("plants.vert.qsb")
     fragmentShader: Qt.resolvedUrl("plants.frag.qsb")
   }

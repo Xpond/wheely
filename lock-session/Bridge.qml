@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -5,11 +6,11 @@ import Quickshell.Io
 Item {
   id: root
   property var peer: null
-  property var state: ({ locked: false, requested: false, secure: false })
+  property var lockState: ({ locked: false, requested: false, secure: false })
   property var pending: null
   property int serial: 0
   property bool passwordPamConfigured: false
-  readonly property bool locked: !!state.locked || !!(pending && pending.action === "lock")
+  readonly property bool locked: !!lockState.locked || !!(pending && pending.action === "lock")
   readonly property string directory: Quickshell.env("HOME") + "/.local/share/wheely/lock-session"
   readonly property string socketPath: Quickshell.env("XDG_RUNTIME_DIR") + "/omarchy-lock-" +
     Quickshell.env("WAYLAND_DISPLAY").replace(/[^a-zA-Z0-9_.-]/g, "_") + ".sock"
@@ -47,7 +48,7 @@ Item {
         else if (root.peer === connection) {
           root.peer = null
           const recover = root.locked
-          root.state = Object.assign({}, root.state, { locked: recover, requested: recover,
+          root.lockState = Object.assign({}, root.lockState, { locked: recover, requested: recover,
             pending: recover, sessionLocked: false, secure: false, authenticating: false })
           retry.restart()
           if (recover) root.request("lock")
@@ -61,7 +62,7 @@ Item {
           const message = JSON.parse(data)
           // A retiring worker says goodbye; hanging up first keeps its close out of the log.
           if (message.bye) { connection.connected = false; return }
-          root.state = message.state
+          root.lockState = message.state
           if (root.pending && message.serial === root.pending.serial) root.pending = null
           if (root.pending) connection.write(JSON.stringify(root.pending) + "\n")
         }
@@ -74,8 +75,10 @@ Item {
   Process {
     id: worker
     command: ["quickshell", "--no-color", "-n", "-d", "-p", root.directory]
-    environment: ({ OMARCHY_LOCK_SESSION: "1", OMARCHY_LOCK_SOCKET: root.socketPath,
-                    QS_DISABLE_FILE_WATCHER: "1", QS_NO_RELOAD_POPUP: "1" })
+    // Held as a var: bound directly, an object literal types as a map, not the hash Process takes.
+    readonly property var variables: ({ OMARCHY_LOCK_SESSION: "1", OMARCHY_LOCK_SOCKET: root.socketPath,
+                                        QS_DISABLE_FILE_WATCHER: "1", QS_NO_RELOAD_POPUP: "1" })
+    environment: variables
     onExited: code => {
       if (code === 0) return
       root.pending = null
@@ -108,7 +111,7 @@ Item {
     }
     function isLocked(): string { return root.locked ? "true" : "false" }
     function status(): string {
-      const result = Object.assign({}, root.state)
+      const result = Object.assign({}, root.lockState)
       result.locked = root.locked
       result.requested = !!result.requested || !!(root.pending && root.pending.action === "lock")
       result.passwordPam = root.passwordPamConfigured

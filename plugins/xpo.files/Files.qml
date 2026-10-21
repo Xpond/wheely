@@ -63,7 +63,7 @@ Item {
     var m = Hyprland.focusedMonitor
     if (!m) return null
     var screens = Quickshell.screens
-    for (var i = 0; i < screens.length; i++)
+    for (let i = 0; i < screens.length; i++)
       if (screens[i].name === m.name) return screens[i]
     return null
   }
@@ -205,12 +205,14 @@ Item {
     id: statusSoon
     interval: 60
     // Read once the rows are in, so the deleted rows it adds come below them.
-    onTriggered: if (folder.status !== FolderListModel.Loading)
+    onTriggered: if (listedFolder.status !== FolderListModel.Loading)
       gitStatus.start(FilesIndex.statusCommand(root.listedDir, root.gitScript))
   }
   onListedDirChanged: {
     root.status = ""
-    root.entries = []
+    // Only rows that are there are cleared: at startup the first read of listedDir comes from inside
+    // listedEntries, which a fresh [] would re-enter.
+    if (root.entries.length) root.entries = []
     root.readChanges()
   }
   onEntriesChanged: root.readChanges()
@@ -342,7 +344,7 @@ Item {
   // Keep misses until asynchronous rows arrive.
   function claimPending() {
     if (!root.pending) return
-    for (var i = 0; i < root.rows.length; i++) {
+    for (let i = 0; i < root.rows.length; i++) {
       if (root.rows[i].name === root.pending) {
         root.index = i
         root.pending = ""
@@ -380,8 +382,8 @@ Item {
   // Focus the window the way the wheel focuses any other.
   function raise() {
     var all = Hyprland.toplevels.values
-    for (var i = 0; i < all.length; i++) {
-      var t = all[i]
+    for (let i = 0; i < all.length; i++) {
+      const t = all[i]
       if (t.wayland && t.wayland.appId === "org.quickshell"
           && t.title === (root.host ? root.host.title : window.title))
         Hyprland.dispatch("hl.dsp.focus({ window = \"address:0x" + t.address + "\" })")
@@ -513,6 +515,7 @@ Item {
 
   Timer { id: discardArmed; interval: 2000; onTriggered: root.discarding = false }
   Timer { id: savedFlash; interval: 1500 }
+  readonly property alias justSaved: savedFlash.running
   // Rename and create share the header's editable name field.
   property string naming: ""
   property string renameTo: ""
@@ -558,7 +561,7 @@ Item {
       case Qt.Key_E: root.renameAt = t.length; return
       // Pasted paths become plain names.
       case Qt.Key_V:
-        var clip = String(Quickshell.clipboardText || "").replace(/[\s\/]+/g, " ").trim()
+        const clip = String(Quickshell.clipboardText || "").replace(/[\s\/]+/g, " ").trim()
         root.renameTo = t.slice(0, at) + clip + t.slice(at)
         root.renameAt = at + clip.length
         return
@@ -582,7 +585,7 @@ Item {
     if (!name) return
     if (name.indexOf("/") !== -1) { ops.note("a name cannot hold a /"); return }
     if (verb === "new") {
-      var folder = slashed || (!dotted && name.indexOf(".") < 0)
+      const folder = slashed || (!dotted && name.indexOf(".") < 0)
       ops.run(["sh", "-c", 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; exec "$1" -- "$2"',
                 "files", folder ? "mkdir" : "touch", ops.inHere(name)],
                { name: name, land: true, done: "made " + name, fail: "could not make " + name })
@@ -601,13 +604,13 @@ Item {
   readonly property alias danger: ops.danger
 
   FolderListModel {
-    id: folder
+    id: listedFolder
     folder: "file://" + root.listedDir
     showDirsFirst: true
     showHidden: root.showHidden
     // Ready gates both initial loads and later count changes.
-    onStatusChanged: if (status === FolderListModel.Ready) root.entries = FilesIndex.snapshot(folder)
-    onCountChanged: if (status === FolderListModel.Ready) root.entries = FilesIndex.snapshot(folder)
+    onStatusChanged: if (status === FolderListModel.Ready) root.entries = FilesIndex.snapshot(listedFolder)
+    onCountChanged: if (status === FolderListModel.Ready) root.entries = FilesIndex.snapshot(listedFolder)
   }
 
   FolderListModel {

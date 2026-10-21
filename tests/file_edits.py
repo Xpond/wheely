@@ -25,10 +25,10 @@ def check(source, base, run, block):
   property bool discarding: false
   property int flashes: 0
   property int focusCalls: 0
+  readonly property var panel: root
   QtObject { id: ops; property string fileNote: ""; function note(text) { fileNote = text } }
   TextEdit {
     id: preview
-    property var panel: root
     property alias editorText: preview.text
     function keepPlace() {}
     function focusEditor() { root.focusCalls++ }

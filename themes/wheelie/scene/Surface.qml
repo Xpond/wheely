@@ -90,6 +90,7 @@ Item {
         Repeater {
           model: Object.keys(root.layout.wheels)
           Item {
+            id: axle
             required property string modelData
             readonly property var wheel: root.layout.wheels[modelData]
             readonly property int decoded: Math.ceil(wheel.size * scene.decode)
@@ -99,18 +100,18 @@ Item {
             ShaderEffect {
               anchors.fill: parent
               property real turn: root.wheelTurn
-              property real tireRadius: wheel.radius / wheel.size
-              property real exposure: modelData === "rear" ? 0.92 : 1.0
+              property real tireRadius: axle.wheel.radius / axle.wheel.size
+              property real exposure: axle.modelData === "rear" ? 0.92 : 1.0
               property var source: Image {
-                source: modelData + ".png"
+                source: axle.modelData + ".png"
                 visible: false
                 smooth: true
-                sourceSize: Qt.size(decoded, decoded)
+                sourceSize: Qt.size(axle.decoded, axle.decoded)
               }
               fragmentShader: Qt.resolvedUrl("wheel-light.frag.qsb")
             }
             Loader {
-              active: modelData === "rear" && !!root.layout.chain
+              active: axle.modelData === "rear" && !!root.layout.chain
               x: root.layout.chain ? root.layout.chain.box[0] - parent.x : 0
               y: root.layout.chain ? root.layout.chain.box[1] - parent.y : 0
               sourceComponent: AnimatedSprite {
@@ -124,10 +125,10 @@ Item {
               }
             }
             Image {
-              source: modelData + "-cover.png"
-              x: wheel.box[0] - parent.x; y: wheel.box[1] - parent.y
-              width: wheel.box[2]; height: wheel.box[2]
-              sourceSize: Qt.size(decoded, decoded)
+              source: axle.modelData + "-cover.png"
+              x: axle.wheel.box[0] - parent.x; y: axle.wheel.box[1] - parent.y
+              width: axle.wheel.box[2]; height: axle.wheel.box[2]
+              sourceSize: Qt.size(axle.decoded, axle.decoded)
             }
           }
         }
@@ -147,6 +148,7 @@ Item {
         Loader {
           active: !!root.layout.wheels.rear
           sourceComponent: Item {
+            id: spray
             readonly property var rear: root.layout.wheels.rear
             readonly property real r: rear.radius || rear.size / 2
             // Particle colors need premultiplication; the SVG texture is premultiplied by Qt.
@@ -171,21 +173,21 @@ Item {
             }
             Emitter {
               system: dust; group: "grain"
-              x: 0.3 * r; y: -0.14 * r; width: 0.2 * r; height: 0.04 * r
+              x: 0.3 * spray.r; y: -0.14 * spray.r; width: 0.2 * spray.r; height: 0.04 * spray.r
               emitRate: 32; lifeSpan: 750; lifeSpanVariation: 200
-              size: 0.025 * r; endSize: 0.012 * r; sizeVariation: 0.01 * r
-              velocity: AngleDirection { angle: -30; angleVariation: 12; magnitude: 1.8 * r; magnitudeVariation: 0.45 * r }
-              acceleration: PointDirection { y: 3 * r }
+              size: 0.025 * spray.r; endSize: 0.012 * spray.r; sizeVariation: 0.01 * spray.r
+              velocity: AngleDirection { angle: -30; angleVariation: 12; magnitude: 1.8 * spray.r; magnitudeVariation: 0.45 * spray.r }
+              acceleration: PointDirection { y: 3 * spray.r }
             }
             // Grains land: none falls through the sand.
-            Age { system: dust; groups: ["grain"]; x: -r; y: -0.08 * r; width: 6 * r; height: 2 * r; lifeLeft: 0 }
+            Age { system: dust; groups: ["grain"]; x: -spray.r; y: -0.08 * spray.r; width: 6 * spray.r; height: 2 * spray.r; lifeLeft: 0 }
             Emitter {
               system: dust; group: "puff"
-              x: 0.35 * r; y: -0.16 * r; width: 0.4 * r; height: 0.06 * r
+              x: 0.35 * spray.r; y: -0.16 * spray.r; width: 0.4 * spray.r; height: 0.06 * spray.r
               emitRate: 22; lifeSpan: 1600; lifeSpanVariation: 400
-              size: 0.28 * r; endSize: 0.9 * r; sizeVariation: 0.12 * r
-              velocity: PointDirection { x: 1.5 * r; xVariation: 0.6 * r; y: -0.64 * r; yVariation: 0.14 * r }
-              acceleration: PointDirection { y: 0.4 * r }
+              size: 0.28 * spray.r; endSize: 0.9 * spray.r; sizeVariation: 0.12 * spray.r
+              velocity: PointDirection { x: 1.5 * spray.r; xVariation: 0.6 * spray.r; y: -0.64 * spray.r; yVariation: 0.14 * spray.r }
+              acceleration: PointDirection { y: 0.4 * spray.r }
             }
             Friction { system: dust; groups: ["puff"]; factor: 1 }
           }
