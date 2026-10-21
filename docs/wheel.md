@@ -407,10 +407,10 @@ logo, Codex, Cursor, Grok — from a font of its own, at codepoints a Nerd Font
 fills with other glyphs, so drawn in the menu font they come out as a COBOL
 logo and the like.
 
-That invariant is checked rather than asserted. `check.js` runs the real index
+That invariant is checked rather than asserted. `tests/wheel-live.js` runs the real index
 against this machine's real menu files:
 
-    node plugins/xpo.wheel/check.js
+    node tests/wheel-live.js
 
 - every entry whose `when` passes, and that is not a submenu emptied by its
   children's, appears in `menuRows()`
@@ -680,7 +680,7 @@ name starts with `br`, however often Files is picked.
 
 Windows are deliberately uncounted -- their address is new on every launch, so
 counting them would grow the file without bound, and they already sort on live
-focus order. `check.js` holds both invariants: every counted row has a key,
+focus order. `tests/wheel-live.js` holds both invariants: every counted row has a key,
 and no two share one. Opening a setting row is no pick either.
 
 The counts live in `~/.local/state/omarchy/wheel-uses.json`, written through on
