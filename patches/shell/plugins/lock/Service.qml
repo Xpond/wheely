@@ -42,6 +42,7 @@ Item {
   property string lastEventAt: ""
   property bool strandedLock: false
   property bool strandedLockResolved: false
+  readonly property bool checkingStrandedLock: strandedLockRetryTimer.running || strandedLockCheckProc.running
   property bool unlocking: false
   property bool blanked: false
   property bool waking: false

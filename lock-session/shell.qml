@@ -13,7 +13,7 @@ ShellRoot {
   readonly property string snapshot: service ? JSON.stringify({
     state: JSON.parse(service.statusText), serial: serial
   }) : ""
-  readonly property bool idle: service && service.strandedLockResolved && !service.locked &&
+  readonly property bool idle: service && !service.checkingStrandedLock && !service.locked &&
     !service.previewVisible && !service.waking && !pending
 
   function publish() {
