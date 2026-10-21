@@ -80,8 +80,8 @@ Eight package-owned QML files plus Hyprland config.
 | `shell.qml` | grants menu plugins control of enabled non-authentication UI plugins and implements the callbacks above |
 
 `config/hyprland.lua` is the installed source of truth. It explicitly disables
-blur on the wheel/files overlays, then installation reloads Hyprland and checks
-for configuration errors. Revert removes only the managed block.
+blur on the wheel/files overlays, then installation reloads Hyprland and rolls
+back if the block adds configuration errors. Revert removes only the managed block.
 
 ### Why the scrim lives in the bar
 

@@ -32,7 +32,8 @@ mkdir -p "$data/lock-session" &&
 command -v jq >/dev/null || { alert "jq is required to register plugins"; exit 1; }
 command -v python3 >/dev/null || { alert "python3 is required to manage user configuration"; exit 1; }
 command -v hyprctl >/dev/null || { alert "hyprctl is required to validate user configuration"; exit 1; }
-python3 "$REPO/scripts/user-config.py" install ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin || exit 1
+python3 "$REPO/scripts/user-config.py" install ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin ||
+  { alert "Could not update the Hyprland configuration"; exit 1; }
 mkdir -p ~/.config/omarchy/plugins ~/.local/bin || exit 1
 if [[ ! -e $CONF ]]; then
   cp "${OMARCHY_PATH:-/usr/share/omarchy}/config/omarchy/shell.json" "$CONF" || exit 1
