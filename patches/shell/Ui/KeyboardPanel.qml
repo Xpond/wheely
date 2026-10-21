@@ -91,6 +91,10 @@ PanelWindow {
     if (bar && typeof bar.panelSurfaceVisible === "function") bar.panelSurfaceVisible(onScreen)
   }
 
+  Component.onDestruction: {
+    if (surfaceCounted && bar && typeof bar.panelSurfaceVisible === "function") bar.panelSurfaceVisible(false)
+  }
+
   function beginFocusPrime() {
     if (open && backingWindowVisible) focusPrimeTimer.restart()
   }

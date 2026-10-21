@@ -328,6 +328,10 @@ Item {
       var bar = root.shell && root.shell.bar
       if (bar && typeof bar.panelSurfaceVisible === "function") bar.panelSurfaceVisible(visible)
     }
+    Component.onDestruction: {
+      var bar = root.shell && root.shell.bar
+      if (visible && bar && typeof bar.panelSurfaceVisible === "function") bar.panelSurfaceVisible(false)
+    }
 
     MouseArea {
       anchors.fill: parent

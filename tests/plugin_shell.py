@@ -4,6 +4,52 @@ import shutil
 
 
 def check(repo, base, run, block):
+    # Keep the production count handlers, including destruction. Only the compositor's
+    # visibility inputs are replaced; QML creates and destroys the objects itself.
+    keyboard = (repo / "patches/shell/Ui/KeyboardPanel.qml").read_text()
+    keyboard = keyboard.split("  // Count mapped panel surfaces for the shared bar scrim.\n", 1)[1]
+    keyboard = keyboard.split("  function beginFocusPrime()", 1)[0]
+    clipboard = (repo / "patches/shell/plugins/clipboard/Clipboard.qml").read_text()
+    clipboard = clipboard.split("    // Share the bar scrim across panel handoffs.\n", 1)[1]
+    clipboard = clipboard.split("    MouseArea {", 1)[0]
+    for name, key, code in [("keyboard", "open", '''
+      property bool open: false
+      property bool centered: true
+      property bool backingWindowVisible: true
+      property var bar: root.bar
+      onOpenChanged: syncSurfaceCount()
+''' + keyboard), ("clipboard", "visible", "property bool visible: false\n" + clipboard)]:
+        for close_first in (False, True):
+            run(f"{name}-destroy-{'closed' if close_first else 'open'}", '''
+  property var shell: root
+  property var bar: QtObject {
+    property int count: 1 // An unrelated panel already owns the backdrop.
+    function panelSurfaceVisible(shown) { count += shown ? 1 : -1 }
+  }
+  property var panel: null
+  Component { id: factory; QtObject {
+''' + code + '''
+  } }
+  Component.onCompleted: {
+    panel = factory.createObject(root)
+    panel.''' + key + ''' = true
+    if (bar.count !== 2) throw new Error("FAIL opening did not acquire backdrop")
+''' + (f"    panel.{key} = false\n" if close_first else "") + '''
+    panel.destroy()
+    verify.start()
+  }
+  Timer {
+    id: verify; interval: 1
+    onTriggered: {
+      if (root.panel !== null || bar.count !== 1)
+        throw new Error("FAIL destruction leaked or stole a count: " + bar.count)
+      bar.panelSurfaceVisible(false)
+      if (bar.count !== 0) throw new Error("FAIL backdrop remained after last panel closed")
+      console.log("PASS"); Qt.quit()
+    }
+  }
+''')
+
     shutil.copyfile(repo / "patches/shell/services/PluginShellApi.qml",
                     base / "PluginShellApi.qml")
     run("plugin-shell-facade", '''
