@@ -113,7 +113,7 @@ Item {
   // Whether a screen point is inside a closed screen outline (even-odd).
   function contains(poly, q) {
     var c = false
-    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++)
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++)
       if ((poly[i][1] > q[1]) !== (poly[j][1] > q[1]) && q[0] < (poly[j][0] - poly[i][0]) * (q[1] - poly[i][1]) / (poly[j][1] - poly[i][1]) + poly[i][0]) c = !c
     return c
   }
@@ -134,7 +134,7 @@ Item {
     model.surfaces.forEach(function(s) {
       if ((s.axle !== undefined) !== wheel) return
       if (all || !s.still) {
-        var pts = s.pts.map(!wheel || s.still ? view : function(p) { return view(turn(p, s.axle, c, sn)) })
+        const pts = s.pts.map(!wheel || s.still ? view : function(p) { return view(turn(p, s.axle, c, sn)) })
         s.poly = (s.hull ? hull(pts) : pts).map(function(q) { return point(q[0], q[1]) })
         changed[s.tone] = true
       }
@@ -149,12 +149,12 @@ Item {
     var out = []
     bodywork.concat(wheels).forEach(function(tone) { tone.forEach(function(poly) {
       var hits = []
-      for (var i = 0; i < poly.length; i++) {
-        var a = poly[i], b = poly[(i + 1) % poly.length]
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length]
         if ((a.x < front) !== (b.x < front)) hits.push(Qt.point(front, a.y + (b.y - a.y) * (front - a.x) / (b.x - a.x)))
       }
       hits.sort(function(a, b) { return a.y - b.y })
-      for (i = 0; i + 1 < hits.length; i += 2) out.push([hits[i], hits[i + 1]])
+      for (let i = 0; i + 1 < hits.length; i += 2) out.push([hits[i], hits[i + 1]])
     }) })
     return out
   }
@@ -209,7 +209,7 @@ Item {
     var c = part.cum, s = part.screen, point = Qt.point
     function at(d) { var p = pointAt(part, d); return point(p[0] + dx, p[1] + dy) }
     var out = [at(a)]
-    for (var i = 1; i < c.length - 1; i++) if (c[i] > a && c[i] < b) out.push(point(s[i][0] + dx, s[i][1] + dy))
+    for (let i = 1; i < c.length - 1; i++) if (c[i] > a && c[i] < b) out.push(point(s[i][0] + dx, s[i][1] + dy))
     out.push(at(b))
     return out
   }
@@ -227,19 +227,19 @@ Item {
       var y2 = y * cp + z1 * sp, z2 = -y * sp + z1 * cp, k = D / (D + z2)
       return [cx + x1 * k * S, cy - y2 * k * S, z2]
     }
-    for (var i = 0; i < parts.length; i++) {
-      var part = parts[i], z = 0
+    for (let i = 0; i < parts.length; i++) {
+      let part = parts[i], z = 0
       part.screen = part.pts.map(function(p) { var q = view(p); z += q[2]; return q })
       // Depth dims outlines and lowers their weight toward the inside level.
-      var bright = Math.max(0.3, Math.min(0.95, 0.95 - (z / part.pts.length + 120) / 240 * 0.65))
+      const bright = Math.max(0.3, Math.min(0.95, 0.95 - (z / part.pts.length + 120) / 240 * 0.65))
       part.level = part.underPaint ? 4 : part.inside ? 0 : Math.max(0, part.weight + Math.floor(bright * 4) - 3)
       part.whole = pieces(part, 0, part.len, 0, 0)
       // Half-step golden angles avoid zero components in the offscreen intersection.
-      var mx = 0, my = 0, r = 0, a = (i + 0.5) * 2.39996
+      let mx = 0, my = 0, r = 0, a = (i + 0.5) * 2.39996
       part.screen.forEach(function(p) { mx += p[0] / part.screen.length; my += p[1] / part.screen.length })
       part.screen.forEach(function(p) { r = Math.max(r, Math.hypot(p[0] - mx, p[1] - my)) })
-      var ux = Math.cos(a), uy = Math.sin(a)
-      var out = Math.min(ux > 0 ? (width - mx) / ux : -mx / ux, uy > 0 ? (height - my) / uy : -my / uy) + r
+      const ux = Math.cos(a), uy = Math.sin(a)
+      const out = Math.min(ux > 0 ? (width - mx) / ux : -mx / ux, uy > 0 ? (height - my) / uy : -my / uy) + r
       part.fly = [ux * out, uy * out]
     }
     // Sample visible glass runs every unit, clipping against other groups' solids at mean depth.
@@ -257,9 +257,9 @@ Item {
     parts.forEach(function(part) {
       if (!part.inside) return
       var runs = [], from = -1
-      for (var d = 0; d <= part.len; d++) {
-        var q = pointAt(part, d)
-        var seen = panes.some(function(pane) { return contains(pane, q) }) && !solids.some(function(solid) {
+      for (let d = 0; d <= part.len; d++) {
+        const q = pointAt(part, d)
+        const seen = panes.some(function(pane) { return contains(pane, q) }) && !solids.some(function(solid) {
           return solid.group !== part.group && q[2] > solid.depth && contains(solid.hull, q)
         })
         if (seen && from < 0) from = d
@@ -311,14 +311,14 @@ Item {
   function frame() {
     if (!parts[0].whole || (finished === parts.length && clock >= traced)) return
     var done = 0, drawn = [[], [], [], [], []], heat = [[], [], []]
-    for (var i = 0; i < parts.length; i++) {
-      var part = parts[i]
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
       if (clock >= part.end) { done++; continue }
       if (clock <= part.start) continue
       // The comet's tail spans 12% of its outline, like the logo's, and at least 110 units.
-      var k = (clock - part.start) / (part.end - part.start), d = k * part.len
-      var tail = Math.min(d, Math.max(0.12 * part.len, 110))
-      var f = Math.pow(1 - k, 3), dx = part.fly[0] * f, dy = part.fly[1] * f
+      const k = (clock - part.start) / (part.end - part.start), d = k * part.len
+      const tail = Math.min(d, Math.max(0.12 * part.len, 110))
+      const f = Math.pow(1 - k, 3), dx = part.fly[0] * f, dy = part.fly[1] * f
       drawn[part.level].push.apply(drawn[part.level], pieces(part, 0, d, dx, dy))
       heat[0].push.apply(heat[0], pieces(part, d - tail, d - tail * 2 / 3, dx, dy))
       heat[1].push.apply(heat[1], pieces(part, d - tail * 2 / 3, d - tail / 3, dx, dy))

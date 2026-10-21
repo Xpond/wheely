@@ -4,15 +4,16 @@ Item {
   id: root
   property bool running: true
   property real horizon: 0 // Scene row where the storm ends, just inside the redrawn dunes.
-  property real approach: 0
-  property real phase: 0
+  property real approach
+  property real phase
   property real decode: 1 // The share of native resolution to decode, as in Surface.qml.
 
-  // Approach once over four minutes, then keep rolling at the distant dunes.
+  // Approach once over four minutes, then keep rolling at the distant dunes. Once it has
+  // finished, pausing would only warn.
   NumberAnimation on approach {
     from: 0; to: 1; duration: 240000
     easing.type: Easing.OutSine
-    paused: !root.running
+    paused: running && !root.running
   }
   // Circular noise coordinates keep the ten-minute billowing loop seamless.
   NumberAnimation on phase {

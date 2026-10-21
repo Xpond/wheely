@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 import qs.Commons as Commons
@@ -18,9 +19,9 @@ Item {
   readonly property int videoStatus: video.status
   property alias editorText: editor.text
   readonly property string lineNumbers:
-    panel.editing ? FilesIndex.numbers(editor.text)
-    : panel.showsDiff ? FilesIndex.diffNumbers(panel.previewText)
-    : panel.showsMarkdown ? "" : FilesIndex.numbers(panel.previewText)
+    root.panel.editing ? FilesIndex.numbers(editor.text)
+    : root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
+    : root.panel.showsMarkdown ? "" : FilesIndex.numbers(root.panel.previewText)
 
   // StyledText sets each line's baseline at its ascent. The rich text it replaced
   // set it 4/5 down a fixed-height line whatever the fonts; keep that placement,
@@ -69,13 +70,13 @@ Item {
 
   function resetScroll() { scroller.contentY = 0; scroller.contentX = 0 }
 
-  function toggleVideo() { if (video.item) video.item.toggle() }
+  function toggleVideo() { const player = video.item as FilesVideo; if (player) player.toggle() }
 
   function scrollTo(fraction) {
     // The end of a partly laid out file waits for the rest.
-    if (fraction === 1 && panel.previewCut) {
+    if (fraction === 1 && root.panel.previewCut) {
       root.pendingAt = 1
-      panel.showAll()
+      root.panel.showAll()
       return
     }
     scroller.contentY = fraction * Math.max(0, scroller.contentHeight - scroller.height)
@@ -87,27 +88,27 @@ Item {
   function keepPlace() {
     var at = Util.clamp(scroller.contentY / Math.max(1, scroller.contentHeight - scroller.height), 0, 1)
     // A partly laid out file is only its share of the text.
-    root.pendingAt = panel.previewCut ? at * panel.previewText.length / panel.shownText.length : at
+    root.pendingAt = root.panel.previewCut ? at * root.panel.previewText.length / root.panel.shownText.length : at
   }
   function takePlace() {
     if (root.pendingAt < 0) return
     scroller.contentY = root.pendingAt * Math.max(0, scroller.contentHeight - scroller.height)
     scroller.contentX = 0
     root.pendingAt = -1
-    if (panel.editing)
-      editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - panel.dirTopPad + 2))
+    if (root.panel.editing)
+      editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - root.panel.dirTopPad + 2))
   }
 
   function focusEditor() { editor.forceActiveFocus() }
 
   // Lay out more of a long file once the view comes within a screen of its end.
   function fill() {
-    if (panel.previewCut && !panel.editing && scroller.contentY + scroller.height * 2 > scroller.contentHeight)
-      panel.shownLines *= 2
+    if (root.panel.previewCut && !root.panel.editing && scroller.contentY + scroller.height * 2 > scroller.contentHeight)
+      root.panel.shownLines *= 2
   }
 
   function revealCursor() {
-    if (!panel.editing) return
+    if (!root.panel.editing) return
     var r = editor.cursorRectangle
     var top = content.y + editor.y + r.y
     if (top < scroller.contentY) root.scrollBy(top - scroller.contentY)
@@ -126,11 +127,11 @@ Item {
       left: parent.left; leftMargin: Style.spacing.lg
       right: parent.right; rightMargin: Style.spacing.lg
     }
-    visible: panel.showsDir || panel.showsCode || !!panel.previewBody || panel.editing
-    contentWidth: panel.showsDir ? folderView.width : content.width
+    visible: root.panel.showsDir || root.panel.showsCode || !!root.panel.previewBody || root.panel.editing
+    contentWidth: root.panel.showsDir ? folderView.width : content.width
     // Include both vertical insets so the last line remains reachable.
-    contentHeight: (panel.showsDir ? folderView.height : content.height)
-                   + panel.dirTopPad * 2
+    contentHeight: (root.panel.showsDir ? folderView.height : content.height)
+                   + root.panel.dirTopPad * 2
     onContentHeightChanged: { root.takePlace(); root.fill() }
     onContentYChanged: root.fill()
     flickableDirection: Flickable.HorizontalAndVerticalFlick
@@ -143,16 +144,16 @@ Item {
       id: hovered
       readonly property real px: pointer.mouseX + scroller.contentX - folderView.x
       readonly property real py: pointer.mouseY + scroller.contentY - folderView.y
-      readonly property Item column: pointer.containsMouse && panel.dirColumns.length && folderView.placed
-                                    ? folderView.childAt(px, py) : null
-      readonly property int line: Math.floor(py / panel.lineHeight)
-      visible: !!column && !!panel.previewEntry(column.index, line)
-      x: folderView.x + (column ? column.x : 0) - panel.gutterGap / 2
-      y: folderView.y + line * panel.lineHeight
-      width: (column ? column.width : 0) + panel.gutterGap
-      height: panel.lineHeight
+      readonly property DirColumn column: pointer.containsMouse && root.panel.dirColumns.length && folderView.placed
+                                    ? folderView.childAt(px, py) as DirColumn : null
+      readonly property int line: Math.floor(py / root.panel.lineHeight)
+      visible: !!column && !!root.panel.previewEntry(column.index, line)
+      x: folderView.x + (column ? column.x : 0) - root.panel.gutterGap / 2
+      y: folderView.y + line * root.panel.lineHeight
+      width: (column ? column.width : 0) + root.panel.gutterGap
+      height: root.panel.lineHeight
       radius: height / 2
-      color: panel.hoverFill
+      color: root.panel.hoverFill
     }
 
     Row {
@@ -160,9 +161,9 @@ Item {
       // New columns all sit at x 0 until the Row places them, so the tint looks again after.
       property int placed: 0
       onPositioningComplete: placed++
-      visible: panel.showsDir
-      y: panel.dirTopPad
-      spacing: panel.gutterGap * 2
+      visible: root.panel.showsDir
+      y: root.panel.dirTopPad
+      spacing: root.panel.gutterGap * 2
 
       // Marks are placed from just past each row's glyph.
       TextMetrics {
@@ -173,9 +174,9 @@ Item {
       }
 
       Repeater {
-        model: panel.dirColumns
+        model: root.panel.dirColumns
 
-        delegate: Text {
+        component DirColumn: Text {
           id: column
           required property string modelData
           required property int index
@@ -186,27 +187,28 @@ Item {
           font.pixelSize: Style.font.subtitle
           renderType: Text.NativeRendering
           lineHeightMode: Text.FixedHeight
-          lineHeight: panel.lineHeight
+          lineHeight: root.panel.lineHeight
 
           // git's marks over the room each row keeps after its name, in the list's colour.
           Text {
             x: glyphWidth.advanceWidth
-            text: panel.dirMarks[column.index] || ""
+            text: root.panel.dirMarks[column.index] || ""
             color: Commons.Color.accent
             font: column.font
             renderType: Text.NativeRendering
             lineHeightMode: Text.FixedHeight
-            lineHeight: panel.lineHeight
+            lineHeight: root.panel.lineHeight
           }
         }
+        delegate: DirColumn {}
       }
     }
 
     Row {
       id: content
-      visible: !panel.showsDir
-      y: panel.dirTopPad
-      spacing: panel.gutterGap
+      visible: !root.panel.showsDir
+      y: root.panel.dirTopPad
+      spacing: root.panel.gutterGap
 
       Text {
         id: gutter
@@ -217,13 +219,13 @@ Item {
         opacity: 0.32
         font.family: Style.font.menuFamily
         // Match the gutter rhythm to editable text or fixed-height preview code.
-        font.pixelSize: panel.editing ? Style.font.subtitle : Style.font.bodySmall
+        font.pixelSize: root.panel.editing ? Style.font.subtitle : Style.font.bodySmall
         renderType: Text.NativeRendering
-        lineHeightMode: panel.editing ? Text.ProportionalHeight : Text.FixedHeight
-        lineHeight: panel.editing ? 1.0 : panel.lineHeight
+        lineHeightMode: root.panel.editing ? Text.ProportionalHeight : Text.FixedHeight
+        lineHeight: root.panel.editing ? 1.0 : root.panel.lineHeight
         // Left to Qt, the smaller numbers sat above the code's baseline; share it instead.
         onLineLaidOut: function (line) {
-          if (!panel.editing)
+          if (!root.panel.editing)
             line.y = line.number * lineHeight + root.baselineIn(lineHeight) - gutterMetrics.ascent
         }
       }
@@ -231,7 +233,7 @@ Item {
 
       TextEdit {
         id: editor
-        visible: panel.editing
+        visible: root.panel.editing
         color: Commons.Color.menu.text
         opacity: 0.92
         selectionColor: Util.alpha(Commons.Color.accent, 0.35)
@@ -241,16 +243,16 @@ Item {
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.subtitle
         renderType: Text.NativeRendering
-        onTextChanged: if (panel.editing) panel.dirty = true
+        onTextChanged: if (root.panel.editing) root.panel.dirty = true
         onCursorRectangleChanged: root.revealCursor()
       }
 
       // Markdown has its own Text: a line height that switched with the format, or a handler
       // per line, made Qt lay out its tables many times slower.
       Text {
-        visible: !panel.editing && panel.showsMarkdown
+        visible: !root.panel.editing && root.panel.showsMarkdown
         width: scroller.width
-        text: panel.showsMarkdown ? panel.previewBody : ""
+        text: root.panel.showsMarkdown ? root.panel.previewBody : ""
         wrapMode: Text.Wrap
         textFormat: Text.MarkdownText
         color: Commons.Color.menu.text
@@ -262,18 +264,18 @@ Item {
 
       Text {
         id: rendered
-        visible: !panel.editing && !panel.showsMarkdown
-        text: panel.showsMarkdown ? "" : panel.previewBody
+        visible: !root.panel.editing && !root.panel.showsMarkdown
+        text: root.panel.showsMarkdown ? "" : root.panel.previewBody
         color: Commons.Color.menu.text
         opacity: 0.92
-        textFormat: panel.showsCode ? Text.StyledText : Text.PlainText
+        textFormat: root.panel.showsCode ? Text.StyledText : Text.PlainText
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.subtitle
         renderType: Text.NativeRendering
         lineHeightMode: Text.FixedHeight
-        lineHeight: panel.lineHeight
+        lineHeight: root.panel.lineHeight
         onLineLaidOut: function (line) {
-          if (!panel.showsCode) return
+          if (!root.panel.showsCode) return
           if (line.number === 0) root.measure(text)
           // Absolute: Text has already lowered the line to the foot of its fixed height.
           line.y = line.number * lineHeight + root.codeBaseline - root.ascentOf(line.number)
@@ -298,8 +300,8 @@ Item {
     id: scrollerImage
     anchors.fill: parent
     // Unsupported or corrupt images fall through to the preview note.
-    visible: panel.showsImage && status !== Image.Error
-    source: panel.showsImage ? "file://" + panel.settledSel.path : ""
+    visible: root.panel.showsImage && status !== Image.Error
+    source: root.panel.showsImage ? "file://" + root.panel.settledSel.path : ""
     fillMode: Image.PreserveAspectFit
     asynchronous: true
     sourceSize.width: width
@@ -310,15 +312,15 @@ Item {
   Loader {
     id: video
     anchors.fill: parent
-    readonly property string path: panel.showsVideo ? panel.settledSel.path : ""
+    readonly property string path: root.panel.showsVideo ? root.panel.settledSel.path : ""
     onPathChanged: setSource(path ? "FilesVideo.qml" : "", { path: path })
-    onLoaded: item.fullsize.connect(function(path, position) { panel.openVideo(path, position) })
+    onLoaded: (item as FilesVideo).fullsize.connect(function(path, position) { root.panel.openVideo(path, position) })
   }
 
   Text {
     anchors.centerIn: parent
-    visible: !!panel.previewNote
-    text: panel.previewNote
+    visible: !!root.panel.previewNote
+    text: root.panel.previewNote
     color: Commons.Color.menu.text
     opacity: 0.45
     font.family: Style.font.menuFamily
@@ -330,9 +332,9 @@ Item {
   MouseArea {
     id: pointer
     anchors.fill: scroller
-    enabled: !panel.editing && !panel.showsVideo
+    enabled: !root.panel.editing && !root.panel.showsVideo
     hoverEnabled: true
-    onClicked: panel.pickPreview(hovered.column ? hovered.column.index : -1, hovered.line)
-    onDoubleClicked: panel.openPicked()
+    onClicked: root.panel.pickPreview(hovered.column ? hovered.column.index : -1, hovered.line)
+    onDoubleClicked: root.panel.openPicked()
   }
 }

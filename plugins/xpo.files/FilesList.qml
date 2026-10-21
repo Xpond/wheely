@@ -1,9 +1,11 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 import qs.Commons as Commons
 import "FilesIndex.js" as FilesIndex
 
 Item {
+  id: root
   property var panel: null
   property var operations: null
   property alias view: list
@@ -12,30 +14,30 @@ Item {
     id: list
     anchors.fill: parent
     clip: true
-    model: panel.rows
-    currentIndex: panel.index
+    model: root.panel.rows
+    currentIndex: root.panel.index
     boundsBehavior: Flickable.StopAtBounds
 
     delegate: Item {
       id: entry
       required property int index
       required property var modelData
-      readonly property bool active: panel.index === entry.index
-      readonly property bool doomed: panel.doomed === entry.modelData.path
+      readonly property bool active: root.panel.index === entry.index
+      readonly property bool doomed: root.panel.doomed === entry.modelData.path
 
       width: list.width
-      height: panel.rowHeight
+      height: root.panel.rowHeight
 
       // Match the wheel's selection capsule, stopping before the preview.
       Rectangle {
         anchors.fill: parent
         anchors.rightMargin: Style.spacing.md
         radius: height / 2
-        color: entry.doomed ? Util.alpha(panel.danger, 0.30)
-               : entry.active ? panel.activeFill
-               : (pointer.containsMouse ? panel.hoverFill : "transparent")
+        color: entry.doomed ? Util.alpha(root.panel.danger, 0.30)
+               : entry.active ? root.panel.activeFill
+               : (pointer.containsMouse ? root.panel.hoverFill : "transparent")
         border.width: entry.active ? Style.spacing.hairline : 0
-        border.color: entry.doomed ? panel.danger : Commons.Color.accent
+        border.color: entry.doomed ? root.panel.danger : Commons.Color.accent
       }
 
       // Hover only tints the row. A click selects and a double click opens, never while naming
@@ -44,8 +46,8 @@ Item {
         id: pointer
         anchors.fill: parent
         hoverEnabled: true
-        onClicked: if (!panel.naming && !panel.editing) { panel.pending = ""; panel.index = entry.index }
-        onDoubleClicked: if (!panel.naming) operations.activate(entry.modelData)
+        onClicked: if (!root.panel.naming && !root.panel.editing) { root.panel.pending = ""; root.panel.index = entry.index }
+        onDoubleClicked: if (!root.panel.naming) root.operations.activate(entry.modelData)
       }
 
       Row {
@@ -86,7 +88,7 @@ Item {
           id: mark
           anchors.verticalCenter: parent.verticalCenter
           visible: !!text
-          text: panel.changes[entry.modelData.name] || ""
+          text: root.panel.changes[entry.modelData.name] || ""
           color: Commons.Color.accent
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.bodySmall

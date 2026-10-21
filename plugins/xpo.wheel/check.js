@@ -116,13 +116,13 @@ check(M.pathPayload(`${home}/a/`) === JSON.stringify({ dir: `${home}/a` }),
 
 check(M.keyOf(M.fileRow(`${home}/a.txt`, home)) === `file:${home}/a.txt`, "a file is counted by its path")
 
+// An odd ring is allowed, but worth knowing about: it has no slice at 3 or 9 o'clock.
 for (const [label, cfg] of [["shipped", `${omarchy}/config/omarchy/shell.json`],
                             ["this machine", `${home}/.config/omarchy/shell.json`]]) {
   const raw = read(cfg)
   if (!raw) continue
   const n = M.panels(M.barWidgets(raw)).length
-  check(n % 2 === 0, `${label} bar gives an even ring (${n} slices)`,
-        "an odd ring has no slice at 3 or 9 o'clock")
+  if (n % 2) console.log(`note  ${label} bar's slices are not even on the wheel (${n}): none sits at 3 or 9 o'clock`)
 }
 
 console.log(failed ? `\n${failed} failed` : "\nall good")

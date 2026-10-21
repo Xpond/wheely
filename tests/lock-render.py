@@ -34,7 +34,7 @@ def patch(name, old, new):
     assert source.count(old) == 1, old
     (output / name).write_text(source.replace(old, new))
 patch("LockView.qml", "  id: root", "  id: root\n  property alias testScene: scene.item")
-patch("lock/rally/Scene.qml", "  property Item host", "  property Item host\n  property alias testCar: car")
+patch("lock/rally/Scene.qml", "  property var host", "  property var host\n  property alias testCar: car")
 patch("lock/rally/Car.qml", "  id: car", "  id: car\n  readonly property bool testDriving: go.running")
 
 stages = [{"name": "parked"}, {"name": "unlocking-rally", "unlock": 1}, {"name": "departed"}]

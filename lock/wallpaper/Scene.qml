@@ -6,7 +6,7 @@ Item {
   id: root
 
   // The lock screen's view (LockView.qml): which wallpaper, and whether to load it.
-  property Item host
+  property var host
 
   // Fades out while the lock releases, so the wait reads as unlocking.
   function play() { fade.stop(); opacity = 1 }
@@ -18,8 +18,8 @@ Item {
     id: wallpaper
     anchors.fill: parent
     // Each path segment encoded; the version reloads a wallpaper changed while locked.
-    source: host.loadBackground && host.backgroundPath
-      ? "file://" + host.backgroundPath.split("/").map(encodeURIComponent).join("/") + "?v=" + host.backgroundVersion
+    source: root.host.loadBackground && root.host.backgroundPath
+      ? "file://" + root.host.backgroundPath.split("/").map(encodeURIComponent).join("/") + "?v=" + root.host.backgroundVersion
       : ""
     fillMode: Image.PreserveAspectCrop
     asynchronous: true

@@ -108,7 +108,7 @@ for (const renamed of [false, true]) {
 // Exercise the production refresh path after its live inputs change in place.
 const desktop = { id: "org.example.editor", name: "Old Editor" }
 const top = { title: "Old Document", address: "123", wayland: { appId: desktop.id } }
-const root = { staticRows: [], styleRows: [], settingRows: [], focusOrder: [], menuItems: {},
+const root = { staticRows: [], styleRows: [], settingRows: [], manualRows: [], focusOrder: [], menuItems: {},
   bindRows: M.bindRows("SUPER + N → New thing\texec\tnew action\n"),
   appLibrary: { sortedEntries: () => [{ entry: desktop }] } }
 const rebuild = method(wheelSource, "rebuildIndex", { root, MenuIndex: M, Hyprland: { toplevels: { values: [top] } } })

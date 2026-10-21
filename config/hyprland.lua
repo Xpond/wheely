@@ -1,8 +1,8 @@
 -- The compositor exports this before its startup callbacks launch Quickshell.
 hl.env("QSG_RENDER_LOOP", "threaded")
 -- Qt picks hardware decoding even for codecs the GPU lacks (AV1 on older cards) and shows black
--- without falling back, so Files' video previews decode in software.
-hl.env("QT_FFMPEG_DECODING_HW_DEVICE_TYPES", "none")
+-- without falling back, so Files' video previews decode in software. A comma means an empty device list.
+hl.env("QT_FFMPEG_DECODING_HW_DEVICE_TYPES", ",")
 
 -- The wheel's backdrop row saves "off" here at 0%, as data; anything else keeps the backdrop blurred.
 local blur_file = io.open(os.getenv("HOME") .. "/.config/omarchy/wheel-blur")

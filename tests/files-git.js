@@ -114,8 +114,8 @@ console.log("ok: large diffs preserve every line without quadratic pairing")
 
 const calls = [], e = { name: "gone", path: "/tmp/gone", missing: true, isDir: false }
 const panel = { sel: e, editing: false, diffMode: false, enter: p => calls.push(p) }
-const ops = { held: null, doomed: "", note() {}, run: () => calls.push("operation") }
-const scope = { root: ops, panel, opener: {}, doomArmed: { restart() {} } }
+const ops = { held: null, doomed: "", panel, note() {}, run: () => calls.push("operation") }
+const scope = { root: ops, opener: {}, doomArmed: { restart() {} } }
 for (const name of ["hold", "remove", "activate"])
   ops[name] = method(read("plugins/xpo.files/FilesOps.qml"), name, scope)
 ops.hold(e, true); ops.hold(e, false); ops.remove(); ops.remove(); ops.activate(e)

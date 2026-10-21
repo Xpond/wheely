@@ -1,9 +1,10 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 
 Item {
   id: root
 
-  property Item host
+  property var host
   // Edges the password field.
   readonly property color accent: "#c99cff"
 

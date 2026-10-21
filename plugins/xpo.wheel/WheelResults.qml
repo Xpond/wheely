@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import qs.Commons
@@ -10,16 +11,16 @@ Item {
   property var wheel: null
 
   anchors.top: parent.verticalCenter
-  anchors.topMargin: wheel.searchHeight / 2 + Style.spacing.panelGap
+  anchors.topMargin: stack.wheel.searchHeight / 2 + Style.spacing.panelGap
   anchors.horizontalCenter: parent.horizontalCenter
   // Disable hit testing after the transition back to the ring.
   transformOrigin: Item.Top
-  opacity: wheel.searching && !wheel.reading ? 1 : 0
-  scale: wheel.searching && !wheel.reading ? 1 : 0.96
+  opacity: stack.wheel.searching && !stack.wheel.reading ? 1 : 0
+  scale: stack.wheel.searching && !stack.wheel.reading ? 1 : 0.96
   visible: opacity > 0
-  Behavior on opacity { NumberAnimation { duration: wheel.fadeDuration; easing.type: Easing.OutCubic } }
-  Behavior on scale { NumberAnimation { duration: wheel.fadeDuration; easing.type: Easing.OutCubic } }
-  width: wheel.searchWidth
+  Behavior on opacity { NumberAnimation { duration: stack.wheel.fadeDuration; easing.type: Easing.OutCubic } }
+  Behavior on scale { NumberAnimation { duration: stack.wheel.fadeDuration; easing.type: Easing.OutCubic } }
+  width: stack.wheel.searchWidth
   height: resultList.height
   layer.enabled: true
   layer.effect: MultiEffect {
@@ -37,22 +38,22 @@ Item {
     onPointChanged: {
       if (!stack.wheel.hoverMoved(point.scenePosition) || !stack.visible) return
       var pt = resultList.mapFromItem(parent, point.position.x, point.position.y)
-      var row = resultList.childAt(pt.x, pt.y)
-      if (row && row.modelData) stack.wheel.resultIndex = row.row
+      var row = resultList.childAt(pt.x, pt.y) as ResultCard
+      if (row) stack.wheel.resultIndex = row.row
     }
   }
 
   Column {
     id: resultList
     anchors.horizontalCenter: parent.horizontalCenter
-    width: wheel.resultWidth
+    width: stack.wheel.resultWidth
     spacing: Style.spacing.md
 
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
-      visible: wheel.results.length === 0
+      visible: stack.wheel.results.length === 0
       horizontalAlignment: Text.AlignHCenter
-      text: wheel.emptyText
+      text: stack.wheel.emptyText
       color: Commons.Color.menu.text
       opacity: 0.5
       font.family: Style.font.menuFamily
@@ -60,21 +61,21 @@ Item {
     }
 
     Repeater {
-      model: wheel.beads
-      delegate: BorderSurface {
+      model: stack.wheel.beads
+      component ResultCard: BorderSurface {
         id: resultCard
         required property int index
         required property var modelData
-        readonly property int row: wheel.resultTop + index
-        readonly property bool active: wheel.resultIndex === resultCard.row
+        readonly property int row: stack.wheel.resultTop + index
+        readonly property bool active: stack.wheel.resultIndex === resultCard.row
         // A setting row being changed says what saving would do; the field shows what was pressed.
-        readonly property bool editing: !!modelData.setting && modelData.setting === wheel.editing
+        readonly property bool editing: !!resultCard.modelData.setting && resultCard.modelData.setting === stack.wheel.editing
 
-        width: wheel.resultWidth
-        height: wheel.resultHeight
+        width: stack.wheel.resultWidth
+        height: stack.wheel.resultHeight
         radius: height / 2
-        color: active ? wheel.selectedFill : wheel.surfaceFill
-        borderSpec: Border.flat(active ? wheel.cometColor : wheel.surfaceEdge,
+        color: active ? stack.wheel.selectedFill : stack.wheel.surfaceFill
+        borderSpec: Border.flat(active ? stack.wheel.cometColor : stack.wheel.surfaceEdge,
                                 Style.spacing.hairline)
 
         Behavior on color { ColorAnimation { duration: 90 } }
@@ -101,18 +102,18 @@ Item {
 
           Text {
             anchors.verticalCenter: parent.verticalCenter
-            visible: (!modelData.appIcon || appImage.status === Image.Error) && !modelData.iconFile
+            visible: (!resultCard.modelData.appIcon || appImage.status === Image.Error) && !resultCard.modelData.iconFile
             width: Style.font.iconLarge
-            text: modelData.icon
-            color: active ? Commons.Color.accent : Commons.Color.menu.text
-            font.family: modelData.iconFont || Style.font.menuFamily
+            text: resultCard.modelData.icon
+            color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
+            font.family: resultCard.modelData.iconFont || Style.font.menuFamily
             font.pixelSize: Style.font.iconLarge
           }
           PanelIcon {
-            omarchyPath: wheel.omarchyPath
+            omarchyPath: stack.wheel.omarchyPath
             anchors.verticalCenter: parent.verticalCenter
             width: Style.font.iconLarge
-            file: modelData.iconFile || ""
+            file: resultCard.modelData.iconFile || ""
             size: Style.font.iconLarge
             tint: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
           }
@@ -120,10 +121,10 @@ Item {
           Image {
             id: appImage
             anchors.verticalCenter: parent.verticalCenter
-            visible: !!modelData.appIcon && status !== Image.Error
+            visible: !!resultCard.modelData.appIcon && status !== Image.Error
             width: Style.font.iconLarge
             height: Style.font.iconLarge
-            source: modelData.appIcon ? wheel.appLibrary.iconSource(modelData.appIcon) : ""
+            source: resultCard.modelData.appIcon ? stack.wheel.appLibrary.iconSource(resultCard.modelData.appIcon) : ""
             sourceSize.width: Style.font.iconLarge
             sourceSize.height: Style.font.iconLarge
             fillMode: Image.PreserveAspectFit
@@ -132,11 +133,11 @@ Item {
           Text {
             id: labelText
             anchors.verticalCenter: parent.verticalCenter
-            visible: !modelData.copy
+            visible: !resultCard.modelData.copy
             width: Math.min(implicitWidth, resultRow.textBudget - trailText.width)
             elide: Text.ElideRight
-            text: resultCard.editing ? wheel.editNote : modelData.label
-            color: active ? Commons.Color.accent : Commons.Color.menu.text
+            text: resultCard.editing ? stack.wheel.editNote : resultCard.modelData.label
+            color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.body
           }
@@ -146,21 +147,21 @@ Item {
             width: Math.min(implicitWidth,
                             Math.max(resultRow.textBudget * 0.4,
                                      resultRow.textBudget - labelText.implicitWidth))
-            text: modelData.setting ? "" : modelData.trail
+            text: resultCard.modelData.setting ? "" : resultCard.modelData.trail
             color: Commons.Color.menu.text
             opacity: 0.45
             // Preserve the filename end of paths and the root of breadcrumbs.
-            elide: modelData.path ? Text.ElideLeft : Text.ElideRight
+            elide: resultCard.modelData.path ? Text.ElideLeft : Text.ElideRight
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.caption
           }
           Text {
             id: chevron
             anchors.verticalCenter: parent.verticalCenter
-            width: modelData.node ? implicitWidth + parent.spacing : 0
-            visible: !!modelData.node
+            width: resultCard.modelData.node ? implicitWidth + parent.spacing : 0
+            visible: !!resultCard.modelData.node
             text: "\u203a"
-            color: active ? Commons.Color.accent : Commons.Color.menu.text
+            color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
             opacity: 0.5
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.body
@@ -172,7 +173,7 @@ Item {
           id: valueField
           anchors.verticalCenter: parent.verticalCenter
           anchors.right: resultRow.right
-          visible: !!modelData.setting && !valueSlider.visible && !resultCard.editing
+          visible: !!resultCard.modelData.setting && !valueSlider.visible && !resultCard.editing
           width: valueText.implicitWidth + Style.spacing.controlPaddingX * 2
           height: valueText.implicitHeight + Style.spacing.xs * 2
           radius: height / 2
@@ -182,7 +183,7 @@ Item {
           Text {
             id: valueText
             anchors.centerIn: parent
-            text: modelData.trail
+            text: resultCard.modelData.trail
             color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.caption
@@ -194,7 +195,7 @@ Item {
           id: valueSlider
           anchors.verticalCenter: parent.verticalCenter
           anchors.right: resultRow.right
-          visible: modelData.setting === "backdrop"
+          visible: resultCard.modelData.setting === "backdrop"
           enabled: false
           width: Style.space(72)
           bar: QtObject {
@@ -202,42 +203,43 @@ Item {
             readonly property color background: Commons.Color.menu.background
           }
           maximum: 100
-          value: wheel.backdrop
+          value: stack.wheel.backdrop
         }
 
         // An answer centers under its query and, like the query, overflows to the left.
         Text {
           anchors.centerIn: parent
-          visible: !!modelData.copy
+          visible: !!resultCard.modelData.copy
           width: Math.min(implicitWidth, resultRow.width - 2 * (Style.font.iconLarge + resultRow.spacing))
           elide: Text.ElideLeft
-          text: modelData.label
-          color: active ? Commons.Color.accent : Commons.Color.menu.text
+          text: resultCard.modelData.label
+          color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.body
         }
         Text {
           anchors.verticalCenter: parent.verticalCenter
           anchors.right: resultRow.right
-          visible: !!modelData.copy
+          visible: !!resultCard.modelData.copy
           text: "󰆏"
-          color: active ? Commons.Color.accent : Commons.Color.menu.text
+          color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
           opacity: 0.5
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.iconLarge
         }
       }
+      delegate: ResultCard {}
     }
   }
 
   Rectangle {
-    readonly property int span: Math.max(1, wheel.results.length - wheel.resultCap)
-    visible: wheel.results.length > wheel.resultCap
+    readonly property int span: Math.max(1, stack.wheel.results.length - stack.wheel.resultCap)
+    visible: stack.wheel.results.length > stack.wheel.resultCap
     anchors.right: parent.right
     width: Style.space(2)
     radius: width / 2
     color: Util.alpha(Commons.Color.menu.text, 0.18)
-    height: resultList.height * wheel.resultCap / wheel.results.length
-    y: wheel.resultTop / span * (resultList.height - height)
+    height: resultList.height * stack.wheel.resultCap / stack.wheel.results.length
+    y: stack.wheel.resultTop / span * (resultList.height - height)
   }
 }

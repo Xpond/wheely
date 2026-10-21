@@ -71,20 +71,20 @@ assert.match(calls.at(-1), /still running/)
 const listSource = read("plugins/xpo.files/FilesList.qml")
 // Hover only tints; a click selects and a double click opens, neither while naming or editing.
 assert.doesNotMatch(listSource, /onPositionChanged|onEntered/, "hovering a row selects it")
-const mouse = name => new Function("operations", "panel", "entry", listSource.match(new RegExp(name + ":\\s*([^\\n]+)"))[1])
+const mouse = name => new Function("root", "entry", listSource.match(new RegExp(name + ":\\s*([^\\n]+)"))[1])
 const activated = [], row = { index: 4, modelData: { name: "picked" } }
 const clicked = { index: 0, pending: "gone", naming: "", editing: false }
 const operations = { activate: entry => activated.push(entry) }
-mouse("onClicked")(operations, clicked, row)
+mouse("onClicked")({ operations, panel: clicked }, row)
 assert.deepEqual([clicked.index, clicked.pending, activated], [4, "", []], "a click must select, and only select")
-mouse("onDoubleClicked")(operations, clicked, row)
+mouse("onDoubleClicked")({ operations, panel: clicked }, row)
 assert.deepEqual(activated, [row.modelData], "a double click does not open the row")
 for (const busy of [{ naming: "rename" }, { editing: true }]) {
   const held = Object.assign({ index: 0, pending: "", naming: "", editing: false }, busy)
-  mouse("onClicked")(operations, held, row)
+  mouse("onClicked")({ operations, panel: held }, row)
   assert.equal(held.index, 0, "a click moved the selection away from the row being " + (held.naming ? "renamed" : "edited"))
 }
-mouse("onDoubleClicked")(operations, { naming: "rename" }, row)
+mouse("onDoubleClicked")({ operations, panel: { naming: "rename" } }, row)
 assert.equal(activated.length, 1, "a double click opened a row mid-rename")
 assert.match(source, /FilesList\s*\{[^}]*operations:\s*ops/s,
   "Files.qml does not hand its operations object to the list")
@@ -139,7 +139,7 @@ assert.equal(browser.index, 99, "no shifted key reaches the list")
 const browsed = []
 const terminalOps = { doomed: "", activate: () => browsed.push("open"),
   terminal: method(read("plugins/xpo.files/FilesOps.qml"), "terminal", {
-    panel: { dir: "/home/test/My Dir", close: () => browsed.push("closed") },
+    root: { panel: { dir: "/home/test/My Dir", close: () => browsed.push("closed") } },
     Quickshell: { execDetached: argv => browsed.push([...argv]) } }) }
 const browserKey = keymap("plugins/xpo.files/FilesKeys.js", browser, terminalOps, preview)
 browserKey("Key_Return", 1 << 26); browserKey("Key_Return")
