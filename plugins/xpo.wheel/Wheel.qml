@@ -72,6 +72,9 @@ Item {
                                                     MenuIndex.lines(root.fontText), root.currentFont)
   readonly property var bindRows: MenuIndex.bindRows(root.bindText)
   property string shortcut: MenuIndex.SHORTCUT
+  // Wheelie's pause key is a setting while the theme is installed, as the Hyprland block binds it then.
+  property string pauseKey: MenuIndex.PAUSE_KEY
+  readonly property bool wheelieInstalled: MenuIndex.lines(root.themeText).indexOf("Wheelie") >= 0
   // The backdrop in percent as the shell draws it; while changed, the value the shell reads back next.
   property int backdropDraft: 0
   readonly property int backdrop: root.editing === "backdrop" ? root.backdropDraft
@@ -89,16 +92,21 @@ Item {
   // The query the manual was opened from, given back when it closes.
   property string readFrom: ""
   readonly property var settingRows: MenuIndex.settingRows(root.shortcut, !!root.ringIds, root.folders, root.skipped,
-                                                        Object.keys(root.uses).length, root.panelsCentered)
+                                                        Object.keys(root.uses).length, root.panelsCentered,
+                                                        root.wheelieInstalled ? root.pauseKey : "")
   // The setting row being changed in place: the field shows the value, the row what saving would do.
   property string editing: ""
-  // The combo the shortcut row last heard: null before any, "" for a key with no name here.
+  // The combo a shortcut row last heard: null before any, "" for a key with no name here.
   property var pressed: null
-  // Why that combo cannot be saved. Hyprland takes a bound combo from every app, so it must hold
-  // SUPER, the key apps leave alone.
+  // Why that combo cannot be saved. Hyprland takes a bound combo from every app, so the wheel's must
+  // hold SUPER, the key apps leave alone. The pause key may do without, as CTRL + SPACE does, but not
+  // with SHIFT alone or no modifier, which would take typing from every app.
   readonly property string refused: !root.pressed ? "pick another key"
-    : root.pressed.indexOf("SUPER + ") !== 0 ? "add SUPER" : root.pressed === "SUPER + W" ? "closes the wheel"
-    : root.pressed === root.shortcut ? "already set" : ""
+    : root.editing === "shortcut" && root.pressed.indexOf("SUPER + ") !== 0 ? "add SUPER"
+    : !/^(SUPER|CTRL|ALT) \+ /.test(root.pressed) ? "add CTRL, ALT or SUPER"
+    : root.pressed === "SUPER + W" ? "closes the wheel"
+    : root.pressed === (root.editing === "pause" ? root.pauseKey : root.shortcut) ? "already set"
+    : root.pressed === root.shortcut ? "opens the wheel" : ""
   readonly property string pending: root.refused ? "" : root.pressed
   readonly property string taken: root.pending ? MenuIndex.bindingAt(root.bindText, root.pending) : ""
   readonly property string editValue: root.editing === "backdrop" ? root.backdrop + "%"
@@ -593,7 +601,7 @@ Item {
     usesFile.setText("{}\n")
   }
 
-  // The ring row hands the home ring to its editor, and the backdrop row takes ←/→. The shortcut
+  // The ring row hands the home ring to its editor, and the backdrop row takes ←/→. A shortcut
   // row records the next combo; Hyprland's bindings pause meanwhile, so a taken one arrives too.
   function edit(e) {
     if (e.setting === "ring") { root.enter(""); root.editingRing = true; root.resetAsked = false; return }
@@ -622,6 +630,11 @@ Item {
 
   // Hyprland reads the file on reload; the bindings are read again after it, for the next conflict.
   function saveShortcut(combo) {
+    if (root.editing === "pause") {
+      root.pauseKey = combo
+      pauseFile.setText(combo + "\n")
+      return
+    }
     root.shortcut = combo
     shortcutFile.setText(combo + "\n")
   }
@@ -1047,13 +1060,20 @@ Item {
     onLoadFailed: { root.ringIds = null; root.savedFolders = null; root.savedSkipped = null }
   }
 
-  // The launch key and the backdrop's blur are data the Hyprland block reads on reload; Hyprland does
-  // not watch them. The shell watches shell.toml: [menu] scrim-alpha over the theme's, and [wheely] panels.
+  // The launch and pause keys and the backdrop's blur are data the Hyprland block reads on reload; Hyprland
+  // does not watch them. The shell watches shell.toml: [menu] scrim-alpha over the theme's, and [wheely] panels.
   SettingFile {
     id: shortcutFile
     name: "wheel-shortcut"
-    onLoaded: root.shortcut = MenuIndex.shortcutIn(text())
+    onLoaded: root.shortcut = MenuIndex.shortcutIn(text(), MenuIndex.SHORTCUT)
     onLoadFailed: root.shortcut = MenuIndex.SHORTCUT
+    onSaved: hyprReload.running = true
+  }
+  SettingFile {
+    id: pauseFile
+    name: "wallpaper-pause-shortcut"
+    onLoaded: root.pauseKey = MenuIndex.shortcutIn(text(), MenuIndex.PAUSE_KEY)
+    onLoadFailed: root.pauseKey = MenuIndex.PAUSE_KEY
     onSaved: hyprReload.running = true
   }
   SettingFile { id: blurFile; name: "wheel-blur"; onSaved: hyprReload.running = true }
@@ -1068,7 +1088,7 @@ Item {
   // Recording pauses Hyprland's bindings for this surface alone, until the row lets go.
   ShortcutInhibitor {
     window: surface
-    enabled: root.editing === "shortcut"
+    enabled: root.editing === "shortcut" || root.editing === "pause"
     onCancelled: root.editing = ""
   }
 
