@@ -14,13 +14,16 @@ the right.
       FilesPreview.qml  the scroller, and the editor inside it
       FilesVideo.qml    muted video preview, controls and native mpv handoff
       FilesHints.qml    the foot: the legend, and what a held file would do
+      FilesProcess.qml  a reader whose cancelled output never lands
       FilesIndex.js     snapshotting, filtering, path and text helpers
       FilesKeys.js      the key map: which verb a key means
+      highlight.py      pygments colour for the preview
+      git-preview.py    git status and diffs, for real or deleted paths
 
 Each component takes the panel as `panel` rather than reaching for a parent, so
 its one dependency is visible at the call site. `FilesPreview` owns its
 scrolling and its editor and exposes verbs — `scrollBy`, `keepPlace`,
-`copy` — rather than letting the panel reach into a `Flickable`.
+`scrollTo` — rather than letting the panel reach into a `Flickable`.
 
 It answers where is it, what is in it, and open it — and then the things you
 reach for once you are already looking at the file: edit it
@@ -354,7 +357,7 @@ share one success path and one failure path rather than three of each.
 **Nothing is ever overwritten.** The destination name is tested before the
 command runs:
 
-    sh -c '[ -e "$2" ] && exit 17; exec mv -- "$1" "$2"' files <src> <dst>
+    sh -c 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; exec mv -- "$1" "$2"' files <src> <dst>
 
 Paths go as arguments, never spliced into the script, so a name with a space, a
 dash or a `$` in it is just a name. `17` is this panel's word for *something is
@@ -446,7 +449,7 @@ Colour comes from **pygments**, not from a tokeniser written here. One process
 per settled selection buys every language it knows, correctly, against a
 hand-rolled pass that would get shell quoting wrong on its first day.
 
-    python3 highlight.py <path> <lines>     one interpreter, style=one-dark
+    python3 highlight.py <path>             one interpreter, style=one-dark
 
 One interpreter does the lexer lookup and the formatting together. Naming the
 lexer with `pygmentize -N` was a second Python start and a shell to pipe them a
@@ -543,7 +546,7 @@ then moves the old rows: the selection landed far down a folder while the list
 stayed at the top. `claimPending()` asks for the scroll with `Qt.callLater`.
 
 **A change handler can see a stale binding.** `showsCode` is a binding on
-`previewText`, and `onPreviewTextChanged` can run *before* that binding
+`previewText`, and `onFullTextChanged` can run *before* that binding
 re-evaluates — so asking it there reads the value from before the file loaded,
 and the highlighter never starts. Imperative code asks the two conditions
 directly; only the declarative bindings use `showsCode`. This cost a debugging
@@ -657,9 +660,8 @@ release, which covers the ~55 ms a replacement surface takes to map.
   two agree.
 - No undo for a move, a copy, a rename or a new file — only a delete can be
   taken back, out of the trash. Use `yazi` for the rest.
-- The key legend is one line, 1117 px wide at the stock size. Where the card
-  or the window is narrower, it shrinks to fit: barely in a half-screen tile,
-  to about 60% in a third of a 1080p screen, where it is hard to read.
+- A key legend of more than ten keys takes two lines. Where the card or the
+  window is narrower than a line, it shrinks to fit.
 - An image's pixel size comes from `identify`. Colour and dimensions are both
   niceties rather than dependencies: without ImageMagick there are no numbers,
   and the size and the date still stand.
