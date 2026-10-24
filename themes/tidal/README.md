@@ -59,11 +59,9 @@ The detailed foam, caustics, and ripples render directly at the display's resolu
 including 4K, with no low-resolution texture cap or upscaling. No video player
 is needed.
 
-Foam uses a seamless bubble texture for pores and surface lighting. It is loaded
-once, with filtered smaller versions for fine detail at different display sizes.
-Wave geometry and old tide marks are cached in four rows of floating-point data
-at the display's pixel width, refreshed when the surface size or scale changes.
-Motion and fine detail still render at full resolution on every animation update.
+Foam uses a seamless bubble texture. Wave geometry and old tide marks are cached at
+the display's pixel width and refreshed only when its size or scale changes; motion
+and fine detail still render at full resolution on every update.
 
 ```bash
 ~/.config/omarchy/themes/tidal/tidal pause
@@ -108,14 +106,6 @@ python3 tests/tidal-geometry.py
 ```
 
 The bundled bubble texture is reproducible with `python3 animated/bake-bubbles.py`
-from this theme directory (requires NumPy and ImageMagick). Both palettes, foam,
-and overlapping waves stay in the same fragment pass.
-The small geometry shader runs only when its cached data needs updating.
-
-The check validates text contrast, the three wallpapers, Omarchy's generated app
-configs, GPU captures of both palettes, motion, pause, horizontal surf, native 4K
-rendering, continuous wave edges and the hourly clock wrap, and repeated
-colorful/muted/static wallpaper selections and theme changes using the same controller.
-The geometry check compares resized surfaces with fresh renders, including height-only
-changes, portrait and ultrawide layouts, and fractional display scale.
+from this theme directory (requires NumPy and ImageMagick). What the checks cover is in
+[`tests/README.md`](../../tests/README.md).
 Tested on Omarchy 4.0.6 and Quickshell 0.3.2.

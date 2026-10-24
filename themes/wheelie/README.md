@@ -59,67 +59,33 @@ at the corners. Both are 5456×3072 quality-100 JPEGs.
 | [Hard enduro](backgrounds/03-hard-enduro.jpg) | A rider climbing an exposed rocky mountain slope |
 | [Desert camp](backgrounds/04-desert-camp.jpg) | The bike parked by a campfire under the Milky Way |
 
-## Bike
+## The scene
 
-Separate front and rear wheels turn over the plate under stationary covers. Their
-lighting stays fixed to the upper-left light source while the tires turn. An animated
-drive chain, timed to the rear wheel, runs behind the boot and swingarm, and a
-stationary contact shadow sits beneath the rear tire.
+The rider's front and rear wheels turn under stationary covers, lit from the upper left,
+with a drive chain timed to the rear wheel and a contact shadow beneath. Three sky
+prints, deep blue, rose-magenta and amber, stand in for the sky as full-width strips
+bordered in white. A dense sand bank grows behind the distant dunes over four minutes,
+then keeps billowing on a seamless ten-minute loop. Fine sand, nearer flecks and low
+wisps drift through it all, faster up close, with grains and puffs lifting beside the
+rear tire. The dunes lie in the storm's shade, and a vignette deepens the bottom edge
+behind the bar. Pausing holds every particle in place.
 
-## Sky prints
+### How it is built
 
-Three sky photos, deep blue, rose-magenta,
-and amber from top to bottom, replace the scene's sky as equal full-width strips,
-bordered in white above and below like prints laid edge to edge, running off the
-sides. Together they fill the sky down to the `horizon` row; the amber print's lower
-edge lies behind the dunes. The strips are baked into `base.png`. The storm draws
-over the prints, and `scene/Surface.qml` redraws the borders over the storm from the
-`prints` rows and `printBorder` width in `layout.json`, so thin dust never ghosts a
-border through it. The rider, bike, and dunes stay in front of everything.
-
-## Ambient dust
-
-Fine airborne sand, softer nearby flecks, and faint low wisps fill the scene.
-Nearby sand moves faster than distant grains, with varied sizes, lifetimes, and
-wind speeds. Rear-tire grains and puffs lift beside the wheel's trail.
-
-`scene/AmbientDust.qml` sets each layer's emission rate, tint, sizes, lifetimes, and
-velocities. `ambient-dust.vert` moves fixed meshes on the GPU, so thousands of particles
-need no geometry uploads each frame; `ambient-dust.frag` samples the grain and wisp SVG
-textures. Slots stagger new randomized lives at each layer's emission rate, and the air
-starts populated.
-
-The clock wraps every 2376 seconds, a common multiple of the particle-slot periods;
-the generation counter continues the random sequence across that boundary.
-Pausing holds the clock and every particle in place.
-
-Untinted glints ride with the distant and near grains at half their rates, sharing
-their area and motion.
-
-## Horizon sandstorm
-
-A dense, textured sand bank grows behind the distant dunes over four
-minutes, then continues billowing there. Its ten-minute texture-flow loop is seamless;
-the approach does not reset or jump back. It pauses with the scene's particles.
-
-`scene/HorizonStorm.qml` controls the timing; `scene/storm-wall.frag` scales and
-gently distorts the baked `storm.png`, keeping the plate's original aspect ratio.
-The 6336-pixel-wide plate covers the native scene throughout the approach without
-enlargement. Its own sky is baked out, so `storm.png` holds only the dust.
-
-The storm replaces only the sky. `cutout.png` holds everything else, with
-anti-aliased edges, and is drawn over the storm, which ends just inside the redrawn
-dunes at the `horizon` row in `layout.json`. The wheel layers draw above the storm.
-
-## Storm shade
-
-The dunes lie in the storm's shade, regraded to its dust hue, a little lighter and
-duller, with no lit crest. The far foreground takes on some of the shade and cools
-toward the viewer. This shade is baked. `scene/scene-light.frag`
-darkens the foreground toward the bottom edge and its corners, in linear light; the
-sand ripples and the wheel trail stay.
-A vignette deepens the bottom edge behind the bar, keeping 25% of its light there,
-less in the corners.
+- `base.png` holds the scene with the prints baked in; `cutout.png` holds everything but
+  the sky and is drawn over the storm, which ends just inside the dunes at the `horizon`
+  row in `layout.json`. `Surface.qml` redraws the print borders over the storm from
+  `prints` and `printBorder`, so thin dust never ghosts a border through it.
+- `HorizonStorm.qml` times the storm; `storm-wall.frag` scales and gently distorts
+  `storm.png`, which holds only the dust and is 6336 pixels wide, so it never enlarges
+  over the native scene.
+- `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities;
+  `ambient-dust.vert` moves fixed meshes on the GPU, so thousands of particles need no
+  geometry uploads each frame. Its clock wraps every 2376 seconds, a common multiple of
+  the particle-slot periods, and a generation counter continues the random sequence
+  across the wrap.
+- The storm shade is baked; `scene-light.frag` darkens the foreground toward the bottom
+  edge and its corners in linear light, keeping 25% of the light behind the bar.
 
 ## Editing
 
