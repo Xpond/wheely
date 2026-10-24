@@ -28,9 +28,10 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   const files = M.parseFiles(["/home/test/Android/", "/home/test/Android/README", "/mnt/android/", "/home/test/p/target/",
     "/home/test/q/target/", "/home/test/targets/", "/home/test/star/", "/home/test/target.txt", "/mnt/target/", "/home/test/tz/"].join("\n"))
   assert.deepEqual(M.fileRows(files, "andr", 40, home, true).map(r => r.path), ["/home/test/Android/"])
-  assert.deepEqual(M.nameRows(files, "tar", 40, home).map(r => r.label + " " + r.trail), ["target anywhere", "targets anywhere"])
-  assert.deepEqual(M.nameRows(files, "andr", 40, home).map(r => r.label), ["Android"], "a name from outside home was offered")
-  assert.deepEqual(M.nameRows(files, "t", 40, home).map(r => r.label), ["tz", "target", "targets"], "names were not shortest first")
+  const names = typed => M.fileSearch([{ files }], typed, true, home, {}).filter(r => r.trail === "anywhere").map(r => r.label)
+  assert.deepEqual(names("tar"), ["target", "targets"])
+  assert.deepEqual(names("andr"), ["Android"], "a name from outside home was offered")
+  assert.deepEqual(names("t"), ["tz", "target", "targets"], "names were not shortest first")
   assert.deepEqual(M.subfolderRows(["/home", "/media", "/mnt", "/home/test/x"], "/m", home).map(r => r.path), ["/media/", "/mnt/"])
   assert.deepEqual(M.subfolderRows(["/home"], "/", home).concat(M.subfolderRows(["/home/test/x"], "/home/test/", home)), [],
     "home, or a folder in or around it, was offered")

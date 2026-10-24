@@ -712,20 +712,6 @@ function subfolderRows(paths, typed, home) {
   }).map(function (p) { return fileRow(p + "/", home) })
 }
 
-// The names of folders under home that start with what is typed, each once and shortest first. A
-// name skips every folder called that, anywhere, as the defaults do.
-function nameRows(files, typed, limit, home) {
-  var src = files || NO_FILES, q = String(typed || "").trim().toLowerCase(), seen = {}
-  if (!q || q.indexOf("/") >= 0) return []
-  for (var i = 0; i < src.lower.length; i++) {
-    var low = src.lower[i], at = src.starts[i]
-    if (low.indexOf(q, at) === at && low.charCodeAt(low.length - 1) === 47 && src.paths[i].indexOf(home + "/") === 0)
-      seen[src.paths[i].slice(at, -1)] = true
-  }
-  return Object.keys(seen).sort(function (a, b) { return a.length - b.length || (a < b ? -1 : 1) }).slice(0, limit)
-    .map(function (name) { return { icon: "󱧸", label: name, trail: "anywhere" } })
-}
-
 var NO_FILES = { paths: [], lower: [] }
 
 // fd marks directories with trailing slashes; fold case and find names once per scan.
@@ -744,14 +730,6 @@ function parseFiles(raw, into) {
   }
   paths.length = count
   return { paths: paths, lower: lower, starts: starts }
-}
-
-// Join whichever scan batches have arrived, keeping home's paths first.
-function joinFiles(home, folders) {
-  if (!home) return folders
-  if (!folders) return home
-  return { paths: home.paths.concat(folders.paths), lower: home.lower.concat(folders.lower),
-           starts: home.starts.concat(folders.starts) }
 }
 
 function fileRow(path, home) {
