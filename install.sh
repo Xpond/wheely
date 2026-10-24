@@ -4,10 +4,8 @@ set -uo pipefail
 
 SHELL_DIR=/usr/share/omarchy/shell
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-FILES=(Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml
-       plugins/clipboard/Clipboard.qml plugins/lock/LockView.qml plugins/lock/Service.qml
-       services/PluginShellApi.qml shell.qml)
-CONF=~/.config/omarchy/shell.json
+# Resolved, so a write replaces a symlink's target rather than the link.
+CONF=$(realpath -m ~/.config/omarchy/shell.json)
 STATE=~/.local/state/wheely
 source "$REPO/scripts/shell-files.sh"
 
@@ -32,7 +30,8 @@ mkdir -p "$data/lock-session" &&
 command -v jq >/dev/null || { alert "jq is required to register plugins"; exit 1; }
 command -v python3 >/dev/null || { alert "python3 is required to manage user configuration"; exit 1; }
 command -v hyprctl >/dev/null || { alert "hyprctl is required to validate user configuration"; exit 1; }
-python3 "$REPO/scripts/user-config.py" install ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin || exit 1
+python3 "$REPO/scripts/user-config.py" install ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin ||
+  { alert "Could not update the Hyprland configuration"; exit 1; }
 mkdir -p ~/.config/omarchy/plugins ~/.local/bin || exit 1
 if [[ ! -e $CONF ]]; then
   cp "${OMARCHY_PATH:-/usr/share/omarchy}/config/omarchy/shell.json" "$CONF" || exit 1
@@ -72,41 +71,51 @@ foreign=()   # neither stock nor ours; installed file left untouched
 held=()      # lock file whose partner was left untouched; left untouched too
 failed=()    # recording or installation failed
 ready=()     # patch due to be copied in
+declare -A from=()  # the patch each ready file gets
 
 for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
   ours="$REPO/patches/shell/$f"
   base="$REPO/patches/orig/$f"
-  cmp -s "$installed" "$ours" && continue
+  stock="$STATE/rebased/orig/$f"
+  merged="$STATE/rebased/shell/$f"
 
-  # Stock that differs from the merge base is a new upstream version to rebase onto.
-  # Any version of our patch is simply replaced; anything else is not ours to touch.
-  if is_stock "$f" "$installed"; then
-    if ! cmp -s "$installed" "$base"; then
-      merged=$(mktemp)
-      cp "$ours" "$merged"
-      git merge-file -q "$merged" "$base" "$installed"; ok=$?
-      if (( ok == 0 )); then
-        cp "$merged" "$ours"      # patch, now on the new base
-        cp "$installed" "$base"   # new pristine baseline
-        rebased+=("$f")
-      fi
-      rm -f "$merged"
-      (( ok == 0 )) || { conflicts+=("$f"); continue; }
-    fi
-  elif ! is_ours "$f" "$installed"; then
-    foreign+=("$f"); continue
+  # A patch made for another Omarchy version is rebased onto the installed one in the state, never in
+  # the checkout, so git pull keeps working. Stock is kept there for reruns once the patch covers it.
+  if is_stock "$f" "$base"; then
+    rm -f "$stock" "$merged"
+  elif ! cmp -s "$installed" "$ours"; then
+    mkdir -p "$(dirname "$stock")" "$(dirname "$merged")"
+    is_stock "$f" "$installed" && cp "$installed" "$stock"
+    is_stock "$f" "$stock" || stock_copy "$f" "$stock" || { rm -f "$stock"; failed+=("$f"); continue; }
+    cp "$ours" "$merged" && git merge-file -q "$merged" "$base" "$stock" ||
+      { rm -f "$merged"; conflicts+=("$f"); continue; }
+    ours=$merged
   fi
+  cmp -s "$installed" "$ours" && continue
+  [[ $ours == "$merged" ]] && rebased+=("$f")
+
+  # Stock and any version of our patch are replaced; anything else is not ours to touch.
+  is_stock "$f" "$installed" || is_ours "$f" "$installed" || { foreign+=("$f"); continue; }
+  from[$f]=$ours
   ready+=("$f")
 done
 
+lock_backup=
+lock_written=()
+if [[ " ${ready[*]}" == *" plugins/lock/"* ]]; then
+  lock_backup=$(mktemp -d "$STATE/lock-backup.XXXXXX") &&
+    cp "$SHELL_DIR/plugins/lock/"{LockView,Service}.qml "$lock_backup/" ||
+    { rm -rf "$lock_backup"; alert "Could not back up the lock screen's files"; exit 1; }
+fi
+
 for f in "${ready[@]}"; do
   # The lock's view and service only load as a pair, so one left untouched holds back the other.
-  if [[ $f == plugins/lock/* && " ${conflicts[*]} ${foreign[*]}" == *" plugins/lock/"* ]]; then
+  if [[ $f == plugins/lock/* && " ${conflicts[*]} ${foreign[*]} ${failed[*]}" == *" plugins/lock/"* ]]; then
     held+=("$f"); continue
   fi
   installed="$SHELL_DIR/$f"
-  ours="$REPO/patches/shell/$f"
+  ours=${from[$f]}
   written="$STATE/installed/$f"
 
   # Record the bytes, then mark the copy pending, so an interrupted copy is still ours.
@@ -115,12 +124,33 @@ for f in "${ready[@]}"; do
     rm -f "$written.new"
     failed+=("$f"); continue
   fi
+  [[ $f == plugins/lock/* ]] && lock_written+=("$f")
   if sudo cp "$ours" "$installed" && cmp -s "$ours" "$installed" && rm -f "$written.pending"; then
     applied+=("$f")
   else
     failed+=("$f")
   fi
 done
+
+# A failed copy may have truncated its target after its partner was already installed.
+if [[ " ${failed[*]}" == *" plugins/lock/"* ]]; then
+  for f in "${lock_written[@]}"; do
+    saved="$lock_backup/${f##*/}"
+    installed="$SHELL_DIR/$f"
+    written="$STATE/installed/$f"
+    if ! { { cmp -s "$saved" "$installed" || sudo cp "$saved" "$installed"; } &&
+           cmp -s "$saved" "$installed" && cp "$saved" "$written" && rm -f "$written.pending"; }; then
+      alert "Could not restore the lock screen; shell not restarted. Backups: $lock_backup"
+      exit 1
+    fi
+  done
+  for i in "${!applied[@]}"; do
+    if [[ ${applied[i]} == plugins/lock/* ]]; then
+      held+=("${applied[i]}"); unset 'applied[i]'
+    fi
+  done
+fi
+[[ -z $lock_backup ]] || rm -rf "$lock_backup"
 
 (( ${#rebased[@]} )) && printf 'rebased onto new upstream: %s\n' "${rebased[*]}"
 (( ${#applied[@]} )) && printf 'installed: %s\n' "${applied[*]}"
@@ -135,6 +165,13 @@ if (( ${#broken[@]} )); then
                                 "Reinstall the omarchy package to restore them, then rerun install.sh.")
   (( ${#held[@]} )) && msg+=("Held back so the lock screen's files stay a matching pair: ${held[*]}")
   alert "${msg[@]}"
+else
+  # Critical toasts outlive restarts, so archive a failed run's one as if dismissed; the restart drops it.
+  notes=~/.local/state/omarchy/notifications
+  for n in "$notes"/*.json; do
+    jq -e '.summary == "wheely" and (.body | startswith("Not patched:"))' "$n" &>/dev/null &&
+      mkdir -p "$notes/history" && mv "$n" "$notes/history/"
+  done
 fi
 
 omarchy restart shell || { alert "Could not restart Omarchy shell"; exit 1; }

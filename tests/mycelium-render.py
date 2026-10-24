@@ -25,8 +25,7 @@ assert scene.count(clock) == 1, "cannot freeze the scene clock"
 shader = (design / "mycelium.frag").read_text()
 assert shader.count("vec4(mix(base, colour, line), 1.0)") == 1, "cannot isolate line coverage"
 (design / "mycelium.frag").write_text(shader.replace("vec4(mix(base, colour, line), 1.0)", "vec4(vec3(line), 1.0)"))
-subprocess.run(["/usr/lib/qt6/bin/qsb", "--glsl", "100 es,120,150", "--hlsl", "50", "--msl", "12",
-                "-o", str(design / "mycelium.frag.qsb"), str(design / "mycelium.frag")], check=True)
+subprocess.run([repo / "scripts/build-shaders.sh", design / "mycelium.frag"], check=True)
 # Three fine, constant-width strands at a shallow angle: triangular teeth are easiest to see
 # here. Growth crosses the packed step's 255 -> 256 byte boundary.
 (design / "grow.js").write_text('''.pragma library

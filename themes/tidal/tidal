@@ -6,11 +6,35 @@ destination="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/tidal"
 
 case "${1:-help}" in
   install)
-    if [[ "$theme" != "$destination" ]]; then
-      mkdir -p "$destination"
-      cp -a "$theme/." "$destination/"
-      # cp -a keeps the folder's old time, which hides a new preview from Omarchy's theme picker.
-      touch "$destination"
+    # Stage only what runs, so files dropped here leave the installed theme too; outside the
+    # themes folder, where Omarchy would list it as a theme.
+    mkdir -p "$(dirname -- "$destination")"
+    stage=$(mktemp -d "${destination%/themes/tidal}/.tidal-install-XXXXXX")
+    trap 'rm -rf "$stage"' EXIT
+    new="$stage/tidal"
+    mkdir "$new"
+    cp -a "$theme"/{colors.toml,shell.toml,icons.theme,preview.png,preview.qml,tidal,hooks,backgrounds,animated} "$new/"
+    rm -f "$new"/animated/*.frag "$new"/animated/bake-bubbles.py
+    # Stop the controller only for the swap; kill returns before it exits, and until then
+    # --no-duplicate refuses to start the new one.
+    quickshell kill -p "$destination/animated" >/dev/null 2>&1 || true
+    for ((attempt = 0; attempt < 100; attempt++)); do
+      [[ $(quickshell list -j -p "$destination/animated") == *'"pid"'* ]] || break
+      sleep 0.05
+    done
+    if (( attempt == 100 )); then
+      printf 'Tidal did not stop; installation cancelled.\n' >&2
+      exit 1
+    fi
+    if [[ -e "$destination" ]]; then mv -T "$destination" "$stage/previous"; fi
+    if ! mv -T "$new" "$destination"; then
+      if [[ -e "$stage/previous" || -L "$stage/previous" ]]; then
+        mv -T "$stage/previous" "$destination" || {
+          trap - EXIT
+          printf 'Could not restore Tidal; backup: %s\n' "$stage/previous" >&2
+        }
+      fi
+      exit 1
     fi
     omarchy hook install theme-set "$destination/hooks/tidal-wallpaper"
     omarchy hook install post-boot "$destination/hooks/tidal-wallpaper"
@@ -29,13 +53,13 @@ case "${1:-help}" in
   watch)
     exec quickshell --no-duplicate --daemonize -p "$destination/animated"
     ;;
-  stop|pause|resume)
+  stop|pause|resume|toggle)
     exec quickshell ipc -p "$destination/animated" call tidal "$1"
     ;;
   preview)
     exec quickshell --no-duplicate -p "$theme/preview.qml"
     ;;
   *)
-    printf 'Usage: %s {install|animate|stop|pause|resume|preview}\n       %s animate [colorful|muted]\n' "$0" "$0"
+    printf 'Usage: %s {install|animate|stop|pause|resume|toggle|preview}\n       %s animate [colorful|muted]\n' "$0" "$0"
     ;;
 esac

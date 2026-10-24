@@ -41,8 +41,7 @@ assert shader.count("vec4(color,1.0) * qt_Opacity") == 1
 assert shader.count("color = color * (1.0 - near.a) + near.rgb;") == 1
 (design / "meadow.frag").write_text(shader.replace("vec4(color,1.0) * qt_Opacity", "vec4(vec3(plant.a),1.0)")
                                     .replace("color = color * (1.0 - near.a) + near.rgb;", "plant.a = max(plant.a,near.a);"))
-subprocess.run(["/usr/lib/qt6/bin/qsb", "--glsl", "100 es,120,150", "--hlsl", "50", "--msl", "12",
-                "-o", str(design / "meadow.frag.qsb"), str(design / "meadow.frag")], check=True)
+subprocess.run([repo / "scripts/build-shaders.sh", design / "meadow.frag"], check=True)
 (out / "shell.qml").write_text('''import QtQuick
 import Quickshell
 Window {

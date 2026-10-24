@@ -486,7 +486,7 @@ function settingRows(shortcut, customRing, folders, skipped, picks, centered, pa
   return [{ icon: SETTING_ICON, label: "Wheely shortcut", trail: shortcut, kind: KIND.slice, setting: "shortcut",
             keywords: "wheely settings preferences shortcut keybinding keybind hotkey key launch open" },
           { icon: SETTING_ICON, label: "Wallpaper pause", trail: pauseKey, kind: KIND.slice, setting: "pause",
-            keywords: "wheely settings preferences wallpaper wheelie pause resume shortcut keybinding keybind hotkey key" },
+            keywords: "wheely settings preferences wallpaper wheelie tidal pause resume shortcut keybinding keybind hotkey key" },
           { icon: SETTING_ICON, label: "Wheely ring", trail: customRing ? "Custom" : "Bar", kind: KIND.slice,
             setting: "ring", keywords: "wheely settings preferences ring slices discs pin unpin order favorites" },
           { icon: SETTING_ICON, label: "Backdrop", trail: "", kind: KIND.slice, setting: "backdrop",
@@ -712,20 +712,6 @@ function subfolderRows(paths, typed, home) {
   }).map(function (p) { return fileRow(p + "/", home) })
 }
 
-// The names of folders under home that start with what is typed, each once and shortest first. A
-// name skips every folder called that, anywhere, as the defaults do.
-function nameRows(files, typed, limit, home) {
-  var src = files || NO_FILES, q = String(typed || "").trim().toLowerCase(), seen = {}
-  if (!q || q.indexOf("/") >= 0) return []
-  for (var i = 0; i < src.lower.length; i++) {
-    var low = src.lower[i], at = src.starts[i]
-    if (low.indexOf(q, at) === at && low.charCodeAt(low.length - 1) === 47 && src.paths[i].indexOf(home + "/") === 0)
-      seen[src.paths[i].slice(at, -1)] = true
-  }
-  return Object.keys(seen).sort(function (a, b) { return a.length - b.length || (a < b ? -1 : 1) }).slice(0, limit)
-    .map(function (name) { return { icon: "󱧸", label: name, trail: "anywhere" } })
-}
-
 var NO_FILES = { paths: [], lower: [] }
 
 // fd marks directories with trailing slashes; fold case and find names once per scan.
@@ -744,14 +730,6 @@ function parseFiles(raw, into) {
   }
   paths.length = count
   return { paths: paths, lower: lower, starts: starts }
-}
-
-// Join whichever scan batches have arrived, keeping home's paths first.
-function joinFiles(home, folders) {
-  if (!home) return folders
-  if (!folders) return home
-  return { paths: home.paths.concat(folders.paths), lower: home.lower.concat(folders.lower),
-           starts: home.starts.concat(folders.starts) }
 }
 
 function fileRow(path, home) {
@@ -851,12 +829,12 @@ function fileRows(files, term, limit, home, homeFolders, uses) {
 }
 
 // Keep each source's buckets across batches; a changed query or pick count starts a new pass.
-function fileSearch(scans, query, skipped, home, uses) {
-  var key = JSON.stringify([String(query).trim().toLowerCase(), skipped, home, uses]), names = {}
+function fileSearch(scans, query, foldersOnly, home, uses) {
+  var key = JSON.stringify([String(query).trim().toLowerCase(), foldersOnly, home, uses]), names = {}
   for (var i = 0; i < scans.length; i++) {
     var scan = scans[i]
     if (scan.key !== key) {
-      scan.rank = fileRank(query, 40, home, skipped, skipped ? null : uses)
+      scan.rank = fileRank(query, 40, home, foldersOnly, foldersOnly ? null : uses)
       scan.count = 0; scan.key = key
     }
     rankFiles(scan.rank, scan.files, scan.count)
@@ -882,7 +860,7 @@ if (typeof WorkerScript !== "undefined" && typeof WorkerScript.sendMessage === "
         var chunk = message.chunks[i]
         parseFiles(chunk.text, scans[chunk.source === "home" ? 0 : 1].files)
       }
-      reply.rows = fileSearch(scans, message.query, message.skipped, message.home, message.uses)
+      reply.rows = fileSearch(scans, message.query, message.foldersOnly, message.home, message.uses)
     } catch (error) { reply.error = String(error) }
     WorkerScript.sendMessage(reply)
   }

@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
   id: root
@@ -37,9 +38,11 @@ Scope {
     stdout: StdioCollector {
       onStreamFinished: {
         const path = text.trim()
+        // Setting a theme replaces the folder the link points into; keep the surfaces meanwhile.
+        if (!path) return
         if (path !== root.background) root.paused = false
         root.background = path
-        if (root.tidalTheme && path && !root.animated) root.lastStatic = path
+        if (root.tidalTheme && !root.animated) root.lastStatic = path
       }
     }
   }
@@ -48,7 +51,13 @@ Scope {
     path: root.stateDir + "/theme.name"
     watchChanges: true
     onFileChanged: reload()
-    onLoaded: root.tidalTheme = text().trim() === "tidal"
+    onLoaded: {
+      const name = text().trim()
+      if (!name) return // Omarchy empties the file before writing the new name.
+      root.tidalTheme = name === "tidal"
+      // Another theme has no use for this process; the theme-set hook starts it again.
+      if (!root.tidalTheme) Qt.quit()
+    }
   }
 
   IpcHandler {
@@ -58,13 +67,28 @@ Scope {
     }
     function pause(): void { root.paused = true }
     function resume(): void { root.paused = false }
+    function toggle(): void { root.paused = !root.paused }
+  }
+
+  // Hyprland has no IPC events for DPMS or session locks. Refresh in-process,
+  // only while an animated coast is selected, so paused displays can wake again.
+  Timer {
+    interval: 1000; repeat: true; running: root.animated; triggeredOnStart: true
+    onTriggered: Hyprland.refreshMonitors()
   }
 
   Variants {
     model: root.animated ? Quickshell.screens : []
     PanelWindow {
+      id: wallpaper
       required property var modelData
       screen: modelData
+      readonly property var monitor: Hyprland.monitorFor(screen)
+      readonly property var monitorState: monitor ? monitor.lastIpcObject : ({})
+      readonly property bool suspended: monitorState.dpmsStatus === false
+          || (monitorState.solitaryBlockedBy || []).indexOf("LOCK") >= 0
+          // A solitary client is the only window Hyprland draws on this monitor.
+          || (!!monitorState.solitary && monitorState.solitary !== "0")
       anchors { top: true; bottom: true; left: true; right: true }
       color: "#ECECE8"
       exclusionMode: ExclusionMode.Ignore
@@ -77,7 +101,7 @@ Scope {
       Surface {
         anchors.fill: parent
         muted: root.muted ? 1 : 0
-        running: !root.paused
+        running: !root.paused && !wallpaper.suspended
       }
     }
   }
