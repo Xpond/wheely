@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import qslog
 
 repo = Path(__file__).resolve().parents[1]
 scene = Path(sys.argv[1]) if len(sys.argv) > 1 else repo / "themes/wheelie/scene"
@@ -169,7 +170,7 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
             # Another theme ends the process; the theme-set hook starts it when Wheelie returns.
             (state / "theme.name").write_text("other\n")
             assert process.wait(timeout=6) == 0, log_path.read_text()
-            assert not re.search(r'(TypeError|ReferenceError|Error:|Failed to)', log_path.read_text()), log_path.read_text()
+            qslog.check(log_path.read_text())
         finally:
             if process.poll() is None:
                 process.terminate()

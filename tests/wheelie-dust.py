@@ -8,12 +8,12 @@ QSG_RHI_BACKEND=vulkan uses a temporary Wayland background-layer window.
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import qslog
 
 repo = Path(__file__).resolve().parents[1]
 scene = Path(sys.argv[1]) if len(sys.argv) > 1 else repo / "themes/wheelie/scene"
@@ -127,10 +127,7 @@ Window {
                 max(difference), sum(difference) / len(difference))
             ipc("freeze", 0, 10000)
             assert capture("later-epoch") != wrapped, "Dust repeats on every clock rollover"
-            errors = [line for line in log_path.read_text().splitlines()
-                      if re.search(r"(TypeError|ReferenceError|Error:|Failed to)", line)
-                      and "Failed to register with host portal" not in line]
-            assert not errors, errors
+            qslog.check(log_path.read_text())
         finally:
             if process.poll() is None:
                 process.terminate()
