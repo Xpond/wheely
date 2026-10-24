@@ -829,12 +829,12 @@ function fileRows(files, term, limit, home, homeFolders, uses) {
 }
 
 // Keep each source's buckets across batches; a changed query or pick count starts a new pass.
-function fileSearch(scans, query, skipped, home, uses) {
-  var key = JSON.stringify([String(query).trim().toLowerCase(), skipped, home, uses]), names = {}
+function fileSearch(scans, query, foldersOnly, home, uses) {
+  var key = JSON.stringify([String(query).trim().toLowerCase(), foldersOnly, home, uses]), names = {}
   for (var i = 0; i < scans.length; i++) {
     var scan = scans[i]
     if (scan.key !== key) {
-      scan.rank = fileRank(query, 40, home, skipped, skipped ? null : uses)
+      scan.rank = fileRank(query, 40, home, foldersOnly, foldersOnly ? null : uses)
       scan.count = 0; scan.key = key
     }
     rankFiles(scan.rank, scan.files, scan.count)
@@ -860,7 +860,7 @@ if (typeof WorkerScript !== "undefined" && typeof WorkerScript.sendMessage === "
         var chunk = message.chunks[i]
         parseFiles(chunk.text, scans[chunk.source === "home" ? 0 : 1].files)
       }
-      reply.rows = fileSearch(scans, message.query, message.skipped, message.home, message.uses)
+      reply.rows = fileSearch(scans, message.query, message.foldersOnly, message.home, message.uses)
     } catch (error) { reply.error = String(error) }
     WorkerScript.sendMessage(reply)
   }

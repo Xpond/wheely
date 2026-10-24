@@ -835,7 +835,7 @@ Item {
         || !root.filesReady && !root.fileQueue.length) return
     root.fileBusy = true
     fileWorker.sendMessage({ epoch: root.scanEpoch, request: root.fileRequest, chunks: root.fileQueue,
-      query: root.listing === "skipped" ? root.query : root.term, skipped: root.listing === "skipped",
+      query: root.listing === "skipped" ? root.query : root.term, foldersOnly: root.listing === "skipped",
       home: root.home, uses: root.uses })
     root.fileQueue = []
   }
