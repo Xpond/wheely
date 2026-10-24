@@ -191,19 +191,23 @@ Item {
         }
 
         // The backdrop's is Omarchy's slider, moved by ←/→ only, so the pointer passes to the row.
-        PanelSlider {
+        // Built only on that row: a slider in every card made each rebuild ~20× slower.
+        Loader {
           id: valueSlider
           anchors.verticalCenter: parent.verticalCenter
           anchors.right: resultRow.right
-          visible: resultCard.modelData.setting === "backdrop"
-          enabled: false
+          active: resultCard.modelData.setting === "backdrop"
+          visible: active
           width: Style.space(72)
-          bar: QtObject {
-            readonly property color foreground: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
-            readonly property color background: Commons.Color.menu.background
+          sourceComponent: PanelSlider {
+            enabled: false
+            bar: QtObject {
+              readonly property color foreground: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
+              readonly property color background: Commons.Color.menu.background
+            }
+            maximum: 100
+            value: stack.wheel.backdrop
           }
-          maximum: 100
-          value: stack.wheel.backdrop
         }
 
         // An answer centers under its query and, like the query, overflows to the left.
