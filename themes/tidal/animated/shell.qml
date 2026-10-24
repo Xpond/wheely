@@ -55,6 +55,8 @@ Scope {
       const name = text().trim()
       if (!name) return // Omarchy empties the file before writing the new name.
       root.tidalTheme = name === "tidal"
+      // Another theme has no use for this process; the theme-set hook starts it again.
+      if (!root.tidalTheme) Qt.quit()
     }
   }
 

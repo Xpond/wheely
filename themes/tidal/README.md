@@ -75,9 +75,10 @@ Motion and fine detail still render at full resolution on every animation update
 With Wheely installed, Ctrl+Space pauses and resumes the active theme (Tidal or
 Wheelie). Change the key with Wheely's Wallpaper pause setting (`wheely settings`).
 
-Selecting a static wallpaper or changing theme unloads the animated surfaces.
-The small controller stays idle, watching Omarchy's selection, so choosing either
-coast starts it again. The hooks restore this behavior after login and theme changes.
+Selecting a static wallpaper unloads the animated surfaces. The small controller
+stays idle, watching Omarchy's selection, so choosing either coast starts it again.
+Changing theme ends the controller; the hooks start it again after login and when
+Tidal is chosen.
 The `stop` command selects the last static wallpaper; pause freezes the animation.
 Display-off, session-lock, and compositor-confirmed fullscreen coverage pause that
 display's coast within one second. Waking it preserves the tide and any manual pause.

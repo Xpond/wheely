@@ -93,15 +93,6 @@ with log_path.open("w") as log:
             select("two.jpg", False)
         select("two.jpg", False)
         select("00-muted-coast-animated.png", True, True)
-        theme.write_text("another-theme\n")
-        wait_for("STATE false")
-        theme.write_text("tidal\n")
-        wait_for("STATE true")
-        for name, animated in [("another-theme", False), ("tidal", True)]:
-            replacement = state / "replacement"
-            replacement.write_text(name + "\n")
-            replacement.replace(theme)
-            wait_for("STATE true" if animated else "STATE false")
         (state / "unrelated").unlink(missing_ok=True)
         after = len(log_path.read_text())
         (state / "unrelated").write_text("changed")
@@ -139,12 +130,17 @@ with log_path.open("w") as log:
             after = len(log_path.read_text())
             subprocess.run(["quickshell", "ipc", "-p", str(config), "call", "tidal", "toggle"], check=True, timeout=5)
             wait_for(f"RUNNING {str(running).lower()}", after)
+        # Another theme ends the process, even through a replaced file; the theme-set hook starts it again.
+        replacement = state / "replacement"
+        replacement.write_text("another-theme\n")
+        replacement.replace(theme)
+        assert process.wait(timeout=4) == 0, log_path.read_text()
         qslog.check(log_path.read_text())
     finally:
         if process.poll() is None:
             process.terminate()
             process.wait(timeout=3)
-print("ok: colorful/muted/static selections and theme changes resume the same controller; lock/DPMS/fullscreen "
+print("ok: colorful/muted/static selections resume the same controller and another theme ends it; lock/DPMS/fullscreen "
       "pause it, waking or re-applying keeps a manual pause, and toggle pauses/resumes", flush=True)
 
 # Check the CLI's wallpaper paths without changing the desktop selection.
