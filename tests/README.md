@@ -29,8 +29,9 @@ directories. Additional checks and their dependencies are documented with the fe
 - [Lock screen](../docs/lockscreen.md)
 - [Tidal theme](../themes/tidal/README.md): `python3 tests/tidal.py` checks the palette,
   Omarchy app templates, both animated palettes, continuity, and the collection gallery, then calls
-  `tidal-lifecycle.py` for colorful/muted/static switching, theme changes, lock/DPMS/fullscreen
-  pausing, manual pause/resume/toggle, theme re-apply, and CLI selection;
+  `tidal-lifecycle.py` for colorful/muted/static switching, exiting for another theme,
+  lock/DPMS/fullscreen pausing, manual pause/resume/toggle, theme re-apply, CLI selection, and
+  installing only the runtime files;
   `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 - [Wheelie theme](../themes/wheelie/README.md):
   `python3 tests/wheelie-lifecycle.py` checks pause/resume/toggle, lock/DPMS/fullscreen
