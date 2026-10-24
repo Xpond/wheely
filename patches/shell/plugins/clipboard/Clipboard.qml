@@ -374,7 +374,7 @@ Item {
             event.accepted = true
           } else if (event.key === Qt.Key_Backspace) {
             // A cleared filter lets Backspace return to the wheel.
-            Util.execDetached("omarchy-shell -q shell call xpo.wheel back ''")
+            if (root.shell) root.shell.callIfLoaded("xpo.wheel", "back", "")
             event.accepted = true
           } else if (event.key === Qt.Key_Delete) {
             if (event.modifiers & Qt.ShiftModifier) root.requestClearHistory()
