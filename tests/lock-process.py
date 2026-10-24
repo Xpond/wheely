@@ -124,9 +124,8 @@ ShellRoot { Lock.Service {} }
             (config / "lock-design").write_text(design + "\n")
             assert ipc("preview") == "ok"
             pid = until(child_pid, "preview worker did not start")
-            time.sleep(5)
-            logs = "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log"))
-            assert logs.count("RENDERED") >= cycle + 1, ipc("status", child=True) + "\n" + ipc("status") + "\n" + logs
+            until(lambda: "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log"))
+                  .count("RENDERED") > cycle, f"{design} never rendered")
             print(f"loaded {design}: worker RSS {rss(pid):.1f} MiB", flush=True)
             assert ipc("hidePreview") == "ok"
             until(lambda: not child_pid(), "closed preview retained its worker")
