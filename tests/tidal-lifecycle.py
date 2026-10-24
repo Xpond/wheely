@@ -165,3 +165,19 @@ for args, wallpaper in [([], "living"), (["colorful"], "living"), (["muted"], "m
 invalid = subprocess.run([str(installed / "tidal"), "animate", "unknown"], env=cli_env, capture_output=True, text=True)
 assert invalid.returncode == 1 and "Usage:" in invalid.stderr
 print("ok: animate defaults to colorful, accepts muted, and rejects unknown palettes", flush=True)
+
+# Install stages only what runs, so a file dropped from the theme leaves the installed copy too.
+source = output / "source"
+shutil.rmtree(source, ignore_errors=True)
+runtime = ["colors.toml", "shell.toml", "icons.theme", "preview.png", "preview.qml", "hooks/tidal-wallpaper",
+           "backgrounds/01-shoreline.jpg", "animated/shell.qml", "animated/tidal.frag.qsb"]
+for name in runtime + ["README.md", "animated/tidal.frag", "animated/bake-bubbles.py"]:
+    (source / name).parent.mkdir(parents=True, exist_ok=True)
+    (source / name).write_text(name)
+shutil.copy2(repo / "themes/tidal/tidal", source / "tidal")
+(installed / "backgrounds").mkdir(exist_ok=True)
+(installed / "backgrounds/stale.jpg").write_text("removed from the theme")
+subprocess.run([str(source / "tidal"), "install"], env=cli_env, check=True, capture_output=True)
+assert sorted(str(p.relative_to(installed)) for p in installed.rglob("*") if p.is_file()) == sorted(runtime + ["tidal"])
+assert not list((output / "config/omarchy").glob(".tidal-install-*"))
+print("ok: install replaces the theme with only its runtime files", flush=True)

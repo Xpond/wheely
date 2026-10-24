@@ -23,7 +23,7 @@ Space pauses the tide; Escape closes the gallery. Previewing changes no desktop 
 omarchy theme set tidal
 ```
 
-The installer copies this directory into `~/.config/omarchy/themes/tidal`.
+The installer replaces `~/.config/omarchy/themes/tidal` with the theme's runtime files.
 It also installs Omarchy theme-change and post-boot hooks for background selection.
 Omarchy generates matching app configurations from `colors.toml`; `shell.toml`
 supplies the soft grey surfaces and sea-glass selections.
