@@ -1,4 +1,4 @@
-// Pure logic and lifecycle regressions. Run: node tests/check.js
+// Logic and lifecycle regressions; a few also need Qt's qsb and the omarchy CLI. Run: node tests/check.js
 
 require("./files-index.js")
 require("./files-git.js")
