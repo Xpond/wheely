@@ -659,7 +659,7 @@ adds it: Searched takes a path from `/` outside home; Skipped offers folder
 names first, each skipping every folder called that, anywhere, as the defaults
 do, then single folders under home. Del removes; Esc or Backspace on an empty
 query is done. An emptied list is its default again. Files found in an added
-folder open in their default app, not the browser. Both lists live in
+folder open in the browser, like those under home. Both lists live in
 `~/.config/omarchy/wheel.json` as `"folders"` and `"skipped"`.
 
 **Wheely history** (`history`): your picks, newest first, files included.
