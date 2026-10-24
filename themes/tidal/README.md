@@ -91,7 +91,7 @@ display's coast within one second. Waking it preserves the tide and any manual p
 | [Shallows](backgrounds/02-shallows.jpg) | Sunlit caustics over a quiet central sand bank |
 | [Ebb](backgrounds/03-ebb.jpg) | Sculpted sand flats and branching tidal channels |
 
-The JPEGs are unmodified `rb imagen` outputs: 5504 × 3072 pixels, generated at
+The JPEGs are unmodified generator outputs: 5504 × 3072 pixels, generated at
 Google Gemini 3 Pro Image's native 4K tier. Both animated coasts render at screen
 resolution; their picker thumbnails are lossless 3840 × 2160 shader captures.
 Prompts, model, and generation provenance are in [PROMPTS.md](PROMPTS.md).

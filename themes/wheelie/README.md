@@ -133,11 +133,11 @@ for f in themes/wheelie/scene/*.{frag,vert}; do /usr/lib/qt6/bin/qsb --qt6 -o "$
 ## Asset provenance
 
 - Scene, storm plate, and the night track and desert camp backgrounds:
-  `google/gemini-3-pro-image` via `rb imagen`, 4K.
-- Sky prints: `google/gemini-3.1-flash-image` via `rb imagen`, 4K.
+  `google/gemini-3-pro-image`, 4K.
+- Sky prints: `google/gemini-3.1-flash-image`, 4K.
 - Wheel sprites, rim finish, and chain material: the built-in imagegen tool.
 - `backgrounds/01-forest-trail.jpg` and `03-hard-enduro.jpg`: 5456×3072 outputs
-  from `black-forest-labs/flux-3-image` via `rb imagen`, 4K, 16:9, with the bottom
+  from `black-forest-labs/flux-3-image`, 4K, 16:9, with the bottom
   vignette added.
 
 Contact shadows and lighting are code-defined.
