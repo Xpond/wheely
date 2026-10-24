@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import tempfile
 import qslog
@@ -151,7 +152,7 @@ Scope {
     pairs = sorted(p.name[:-len("-rich.png")] for p in (base / "out").glob("*-rich.png"))
     assert len(pairs) == len(cases) * 6, len(pairs)
     # compare alone reports 0 for images of different sizes.
-    size = lambda p: subprocess.check_output(["magick", "identify", "-format", "%wx%h", p], text=True)
+    size = lambda p: "%dx%d" % struct.unpack(">II", p.read_bytes()[16:24])
     failed = []
     body_x = dict(re.findall(r"BODY (\S+) (\d+)", log))
     for name in pairs:
