@@ -137,7 +137,6 @@ for (const query of ["a", "e", "wheel", "a beta"])
   for (const limit of [1, 8, 40, 5001])
     assert.deepEqual(M.fileRows(files, query, limit, "/home/test", false, fileUses), reference(files, query, limit, fileUses))
 assert.deepEqual(M.fileRows(null, "a", 40, "/home/test"), [])
-// Scans parsed apart and joined are the scans parsed together, so a late folder parses only itself.
-assert.deepEqual(M.joinFiles(M.parseFiles(paths.slice(0, 3000).join("\n")), M.parseFiles(paths.slice(3000).join("\n"))), files)
-assert.equal(M.joinFiles(files, null), files)
+// A scan parsed in batches is the scan parsed at once, so each batch parses only itself.
+assert.deepEqual(M.parseFiles(paths.slice(3000).join("\n"), M.parseFiles(paths.slice(0, 3000).join("\n"))), files)
 console.log("ok: file search ordering, limits and ties")

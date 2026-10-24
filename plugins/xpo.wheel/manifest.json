@@ -4,7 +4,7 @@
   "name": "Wheel",
   "version": "0.1.0",
   "author": "xpo",
-  "description": "Radial launcher for the shell panels",
+  "description": "Radial control center: panels on a ring, and one search for everything else",
   "kinds": ["overlay", "menu"],
   "keepLoaded": true,
   "entryPoints": { "overlay": "Wheel.qml", "menu": "Wheel.qml" }

@@ -328,6 +328,10 @@ Item {
       var bar = root.shell && root.shell.bar
       if (bar && typeof bar.panelSurfaceVisible === "function") bar.panelSurfaceVisible(visible)
     }
+    Component.onDestruction: {
+      var bar = root.shell && root.shell.bar
+      if (visible && bar && typeof bar.panelSurfaceVisible === "function") bar.panelSurfaceVisible(false)
+    }
 
     MouseArea {
       anchors.fill: parent
@@ -370,7 +374,7 @@ Item {
             event.accepted = true
           } else if (event.key === Qt.Key_Backspace) {
             // A cleared filter lets Backspace return to the wheel.
-            Util.execDetached("omarchy-shell -q shell call xpo.wheel back ''")
+            if (root.shell) root.shell.callIfLoaded("xpo.wheel", "back", "")
             event.accepted = true
           } else if (event.key === Qt.Key_Delete) {
             if (event.modifiers & Qt.ShiftModifier) root.requestClearHistory()

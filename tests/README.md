@@ -1,10 +1,16 @@
 # Tests
 
-Run the existing entry points from the repository root:
+Run `./tests/all.sh` before release from an Omarchy Wayland desktop. It runs all
+existing checks, stops on the first failure, and removes its temporary render
+outputs. It needs Node.js, Python 3 with Pygments, Quickshell, Qt's `qsb`, ImageMagick, and the
+normal Omarchy tools. GPU checks open temporary preview windows.
+
+For focused checks, run these entry points from the repository root:
 
 | Command | Coverage and layout |
 | --- | --- |
-| `node tests/check.js` | File indexing/navigation, wheel menus/input/settings/manual/ring/folders/pointer, shell panels, actions, closing, file operations, lock-design choice, sky and trails. Imports the focused JavaScript suites. |
+| `node tests/check.js` | 26 JavaScript logic suites: file operations, wheel menus/search/calculator/bindings/conditions/input/settings, shell panels, lock lifecycle/designs, mycelium, sky and trails. |
+| `node tests/wheel-live.js` | Wheel invariants against this machine's installed Omarchy menu and keybindings; requires a running desktop session. |
 | `python3 tests/runtime.py` | Offscreen QML behavior. Calls `plugin_shell.py`, `wheel_refresh.py`, `wheel_scans.py`, `wheel_menu.py`, `file_runtime.py` (including `file_edits.py`), `files_lifecycle.py`, `files_git_runtime.py`, and `wheel_settings.py`. |
 | `python3 tests/install.py` | Install/revert, package updates and failure recovery using temporary paths. `install_fixture.py` supplies the isolated system and command stubs. |
 | `python3 tests/desktop.py` | Hyprland setup by `scripts/user-config.py`: personal edits survive install/revert, interrupted or rejected installs roll back, and the shipped Lua (run through `desktop.lua`) binds the saved wheel and wallpaper pause keys. `install.py` reuses its `prepare` and `verify`. |
@@ -14,16 +20,18 @@ Each JavaScript suite can also run alone, for example
 source-loading helpers; the Python modules listed above are called by their
 entry points, rather than run separately.
 
-These four commands are not the entire suite. Additional checks and their
-dependencies are documented with the features:
+The release command also runs `open-path.py` and `wheelie-install.py` in temporary
+directories. Additional checks and their dependencies are documented with the features:
 
 - [Wheel](../docs/wheel.md)
 - [Files](../docs/files.md)
 - [Shell panels](../docs/centered-panels.md)
 - [Lock screen](../docs/lockscreen.md)
 - [Tidal theme](../themes/tidal/README.md): `python3 tests/tidal.py` checks the palette,
-  Omarchy app templates, both animated palettes, continuity, and the collection gallery;
-  `tidal-lifecycle.py` checks colorful/muted/static switching, theme changes, and CLI selection;
+  Omarchy app templates, both animated palettes, continuity, and the collection gallery, then calls
+  `tidal-lifecycle.py` for colorful/muted/static switching, exiting for another theme,
+  lock/DPMS/fullscreen pausing, manual pause/resume/toggle, theme re-apply, CLI selection, and
+  installing only the runtime files;
   `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 - [Wheelie theme](../themes/wheelie/README.md):
   `python3 tests/wheelie-lifecycle.py` checks pause/resume/toggle, lock/DPMS/fullscreen
@@ -34,6 +42,8 @@ dependencies are documented with the features:
   `python3 tests/wheelie-install.py` checks staged installation and that failed copies
   leave the installed theme untouched, with temporary paths and command stubs; it needs
   no graphics session.
+- `python3 tests/wallpaper-toggle.py` checks that the shared pause shortcut routes
+  to the active Tidal or Wheelie CLI and leaves other or missing themes alone.
 
 `lock-render.py`, `tidal.py`, and `tidal-geometry.py` use native Wayland windows;
 the other rendering suites default to offscreen fixtures. `lock-process.py` simulates

@@ -22,7 +22,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   assert.deepEqual(M.search(rows, "wheely settings", 40, {}).filter(r => r.setting === "history"), [],
     "history passed for a setting")
   for (const [setting, queries] of Object.entries({ shortcut: ["wheely shortcut", "shortcut", "keybind"],
-       pause: ["wallpaper pause", "pause", "wheelie"],
+       pause: ["wallpaper pause", "pause", "wheelie", "tidal"],
        ring: ["wheely ring", "ring", "slices", "pin"], backdrop: ["backdrop", "blur", "dim"], folders: ["searched folders"],
        skipped: ["skip"], forget: ["forget", "clear picks"], panels: ["centered panels", "panels", "center"],
        history: ["history", "wheely history", "recent"] }))
@@ -30,12 +30,14 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   assert.equal(M.indexOfEntry(M.settingRows("ALT + SPACE", false, [], M.SKIPPED, 0, true), rows[0]), 0, "saving a key lost the row")
   assert.deepEqual(M.settingRows("SUPER + A", true, ["/mnt"], ["a", "b"], 57, false).map(r => r.trail),
     ["SUPER + A", "Custom", "", "Off", "Home + 1", "2", "57", "57"])
-  // The pause row comes with Wheelie, as `omarchy theme list` names it, and ends in its key.
-  const wh = { shortcut: "SUPER + A", pauseKey: "ALT + P", uses: {}, folders: [], skipped: [], themeText: "Tidal\nWhite\n" }
-  derive(wh, "wheelieInstalled", "settingRows")
-  assert.equal(wh.settingRows.some(r => r.setting === "pause"), false, "the pause row showed without Wheelie")
-  wh.themeText = "Tidal\nWheelie\nWhite\n"
-  assert.equal(wh.settingRows[1].setting + " " + wh.settingRows[1].trail, "pause ALT + P", "Wheelie hid the pause row")
+  // Either animated theme exposes the shared pause key, including when installed alone.
+  const wh = { shortcut: "SUPER + A", pauseKey: "ALT + P", uses: {}, folders: [], skipped: [], themeText: "White\n" }
+  derive(wh, "animatedThemeInstalled", "settingRows")
+  assert.equal(wh.settingRows.some(r => r.setting === "pause"), false, "the pause row showed without an animated theme")
+  for (const themes of ["Tidal\nWhite\n", "Wheelie\nWhite\n", "Tidal\nWheelie\nWhite\n"]) {
+    wh.themeText = themes
+    assert.equal(wh.settingRows[1].setting + " " + wh.settingRows[1].trail, "pause ALT + P", themes + "hid the pause row")
+  }
 
   assert.equal(M.comboOf("SUPER SHIFT CTRL + space"), "SUPER + CTRL + SHIFT + SPACE")
   assert.equal(M.bindingAt(records, "SUPER + CTRL + SHIFT + SPACE"), "Theme menu", "another spelling hid a binding")

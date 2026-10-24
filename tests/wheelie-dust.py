@@ -5,15 +5,14 @@ Usage: python3 tests/wheelie-dust.py [bake-directory]
 Requires the graphics session, Quickshell and ImageMagick.
 QSG_RHI_BACKEND=vulkan uses a temporary Wayland background-layer window.
 """
-import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import qslog
 
 repo = Path(__file__).resolve().parents[1]
 scene = Path(sys.argv[1]) if len(sys.argv) > 1 else repo / "themes/wheelie/scene"
@@ -76,26 +75,8 @@ Window {
         process = subprocess.Popen(["quickshell", "--no-color", "-p", str(shell)],
                                    env=env, stdout=log, stderr=subprocess.STDOUT)
         try:
-            def ipc(action, *args):
-                result = subprocess.run(
-                    ["quickshell", "ipc", "-p", str(shell), "call", "dust", action, *map(str, args)],
-                    env=env, capture_output=True, text=True, timeout=5)
-                assert result.returncode == 0, result.stderr + log_path.read_text()
-                return json.loads(result.stdout) if action == "status" else None
-
-            def wait_for(predicate):
-                deadline = time.monotonic() + 6
-                while time.monotonic() < deadline:
-                    assert process.poll() is None, log_path.read_text()
-                    try:
-                        state = ipc("status")
-                        if predicate(state):
-                            return state
-                    except AssertionError:
-                        if process.poll() is not None:
-                            raise
-                    time.sleep(0.05)
-                raise AssertionError(log_path.read_text())
+            dust = qslog.Instance(process, shell, "dust", env, log_path)
+            ipc, wait_for = dust.ipc, dust.wait_for
 
             def capture(name):
                 path = output / f"{name}.png"
@@ -127,10 +108,7 @@ Window {
                 max(difference), sum(difference) / len(difference))
             ipc("freeze", 0, 10000)
             assert capture("later-epoch") != wrapped, "Dust repeats on every clock rollover"
-            errors = [line for line in log_path.read_text().splitlines()
-                      if re.search(r"(TypeError|ReferenceError|Error:|Failed to)", line)
-                      and "Failed to register with host portal" not in line]
-            assert not errors, errors
+            qslog.check(log_path.read_text())
         finally:
             if process.poll() is None:
                 process.terminate()

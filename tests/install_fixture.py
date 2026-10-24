@@ -6,6 +6,7 @@ import shlex
 import shutil
 import subprocess
 from desktop import prepare
+from qslog import patch
 
 
 class Installer:
@@ -27,16 +28,14 @@ class Installer:
             (self.repo / "plugins" / plugin.name).mkdir(parents=True)
         for name in ["install.sh", "revert.sh"]:
             text = (source / name).read_text()
-            text = text.replace("SHELL_DIR=/usr/share/omarchy/shell", "SHELL_DIR=" + shlex.quote(str(self.shell)))
-            text = text.replace("~/", str(self.user) + "/")
-            (self.repo / name).write_text(text)
+            (self.repo / name).write_text(patch(text, "SHELL_DIR=/usr/share/omarchy/shell",
+                                                "SHELL_DIR=" + shlex.quote(str(self.shell))))
             (self.repo / name).chmod(0o755)
         helper = self.repo / "scripts/shell-files.sh"
-        helper.write_text(helper.read_text()
-                          .replace("PACKAGE_LOCAL=/var/lib/pacman/local",
-                                   "PACKAGE_LOCAL=" + shlex.quote(str(self.package / "local")))
-                          .replace("PACKAGE_CACHE=/var/cache/pacman/pkg",
-                                   "PACKAGE_CACHE=" + shlex.quote(str(self.package / "cache"))))
+        text = patch(helper.read_text(), "PACKAGE_LOCAL=/var/lib/pacman/local",
+                     "PACKAGE_LOCAL=" + shlex.quote(str(self.package / "local")))
+        helper.write_text(patch(text, "PACKAGE_CACHE=/var/cache/pacman/pkg",
+                                "PACKAGE_CACHE=" + shlex.quote(str(self.package / "cache"))))
         commands = {
             "sudo": '''if [[ "$*" == *shell.qml ]]; then
   if [[ "${CHECK_FAIL:-}" == partial ]]; then head -c -4 "${@: -2:1}" > "${@: -1}"; exit 1; fi
@@ -62,7 +61,7 @@ esac''',
             "mv": '[ "${CHECK_FAIL:-}" = mv ] && exit 1\nexec /usr/bin/mv "$@"',
             "omarchy": '''if [[ "$1 $2" == "hook install" ]]; then
   [[ "${CHECK_FAIL:-}" == hook ]] && exit 1
-  dest="$CHECK_USER/.config/omarchy/hooks/post-update.d"
+  dest="$HOME/.config/omarchy/hooks/post-update.d"
   mkdir -p "$dest"
   cp "$4" "$dest/$(basename "$4")"
   chmod +x "$dest/$(basename "$4")"
@@ -73,8 +72,8 @@ exit 0''',
             script = self.stubs / name
             script.write_text("#!/bin/bash\n" + command + "\n")
             script.chmod(0o755)
-        self.env = dict(os.environ, PATH=str(self.stubs) + ":" + os.environ["PATH"],
-                        CHECK_USER=str(self.user), CHECK_SHELL=str(self.shell))
+        self.env = dict(os.environ, HOME=str(self.user), PATH=str(self.stubs) + ":" + os.environ["PATH"],
+                        CHECK_SHELL=str(self.shell))
 
         self.stock = {p.relative_to(source / "patches/orig").as_posix(): p.read_bytes()
                       for p in (source / "patches/orig").rglob("*.qml")}
@@ -105,8 +104,8 @@ exit 0''',
                         "-C", str(root), "usr"], check=True)
 
     def git(self, *args):
-        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=test", "-c", "user.email=test@example.com",
-                        *args], check=True, capture_output=True)
+        return subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=test", "-c", "user.email=test@example.com",
+                               *args], check=True, capture_output=True)
 
     def run(self, script="install.sh", failure=""):
         return subprocess.run([str(self.repo / script)], cwd=self.base,

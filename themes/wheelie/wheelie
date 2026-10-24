@@ -20,7 +20,14 @@ case "${1:-help}" in
     # Stop the scene only for the swap; the old copy leaves with the stage. kill returns
     # before the scene exits, and until then --no-duplicate refuses to start the new one.
     quickshell kill -p "$destination/animated/wallpaper.qml" >/dev/null 2>&1 || true
-    while [[ $(quickshell list -j -p "$destination/animated/wallpaper.qml") == *'"pid"'* ]]; do sleep 0.05; done
+    for ((attempt = 0; attempt < 100; attempt++)); do
+      [[ $(quickshell list -j -p "$destination/animated/wallpaper.qml") == *'"pid"'* ]] || break
+      sleep 0.05
+    done
+    if (( attempt == 100 )); then
+      printf 'Wheelie did not stop; installation cancelled.\n' >&2
+      exit 1
+    fi
     if [[ -e "$destination" ]]; then mv -T "$destination" "$stage/previous"; fi
     mv -T "$new" "$destination"
     omarchy hook install theme-set "$destination/hooks/wheelie-wallpaper"

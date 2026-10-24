@@ -36,7 +36,7 @@ A radial control center, a file browser and centered shell panels for
   `omarchy-shell lock preview`. Work in progress; see
   [`docs/lockscreen.md`](docs/lockscreen.md).
 
-Tested only on Omarchy 4.0.4 with Quickshell 0.3.1. It patches the packaged
+Tested only on Omarchy 4.0.6 with Quickshell 0.3.2. It patches the packaged
 shell, so it is not a plugin `omarchy plugin add` can install.
 
 [Tidal](themes/tidal/README.md) is our independent light Omarchy theme: an
@@ -64,8 +64,8 @@ It links `plugins/` into `~/.config/omarchy/plugins/` and registers them in
 blur, render loop) to `~/.config/hypr/hyprland.lua`, links three helpers into
 `~/.local/bin`, links the lock-screen designs in `lock/` into
 `~/.local/share/wheely/`, patches eight shell files, installs a post-update
-hook, and restarts the shell. Rerunning is safe. Keep the checkout where it is:
-the hook points to it.
+hook, and restarts the shell. Rerunning is safe, and `git pull && ./install.sh`
+updates it. Keep the checkout where it is: the hook points to it.
 
 Video previews also need `qt6-multimedia` and `qt6-multimedia-ffmpeg`
 (`sudo pacman -S --needed qt6-multimedia qt6-multimedia-ffmpeg`). The fullsize
@@ -82,6 +82,9 @@ original shell files, and unlinks the lock-screen designs and forgets the chosen
 after a successful restore, then restarts the shell. Originals are checked against
 pacman's checksums before they are written, and a shell file changed outside
 this project is left untouched and reported.
+Your settings stay: `wheel.json`, `wheel-blur`, `wheel-shortcut` and
+`wallpaper-pause-shortcut` in `~/.config/omarchy/`, and your picks in
+`~/.local/state/omarchy/wheel-uses.json`, so a reinstall starts where you left off.
 
 ## Why sudo
 

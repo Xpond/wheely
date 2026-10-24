@@ -4,7 +4,8 @@ set -euo pipefail
 
 SHELL_DIR=/usr/share/omarchy/shell
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-CONF=~/.config/omarchy/shell.json
+# Resolved, so a write replaces a symlink's target rather than the link.
+CONF=$(realpath -m ~/.config/omarchy/shell.json)
 STATE=~/.local/state/wheely
 source "$REPO/scripts/shell-files.sh"
 
@@ -32,9 +33,7 @@ done
 failed=0
 stock=$(mktemp)
 trap 'rm -f "$stock"' EXIT
-for f in Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml \
-         plugins/clipboard/Clipboard.qml plugins/lock/LockView.qml plugins/lock/Service.qml \
-         services/PluginShellApi.qml shell.qml; do
+for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
   written="$STATE/installed/$f"
   if [[ -z $(stock_sum "$f") ]]; then
@@ -57,7 +56,7 @@ for f in Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml \
     fi
     echo "restored $f"
   fi
-  rm -f "$written" "$written.pending"
+  rm -f "$written" "$written.pending" "$STATE/rebased/orig/$f" "$STATE/rebased/shell/$f"
 done
 find "$STATE" -depth -type d -empty -delete 2>/dev/null || true
 

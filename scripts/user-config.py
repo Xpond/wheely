@@ -10,7 +10,7 @@ import tempfile
 REPO = Path(__file__).resolve().parents[1]
 BEGIN = "-- BEGIN wheely\n"
 END = "-- END wheely\n"
-HELPERS = ("omarchy-open-path", "omarchy-wheel-close", "omarchy-lock-design")
+HELPERS = ("omarchy-open-path", "omarchy-wheel-close", "omarchy-lock-design", "omarchy-wallpaper-toggle")
 
 
 def write(path, text):
@@ -31,18 +31,23 @@ def reload():
     subprocess.run(["hyprctl", "reload"], check=True, capture_output=True, text=True)
     result = subprocess.run(["hyprctl", "-j", "configerrors"], check=True, capture_output=True, text=True)
     errors = json.loads(result.stdout)
-    if not isinstance(errors, list) or any(errors):
-        raise ValueError(f"Hyprland configuration errors: {errors}")
+    if not isinstance(errors, list):
+        raise ValueError(f"Unexpected Hyprland response: {errors}")
+    return [error for error in errors if error]
 
 
 def change_config(config, before, after):
-    if before != after:
-        write(config, after)
+    if before == after:
+        return
+    # Errors Hyprland already reports are the user's to fix; only errors this change adds roll it back.
+    known = reload()
+    write(config, after)
     try:
-        reload()
+        added = [error for error in reload() if error not in known]
+        if added:
+            raise ValueError(f"Hyprland configuration errors: {added}")
     except (ValueError, subprocess.SubprocessError):
-        if before != after:
-            write(config, before)
+        write(config, before)
         subprocess.run(["hyprctl", "reload"], capture_output=True)
         raise
 

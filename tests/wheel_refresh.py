@@ -1,17 +1,19 @@
 """Selection regressions driven by the wheel's actual QML change handlers."""
 
 
-def check(wheel, run, block):
+def check(wheel, run, block, line):
     common = '''
   property bool opened: true
   property bool armed: false
   property bool justOpened: false
   property string query: ""
   property string listing: ""
-  readonly property string mode: root.listing ? "" : MenuIndex.modeOf(root.query)
-  readonly property string fileSearchKey: root.mode === "file" || root.listing === "skipped" ? root.query : ""
+  property bool editingRing: false
+  property bool windowed: false
+  property bool reading: false
   property var files: null
-  readonly property bool searching: query.length > 0
+''' + "".join(line(wheel, r"^  readonly property (string|bool) " + name + r":.*(\n    :.*)?$")
+          for name in ["mode", "term", "fileSearchKey", "searching"]) + '''
   property int selected: -1
   property int resultIndex: 0
   property int resultTop: 0
@@ -88,14 +90,14 @@ def check(wheel, run, block):
   Timer { interval: 50; running: true; onTriggered: {
     root.query = "/conf"
     root.files = MenuIndex.parseFiles("/home/configuration\n/home/my-configuration")
-    root.files = MenuIndex.joinFiles(root.files, MenuIndex.parseFiles("/home/config"))
+    root.files = MenuIndex.parseFiles("/home/config", root.files)
     root.expect(root.resultIndex === 0, "default followed an early match")
     root.moveResult(1)
-    root.files = MenuIndex.joinFiles(root.files, MenuIndex.parseFiles("/home/conf"))
+    root.files = MenuIndex.parseFiles("/home/conf", root.files)
     root.expect(root.resultIndex === 2, "streaming lost a chosen result")
     var more = []
     for (var i = 0; i < 40; i++) more.push("/home/conf" + i)
-    root.files = MenuIndex.joinFiles(root.files, MenuIndex.parseFiles(more.join("\n")))
+    root.files = MenuIndex.parseFiles(more.join("\n"), root.files)
     root.expect(root.resultIndex === 0, "displaced selection left Enter unusable")
     root.finish()
   } }

@@ -45,6 +45,8 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
                  "omarchy-brightness-display", "omarchy-brightness-keyboard"]:
         # A wake leaves its file until it finishes, so one killed with its worker stays behind.
         command = 'touch "$HOME/wake.$$"; sleep 2; rm "$HOME/wake.$$"' if name == "omarchy-system-wake" else 'exit 1'
+        if name == "omarchy-hyprland-session-locked":
+            command = "exit 2" # The compositor cannot report its lock state during startup.
         path = stubs / name
         path.write_text("#!/bin/sh\n" + command + "\n")
         path.chmod(0o755)
@@ -115,15 +117,15 @@ ShellRoot { Lock.Service {} }
         parent = start()
         until(lambda: status().get("passwordPam"), "bridge did not start")
         time.sleep(1)
-        until(lambda: not child_pid(), "initial worker did not retire")
+        until(lambda: not child_pid(), "undetermined recovery retained its worker after the retry budget", timeout=12)
+        (stubs / "omarchy-hyprland-session-locked").write_text("#!/bin/sh\nexit 1\n")
         baseline = rss(parent.pid)
         for cycle, design in enumerate(["mycelium", "rally", "mycelium"]):
             (config / "lock-design").write_text(design + "\n")
             assert ipc("preview") == "ok"
             pid = until(child_pid, "preview worker did not start")
-            time.sleep(5)
-            logs = "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log"))
-            assert logs.count("RENDERED") >= cycle + 1, ipc("status", child=True) + "\n" + ipc("status") + "\n" + logs
+            until(lambda: "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log"))
+                  .count("RENDERED") > cycle, f"{design} never rendered")
             print(f"loaded {design}: worker RSS {rss(pid):.1f} MiB", flush=True)
             assert ipc("hidePreview") == "ok"
             until(lambda: not child_pid(), "closed preview retained its worker")
