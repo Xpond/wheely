@@ -125,25 +125,17 @@ wheel installed.
 the track hidden beneath translucent fills. The trail has softly fading ends
 and no exterior glow.
 
-For ordinary navigation, `arcHead` and `arcTail` follow the selection target
-at different speeds. Charge shortens the head's response from 90ms to 45ms
-and lengthens the tail's from 300ms to 460ms. Their separation controls trail
-length and disc illumination. `select()` accumulates the shortest angular
-delta, so crossing north continues forward. At rest, the arc brackets the
-selected disc.
+`arcHead` and `arcTail` follow the selection at different speeds, and charge
+widens the gap; their separation is the trail's length and lights the discs it
+passes. `select()` accumulates the shortest angular delta, so crossing north
+continues forward. At rest, the arc brackets the selected disc.
 
-During sustained spin, `RingTrack.qml` advances the visible head at 180°/s:
-one lap every two seconds, independent of key repeat. The trail reaches at
-most 240°, leaving a third of the ring clear. The resting circle fades away,
-leaving only the head and fading tail. Selection still updates immediately;
-on release the trail rejoins it along the shortest arc over 300ms, while the
-resting circle and even selection bracket return.
-
-Disc lighting eases across both ends of the trail and leaves a 260ms
-afterglow. As charge builds, individual passes blend into a dim shared glow
-with a gentle moving highlight. Selection's fill, border weight, scale and
-label emphasis diminish during fast spinning and return as it slows, so the
-comet carries the motion without the discs flashing on every key repeat.
+During sustained spin, `RingTrack.qml` moves the visible head one lap every two
+seconds, independent of key repeat, with the trail covering at most two thirds
+of the ring and the resting circle faded out. On release the trail rejoins the
+selection along the shortest arc. Selection's emphasis fades while spinning
+fast, so the comet carries the motion without the discs flashing on every key
+repeat. `tests/trails.js` pins these speeds and lengths.
 
 The dial's stroke runs through every disc's **center**, so slice labels sit
 outside the ring on their own spokes rather than hung under their discs -- a
@@ -155,72 +147,38 @@ the gap as the disc scales up.
 
 ## Logo and background points
 
-Sustained spinning draws the Omarchy mark along its strokes over about 2.2s.
-`markReveal` interpolates the 40ms hold updates; when the drawing completes,
-`markPhase` continues the same light along the path on a 1.4s loop, with a tail
-spanning 12% of the path. Only the head and fading tail are visible;
-the completed path and its contact shadow
-clear behind them. Releasing the key drains the reveal and pauses the runner.
-The mark keeps its geometry, with rounded bevels, a satin finish, and the wheel's diffuse `MultiEffect`
-shadow. A grazing key light separates the bright shoulder from the dark
-underside; the runner adds a soft local reflection along the curved strokes.
-That key is not a fixed corner — it is the `key` uniform, pointed at whichever
-of the sun or the moon is up (see **The day**), so the mark is lit from the
-left at dawn, from overhead at noon and from the right at dusk. The bevel
-normals are baked into `mark.png`'s GB channels. The head retains its material
-shading while the tail fades in opacity along the path.
+Sustained spinning draws the Omarchy mark along its strokes over about 2.2s, then
+a runner light keeps travelling the path, its tail fading behind it; releasing
+the key drains the reveal. The mark has rounded bevels, a satin finish and the
+wheel's `MultiEffect` shadow, lit by a grazing key light that is the `key`
+uniform: it points at whichever of the sun or the moon is up (The day), so the
+mark is lit from the left at dawn, overhead at noon and from the right at dusk.
+The bevel normals are baked into `mark.png`'s GB channels.
 
-The shared hue cycle approaches OKLCH lightness 0.78 as spin builds, even with
-a dark theme accent; the logo's satin highlight retains some of that colour.
-
-`QuietPoints.qml` fills cells of roughly 100×90px with stationary, jittered
-points: 228 at 1920×1080. Three sizes and brightness levels suggest depth;
-the nearest lights have faint halos and highlights. The field sits behind
-the logo and wheel, with lower brightness around the controls.
+`QuietPoints.qml` fills cells of roughly 100×90px with stationary, jittered points
+in three sizes and brightnesses for depth, dimmer around the controls.
 
 ## The day
 
 The scene sits above the shared blurred-desktop scrim: `Sky.qml` draws a
 translucent sky, `Fluid.qml` adds transparent contours, and `QuietPoints.qml`
-draws stars above them. The logo and controls sit in front. The fluid and
-stars fade around the controls to keep that area readable.
+draws stars above them, all fading around the controls and following
+`markReveal`. `daylight` counts one day per unit, faster with charge (about 7s a
+day at full spin), and never wraps, so its interpolated motion keeps moving
+forward across midnight.
 
-All layers follow `markReveal`, appearing during a sustained spin and fading
-when it stops. `daylight` counts one day per unit on the existing 40ms timer,
-advancing by `0.0012 + 0.0045 * charge` per tick: roughly 7s per day at full
-spin. It continues through the release fade, pauses when charge and hold have
-drained, and resets on close. The value never wraps, so its interpolated
-motion keeps moving forward across midnight.
+The sun follows an ellipse, rising on the left, overhead at noon, setting on
+the right; the moon follows the same arc half a day later. `bodyPosition(side)`
+places both for the radial glows and the fluid's deformation. Twilight spans
+both sides of the horizon; the sky stays translucent, with noon held down for
+legibility. `keyFacing` hands the logo's light from sun to moon, through frontal
+light at the horizon; moonlight is blue and dimmer.
 
-The sun follows an ellipse: `elevation = sin(phase * 2π)` and
-`azimuth = -cos(phase * 2π)`. It rises on the left, passes overhead at noon,
-and sets on the right. The moon follows the same arc half a day later.
-`bodyPosition(side)` supplies the normalized screen positions used by both
-the radial glows and fluid deformation. One `Body` component draws both lights.
-
-Daylight follows positive elevation. The `dusk` curve spans both sides of the
-horizon, letting twilight colour and haze linger after sunset. Dawn progresses
-through violet, rose and pale gold; sunset falls from gold through copper into
-purple. Elevation selects within each palette; azimuth blends morning and
-evening smoothly. The sky stays translucent, with noon brightness held down
-for legibility.
-
-The logo shares the sky's lighting. `keyFacing` hands the direction from sun
-to moon, passing through frontal light at the horizon. `keyColor` tints the
-bevel highlight and diffuse light; moonlight is blue and its `keyStrength`
-is 72% of daylight. The mark keeps its own base colour and runner reflection.
-
-The fluid shader sums six slowly moving fields into merging contour lines.
-It samples that field through a local deformation around each sky light:
-the sun's influence is broader and stronger, the moon's smaller and gentler.
-Both fade with their body's visibility. The clear area around the controls
-stays fixed while the fluid bends. Between lines, the fluid adds at most
-2.5% tint, leaving the sky and desktop blur visible.
-
-Stars dim in daylight. Their `MultiEffect` blur follows `dusk`, softening them
-at twilight and sharpening them as night deepens. `blurMax: 16` makes that
-change visible on 1.8–6px points. The layer remains allocated throughout the
-reveal to avoid recreating its framebuffer and shader twice per cycle.
+The fluid shader sums six slowly moving fields into merging contour lines, bent
+around each sky light, and adds at most a faint tint between lines so the sky and
+desktop blur stay visible. Stars dim in daylight and blur at twilight; their
+blur layer stays allocated through the reveal so its framebuffer and shader are
+not recreated twice per cycle.
 
 The fluid shader is adapted from [slastra/hyprglaze](https://github.com/slastra/hyprglaze/blob/120c5082aba3ee2d675ed9be8f705d9239d1755c/shaders/fluid.frag).
 Its MIT notice is in `plugins/xpo.wheel/LICENSE.hyprglaze`. Only the shader
@@ -368,9 +326,9 @@ changed rebuilds nothing.
 
 **Inside a `MouseArea`, `wheel` is the `MouseArea`'s.** A handler looks up a bare
 name on its own object first, and every `MouseArea` has a `wheel` signal, so the
-results' `wheel` property is out of reach there: `wheel.run` throws, and for a
-month hovering a row selected nothing and a click ran nothing. Those handlers say
-`stack.wheel`; `python3 tests/runtime.py` hovers and clicks the real rows.
+results' `wheel` property is out of reach there: `wheel.run` throws, so hovering
+a row selects nothing and a click runs nothing. Those handlers say `stack.wheel`;
+`python3 tests/runtime.py` hovers and clicks the real rows.
 
 **Do not use `omarchy-shell -q` when you need the answer.** Quiet mode
 suppresses stdout (`if (( !QUIET )) && [[ -n $output ]]`), so the result never
@@ -439,12 +397,8 @@ asks `pacman -T` once for every package they name and answers
 `omarchy-pkg-present` from that. Known readers in simple comparisons — such as
 `[[ $(omarchy-default-browser) == brave ]]` — share one read. Other Bash expressions
 run unchanged, preserving exit status, quoting and short-circuit guards. The script
-takes about a quarter of a second, in the background: the wheel opens on the last answers
-and the new ones land a moment later, rebuilding only if they changed (see the
-trap above). With the theme, font and lock-design reads it costs about a third
-of a second of CPU per open, twice what the wheel's own opening costs, all of
-it in those processes: starting them holds the UI thread 1.4 ms, before the
-wheel's first frame, and a probe animating at 144 Hz beside them lost no frames.
+runs in the background: the wheel opens on the last answers and the new ones
+land a moment later, rebuilding only if they changed (see the trap above).
 
 A `when` that fails hides the row, and a submenu whose children all failed is
 hidden too, so a slice never drills into an empty ring. A `checked` that holds
@@ -483,7 +437,7 @@ cannot say what one does; `omarchy-menu-keybindings` recovers each command by
 re-running `hyprland.lua` against a stub `hl`, and caches the result in
 `~/.cache/omarchy/keybindings-<sha>.records`, keyed on `hyprctl binds`. The
 wheel asks it to print, which refreshes that cache whenever the binds changed,
-and reads the records on every open, in 16 ms and 20 ms of CPU. A record is
+and reads the records on every open. A record is
 `KEYS → Description<TAB>kind<TAB>arg`. An `exec` bind runs its command as a
 menu row does, and a `lua` bind goes to `Hyprland.dispatch`, as window focus
 does. The rest cannot run from a row: a `sendshortcut` needs its web app
@@ -501,9 +455,7 @@ A window action — Toggle floating, Full screen, Move window to workspace 3 —
 acts on Hyprland's active window, and while the wheel holds the keyboard
 `Hyprland.activeToplevel` reads null. Hyprland's own active window stays put,
 though (`hyprctl activewindow` still names the window behind the wheel), so the
-action lands whatever the timing. Fired 25 times through the wheel's `run()` at
-a throwaway window, five of them with the wheel's surface still holding the
-keyboard, it toggled that window every time and nothing else.
+action lands whatever the timing.
 
 The live half of the index — apps, windows and live panels — is rebuilt when
 the wheel opens. That is the only moment any of it has to be correct, and it means
@@ -543,20 +495,11 @@ by rank and name length as it scans, keeping only the first 40 of each tie,
 which is every row that could be read. A file opened from the wheel before
 leads its rank, most opened first, but never climbs into a better one, and a
 bare `/` lists those files, latest first. Home and the folders added outside it
-scan apart. `scan.py` frames complete lines into bounded batches, and
-`SplitParser` decodes each batch once, preserving split UTF-8 characters. The
-first batch is sent immediately, with later batches throttled to 100 ms.
-A background worker appends paths directly to each source's index and ranks
-only new paths for an unchanged query. Per-source buckets keep home's ties
-ahead of added folders. Only the result rows come back. One request runs at
-a time; typing during it replaces the pending query, and obsolete replies are
-discarded. Previous rows stay visible and can be clicked. Keyboard actions
-wait for the current query's results; changing the query or closing cancels them.
-Neither scan waits for the other or for the walk to finish before
-showing results.
-The Skipped folders list suggests home's folders alone, so it
-scans home alone. Closing cancels both scans, releases the worker's index, and
-rejects pending replies; reopening starts fresh ones. `Enter` on a path
+scan apart, in batches (`scan.py`), and a background worker ranks each batch as it
+arrives, keeping home's ties ahead of added folders, so results show before
+either walk finishes. Typing replaces the pending query; previous rows stay
+clickable, and keyboard actions wait for the current query's results. Closing
+cancels both scans and releases the worker's index. `Enter` on a path
 opens the browser there, whether or not the browser was already up. The browser
 keeps to home and the searched folders (Settings), so any other path opens the
 way the browser opens a file, through `omarchy-open-path`.
