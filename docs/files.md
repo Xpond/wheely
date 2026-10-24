@@ -225,15 +225,14 @@ box while a list row sits in the middle of a taller one, so without `dirTopPad`
 the first file in the preview floats above the first file in the list.
 
 The preview follows the selection only once it has **stopped moving** — 60 ms,
-the same wait the highlighter takes. Held-down arrows through forty files used
-to read, slice and lay out every file passed over, about half a second of CPU
-spent on frames nobody saw.
+the same wait the highlighter takes — so held-down arrows do not read and lay
+out every file they pass over.
 
 Only what is near the view is **laid out**. A selection lays out two screens of
 lines; scrolling within a screen of their end doubles that, and `End` lays out
 the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
-Laying out is the cost, and a selection in `docs/` now takes 10 to 30 ms.
+Laying out is the cost.
 
 Files over **256 KB** are never read. A NUL byte in the first kilobyte is what
 marks a binary, rather than an extension list to maintain: `.frag` and `.qsb`
@@ -297,12 +296,9 @@ and whenever the browser opens; a short debounce combines duplicate requests,
 and one status covers the folder previews too. `git-preview.py` sorts it into
 a part per folder, and the browser reads only the listed folder's part and the
 selected folder's, so moving between folders asks git nothing, and no folder
-costs more than its own entries however many changes lie deeper. With 60,000
-deleted files under `vendor`, reading them all at once held the browser for
-0.2–1 s each time it opened there; the helper now sorts them in about 0.15 s
-of its own, and the browser spends 1–3 ms. git reports an untracked folder as
-one entry instead of walking it, so an unignored `node_modules` costs one line
-rather than one per file; the status also names a path inside the listed
+costs more than its own entries however many changes lie deeper. git reports
+an untracked folder as one entry instead of walking it, so an unignored
+`node_modules` costs one line rather than one per file; the status also names a path inside the listed
 folder, which makes git open that folder even when it is untracked. A changed
 file's diff is read when the selection settles, shown or not, so the heading
 can count it. `git-preview.py` resolves missing directories through their
@@ -451,10 +447,10 @@ hand-rolled pass that would get shell quoting wrong on its first day.
 
     python3 highlight.py <path>             one interpreter, style=one-dark
 
-One interpreter does the lexer lookup and the formatting together. Naming the
-lexer with `pygmentize -N` was a second Python start and a shell to pipe them a
-third: that cost 239 ms, and this costs 105 ms. A 60 ms debounce means arrowing
-through a directory does not spawn a process per row.
+One interpreter does the lexer lookup and the formatting together; naming the
+lexer with `pygmentize -N` would cost a second Python start and a shell to pipe
+them. A 60 ms debounce means arrowing through a directory does not spawn a
+process per row.
 
 **The uncoloured file travels through the same markup the coloured one does.**
 Swapping a plain-text item for a marked-up one steps the whole file down the
@@ -462,8 +458,7 @@ page the instant the highlighter answers; rendering both states through one
 path makes the arrival of colour nothing but a change of colour.
 
 **That markup is StyledText, drawn exactly as a rich-text `<pre>` drew it.**
-The `<pre>` held the GUI thread for about 100 ms per 500-line file, twice per
-selection; StyledText takes about 11. `styledCode()` and `highlight.py` keep the
+StyledText lays out far faster than the `<pre>` it replaced. `styledCode()` and `highlight.py` keep the
 `<pre>` rules: no newline straight after the opening tag or before the closing
 one, no `\r`, every other whitespace character kept, as entities StyledText
 cannot collapse. Rich text put each baseline 4/5 down its fixed-height line
@@ -500,9 +495,8 @@ exactly as written.
 
 **Markdown has a `Text` of its own.** When one `Text` served both, its line
 height switched with the format and it carried the code's per-line handler, and
-Qt then laid out Markdown tables many times slower: 100 to 780 ms a selection in
-`docs/`. Fixed values and no handler bring the same documents to under 80 ms
-even at 500 lines. Do not fold the two back together.
+Qt then laid out Markdown tables many times slower. Do not fold the two back
+together.
 
 ## Popping out
 
