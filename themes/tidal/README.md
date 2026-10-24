@@ -120,4 +120,4 @@ rendering, continuous wave edges and the hourly clock wrap, and repeated
 colorful/muted/static wallpaper selections and theme changes using the same controller.
 The geometry check compares resized surfaces with fresh renders, including height-only
 changes, portrait and ultrawide layouts, and fractional display scale.
-Tested on Omarchy 4.0.4 and Quickshell 0.3.1.
+Tested on Omarchy 4.0.6 and Quickshell 0.3.2.
