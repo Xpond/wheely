@@ -213,27 +213,13 @@ the prototype.
 
 ### Verify it, don't assume it
 
-Two checks that prove it, both reboot-free:
+The render thread exists only under `threaded`, so this checks the running shell rather
+than its configuration; `install.sh` runs the same check after restarting the shell:
 
 ```bash
-# 1. Does a process spawned by Hyprland actually get the var?
-hyprctl dispatch 'hl.dsp.exec_cmd("sh -c \"env > /tmp/q\"")'; grep QSG /tmp/q
-```
-
-```bash
-# 2. Did the render loop really change? This thread exists ONLY under
-#    `threaded` -- `basic` renders on the GUI thread.
 P=$(quickshell list -j -p /usr/share/omarchy/shell | jq -r '.[0].pid // empty')
 grep QSGRenderThread /proc/"$P"/task/*/comm
 ```
-
-Check 2 is the strong one: it observes the running shell's actual behaviour
-rather than its configuration. Note `hyprctl dispatch` needs the Lua
-dispatcher form (`hl.dsp.exec_cmd`); the legacy `hyprctl dispatch exec cmd`
-errors out on this parser.
-
-Check `systemctl --user show-environment` before concluding a var is unset —
-this session's env arrives through uwsm, not only through Hyprland.
 
 ### Everything else
 
@@ -279,96 +265,20 @@ then jumps. Both directions want fast-start (`Out*`) curves.
 
 ## 4. Measuring, instead of guessing
 
-### The instrument that works: an in-QML frame probe
-
-`FrameAnimation` (Qt 6.4+) fires once per *rendered* frame, so it reports what
-the compositor actually showed — dropped frames included. Drop this inside the
-card in `Ui/KeyboardPanel.qml`, buffering to an array so the logging itself
-does not perturb what it measures:
-
-```qml
-property double t0: 0          // set in onOpenChanged when open goes true
-property var probeRows: []
-
-FrameAnimation {
-  running: root.open || card.opacity > 0 || root.popoutSwitching
-  onTriggered: root.probeRows.push([
-    Math.round(Date.now() - root.t0),
-    Math.round(frameTime * 10000) / 10,   // ms since previous rendered frame
-    card.slideX, card.originScale, card.opacity, card.height
-  ].join(","))
-  onRunningChanged: if (!running) {
-    for (var i = 0; i < root.probeRows.length; i++) console.log("[fr]", root.probeRows[i])
-    root.probeRows = []
-  }
-}
-```
-
-Drive it over IPC so runs are repeatable, and strip journald's ANSI prefix —
-anchoring a grep on `^[fr]` silently matches nothing:
-
-```bash
-since=$(date '+%Y-%m-%d %H:%M:%S.%6N')
-omarchy-shell -q omarchy.monitor open;  sleep 1.5
-omarchy-shell -q omarchy.monitor close; sleep 1.5
-journalctl -t omarchy-shell --since "$since" --no-pager -o cat \
-  | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '\[fr\].*'
-```
-
-Read the second column. A healthy trace on this box is a wall of ~6.9ms. A
-wall of ~16ms means the render loop is wrong (see §3) — not that your
-animation is wrong. A single large value is real latency; find what runs in
-that window.
-
-### Measuring the render loop on its own
-
-Qt's chosen render loop is a process-wide property, so it can be measured
-outside the shell entirely. `console.log` from a bare `qml6` may be swallowed
-depending on how it is invoked; returning the number through the exit code is
-immune to that:
-
-```qml
-FrameAnimation {
-  running: true
-  onTriggered: { /* collect frameTime for ~140 frames, then: */
-    Qt.exit(Math.round(medianFrameTimeMs * 10)) }
-}
-```
-
-```bash
-for rl in default threaded basic; do
-  QSG_RENDER_LOOP=$rl qml6 tick.qml; echo "$rl -> $(($? ))/10 ms"
-done
-```
-
-Note `/usr/bin/qml` is **Qt 5.15** on this box; you want `qml6`.
+`FrameAnimation` fires once per *rendered* frame, so buffering its `frameTime` while a
+panel opens, and printing it when the animation stops, shows what the compositor actually
+displayed. Drive the panel over IPC (`omarchy-shell -q omarchy.monitor open`) so runs repeat.
+A healthy trace on a 144Hz display is a wall of ~6.9ms; a wall of ~16ms means the render
+loop is wrong (§3), not the animation. A single large value is real latency.
 
 ---
 
-## 5. Resolved: the open/close animation
-
-Hypotheses that were disproven, so they are not re-litigated:
-
-| Hypothesis | Verdict |
-|---|---|
-| Heavy panels' `onOpenedChanged` work starves the animation | **No.** `clock` does no work on open and juddered identically. |
-| The fade starts ~100ms before the motion (map latency) | **No.** `open` and `mapped` land in the same millisecond. |
-| Content resize moves the card mid-animation | **No.** All four panels probed settle `contentHeight` before the card is visible. |
-
-### What is still open
+## 5. Known limits
 
 **Latency before the first frame**, which is sluggishness rather than judder:
 monitor 152ms, bluetooth 74ms, clock 44ms, network 37ms. Only `monitor` is bad
-enough to notice, and it is the 4 processes `refresh()` spawns on open. If it
-becomes worth fixing, defer that work until after the entry animation — but
-note this needs a per-panel patch, so it means more package-owned files.
-
-**The scrim cut on close.** `panelScrimHoldMs` (150) outlives
-`closeFadeDuration` (130), so the fullscreen blur snaps off *after* the card
-has gone, with nothing on screen to mask the largest luminance change in the
-interaction. Untested idea: drop it to ~80ms so the cut happens while the card
-is still moving. It contradicts the documented rule in §6, so change it alone
-and look at it.
+enough to notice, and it is the 4 processes `refresh()` spawns on open. Fixing it means
+deferring that work until after the entry animation, in another package-owned file.
 
 ---
 
