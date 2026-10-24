@@ -4,7 +4,8 @@ A radial control center for Omarchy, on `SUPER+A` or a key you choose (see **Set
 
 Your bar's panels sit on a ring, reachable by direction; typing turns the hub
 into a search over every entry in the Omarchy menu, every installed app, every
-open window, and every theme and font. It replaces reaching for a handful of
+open window, every theme and font, keybindings, settings, files (after `/`) and
+the manual. It replaces reaching for a handful of
 separate `SUPER+CTRL` shortcuts with one key and a direction.
 
 The ring is for things that have a widget. Everything else in the menu —
@@ -18,6 +19,8 @@ disc, because a ring you have to read is slower than a word you can type.
       RingTrack.qml    ring shader bindings and the visible trail's clock
       ring.frag       antialiased circle, fading trail and disc cutouts
       WheelResults.qml the ring unrolled: the ranked list and its rail
+      WheelManual.qml  the manual sheet, filtered as you type
+      manual.md        the manual itself, also searched as rows
       Sky.qml          day/night palette, sun/moon positions and logo lighting
       Fluid.qml        transparent fluid ShaderEffect and its uniform interface
       fluid.frag       merging contours bent by the sun and moon (compiled to .qsb)
@@ -30,6 +33,8 @@ disc, because a ring you have to read is slower than a word you can type.
       MenuIndex.js     JSONC parsing, flattening, search
       MenuKeys.js      the key map: which verb a key means
       Calc.js          the calculator behind a leading `=`
+      Pinned.js        the pinned search's window, shared with Files
+      scan.py          the file scan's output, in bounded UTF-8-safe batches
 
 The ring and the results take the dial as `wheel`, the way the browser's own
 components take their panel, so each one's single dependency is visible at the
