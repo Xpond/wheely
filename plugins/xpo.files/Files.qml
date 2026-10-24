@@ -277,7 +277,7 @@ Item {
     root.imageDims = ""
     measurer.cancel()
     if (root.showsImage)
-      measurer.start(["identify", "-format", "%w×%h\n", root.settledSel.path])
+      measurer.start(["identify", "-ping", "-format", "%w×%h\n", root.settledSel.path])
   }
 
   readonly property string metaLine:
