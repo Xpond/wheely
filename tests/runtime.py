@@ -87,7 +87,7 @@ Scope {
         return log
 
     check_plugin_shell(repo, base, run, block)
-    check_wheel_refresh(wheel, run, block)
+    check_wheel_refresh(wheel, run, block, line)
 
     check_wheel_scans(wheel, run, block)
     check_wheel_menu(wheel, base, run, block, line)

@@ -1,17 +1,19 @@
 """Selection regressions driven by the wheel's actual QML change handlers."""
 
 
-def check(wheel, run, block):
+def check(wheel, run, block, line):
     common = '''
   property bool opened: true
   property bool armed: false
   property bool justOpened: false
   property string query: ""
   property string listing: ""
-  readonly property string mode: root.listing ? "" : MenuIndex.modeOf(root.query)
-  readonly property string fileSearchKey: root.mode === "file" || root.listing === "skipped" ? root.query : ""
+  property bool editingRing: false
+  property bool windowed: false
+  property bool reading: false
   property var files: null
-  readonly property bool searching: query.length > 0
+''' + "".join(line(wheel, r"^  readonly property (string|bool) " + name + r":.*(\n    :.*)?$")
+          for name in ["mode", "term", "fileSearchKey", "searching"]) + '''
   property int selected: -1
   property int resultIndex: 0
   property int resultTop: 0
