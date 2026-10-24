@@ -167,6 +167,13 @@ if (( ${#broken[@]} )); then
                                 "Reinstall the omarchy package to restore them, then rerun install.sh.")
   (( ${#held[@]} )) && msg+=("Held back so the lock screen's files stay a matching pair: ${held[*]}")
   alert "${msg[@]}"
+else
+  # Critical toasts outlive restarts, so archive a failed run's one as if dismissed; the restart drops it.
+  notes=~/.local/state/omarchy/notifications
+  for n in "$notes"/*.json; do
+    jq -e '.summary == "wheely" and (.body | startswith("Not patched:"))' "$n" &>/dev/null &&
+      mkdir -p "$notes/history" && mv "$n" "$notes/history/"
+  done
 fi
 
 omarchy restart shell || { alert "Could not restart Omarchy shell"; exit 1; }
