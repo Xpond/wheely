@@ -1151,64 +1151,72 @@ Item {
     WlrLayershell.keyboardFocus: root.shown ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
 
-    Sky {
-      id: sky
+    // Idle, the reveal scene holds ~44 MB, so it exists only while the mark shows.
+    Loader {
       anchors.fill: parent
-      phase: root.daylight
-      reveal: root.markReveal
-    }
+      active: root.markReveal > 0
+      asynchronous: true
+      sourceComponent: Item {
+        Sky {
+          id: sky
+          anchors.fill: parent
+          phase: root.daylight
+          reveal: root.markReveal
+        }
 
-    Fluid {
-      anchors.fill: parent
-      phase: root.daylight
-      reveal: root.markReveal
-      quietRadius: root.ringRadius + root.itemSize
-      warm: sky.keyColor
-      cool: sky.mix(Qt.rgba(0.35, 0.32, 0.75, 1), sky.dayColor, sky.light)
-      sun: Qt.vector3d(sky.sunPosition.x, sky.sunPosition.y, sky.glow)
-      moon: Qt.vector3d(sky.moonPosition.x, sky.moonPosition.y, sky.moon)
-    }
+        Fluid {
+          anchors.fill: parent
+          phase: root.daylight
+          reveal: root.markReveal
+          quietRadius: root.ringRadius + root.itemSize
+          warm: sky.keyColor
+          cool: sky.mix(Qt.rgba(0.35, 0.32, 0.75, 1), sky.dayColor, sky.light)
+          sun: Qt.vector3d(sky.sunPosition.x, sky.sunPosition.y, sky.glow)
+          moon: Qt.vector3d(sky.moonPosition.x, sky.moonPosition.y, sky.moon)
+        }
 
-    QuietPoints {
-      anchors.fill: parent
-      progress: root.markReveal
-      quietRadius: root.ringRadius + root.itemSize
-      tint: root.cometColor
-      daylight: sky.light
-      haze: sky.dusk
-    }
+        QuietPoints {
+          anchors.fill: parent
+          progress: root.markReveal
+          quietRadius: root.ringRadius + root.itemSize
+          tint: root.cometColor
+          daylight: sky.light
+          haze: sky.dusk
+        }
 
-    // R stores path distance, GB the bevel normal, alpha the stroke mask.
-    Image {
-      id: logoMask
-      source: Qt.resolvedUrl("mark.png")
-      visible: false
-    }
+        // R stores path distance, GB the bevel normal, alpha the stroke mask.
+        Image {
+          id: logoMask
+          source: Qt.resolvedUrl("mark.png")
+          visible: false
+        }
 
-    ShaderEffect {
-      anchors.centerIn: parent
-      width: surface.height / (2 * 0.47) * 0.98
-      height: width
-      visible: root.hold > 0
-      fragmentShader: Qt.resolvedUrl("logo.frag.qsb")
-      layer.enabled: visible
-      layer.effect: MultiEffect {
-        shadowEnabled: true
-        shadowOpacity: 0.65
-        shadowHorizontalOffset: 2
-        shadowVerticalOffset: 5
+        ShaderEffect {
+          anchors.centerIn: parent
+          width: surface.height / (2 * 0.47) * 0.98
+          height: width
+          visible: root.hold > 0
+          fragmentShader: Qt.resolvedUrl("logo.frag.qsb")
+          layer.enabled: visible
+          layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowOpacity: 0.65
+            shadowHorizontalOffset: 2
+            shadowVerticalOffset: 5
+          }
+          property var source: logoMask
+          readonly property real reveal: root.markReveal
+          readonly property real feather: 0.02
+          readonly property real head: 0.10
+          readonly property real phase: root.markReveal + root.markPhase
+          readonly property real pulse: 0.12
+          readonly property vector2d pixel: Qt.vector2d(1 / width, 1 / height)
+          readonly property vector2d key: sky.keyDirection
+          readonly property color keyColor: sky.keyColor
+          readonly property real keyStrength: sky.keyStrength
+          readonly property color tint: root.cometColor
+        }
       }
-      property var source: logoMask
-      readonly property real reveal: root.markReveal
-      readonly property real feather: 0.02
-      readonly property real head: 0.10
-      readonly property real phase: root.markReveal + root.markPhase
-      readonly property real pulse: 0.12
-      readonly property vector2d pixel: Qt.vector2d(1 / width, 1 / height)
-      readonly property vector2d key: sky.keyDirection
-      readonly property color keyColor: sky.keyColor
-      readonly property real keyStrength: sky.keyStrength
-      readonly property color tint: root.cometColor
     }
 
     MouseArea {
