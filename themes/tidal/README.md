@@ -102,9 +102,7 @@ Code and assets are distributed under the repository's [MIT license](../../LICEN
 Rebuild both shaders after editing `animated/*.frag`:
 
 ```bash
-for shader in themes/tidal/animated/*.frag; do
-  /usr/lib/qt6/bin/qsb --qt6 -o "$shader.qsb" "$shader"
-done
+scripts/build-shaders.sh themes/tidal/animated/*.frag
 python3 tests/tidal.py
 python3 tests/tidal-geometry.py
 ```

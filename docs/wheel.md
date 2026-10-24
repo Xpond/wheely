@@ -230,12 +230,7 @@ Assets are shipped ready to load. To rebuild the shaders from the repo root
 using Qt Shader Tools:
 
 ```bash
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o plugins/xpo.wheel/logo.frag.qsb plugins/xpo.wheel/logo.frag
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o plugins/xpo.wheel/fluid.frag.qsb plugins/xpo.wheel/fluid.frag
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o plugins/xpo.wheel/ring.frag.qsb plugins/xpo.wheel/ring.frag
+scripts/build-shaders.sh plugins/xpo.wheel/*.frag
 node tests/check.js
 omarchy restart shell
 ```

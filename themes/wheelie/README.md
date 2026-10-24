@@ -127,7 +127,7 @@ The scene's images and `layout.json` in `scene/` are baked outside this reposito
 After editing a shader in `scene/`, recompile it:
 
 ```sh
-for f in themes/wheelie/scene/*.{frag,vert}; do /usr/lib/qt6/bin/qsb --qt6 -o "$f.qsb" "$f"; done
+scripts/build-shaders.sh themes/wheelie/scene/*.{frag,vert}
 ```
 
 ## Asset provenance

@@ -152,10 +152,7 @@ they cannot show; the swaying lower flowers add about 0.12ms a frame, and the pl
 Rebuild the shaders after GLSL changes:
 
 ```bash
-for shader in meadow.frag plants.vert plants.frag; do
-  /usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-    -o lock/meadow/$shader.qsb lock/meadow/$shader
-done
+scripts/build-shaders.sh lock/meadow/*.{frag,vert}
 ```
 
 ## Tunnel
@@ -195,12 +192,7 @@ lies on. At 1080p on a GTX 1080 Ti the tunnel holds 144fps using about a tenth o
 The flight pauses while the display is blank. After GLSL changes, rebuild the shaders:
 
 ```bash
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 -b \
-  -o lock/tunnel/mark.vert.qsb lock/tunnel/mark.vert
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o lock/tunnel/mark.frag.qsb lock/tunnel/mark.frag
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o lock/tunnel/space.frag.qsb lock/tunnel/space.frag
+scripts/build-shaders.sh lock/tunnel/*.{frag,vert}
 ```
 
 ## Mycelium
@@ -241,8 +233,7 @@ clock stops.
 After GLSL changes, rebuild the shaders:
 
 ```bash
-for f in mycelium ground; do /usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o lock/mycelium/$f.frag.qsb lock/mycelium/$f.frag; done
+scripts/build-shaders.sh lock/mycelium/*.frag
 ```
 
 ## Shore
@@ -284,8 +275,7 @@ frame takes 1.3ms of GPU time on a GTX 1080 Ti at full clocks, the most of any d
 After GLSL changes, rebuild the shader:
 
 ```bash
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o lock/shore/shore.frag.qsb lock/shore/shore.frag
+scripts/build-shaders.sh lock/shore/shore.frag
 ```
 
 ## Rally
@@ -475,10 +465,7 @@ follows body pitch, lives inside the departure transforms, and fades in with pai
 After GLSL changes, rebuild the bundled shaders:
 
 ```bash
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o lock/rally/car-paint.frag.qsb lock/rally/car-paint.frag
-/usr/lib/qt6/bin/qsb --glsl '100 es,120,150' --hlsl 50 --msl 12 \
-  -o lock/rally/car-focus.frag.qsb lock/rally/car-focus.frag
+scripts/build-shaders.sh lock/rally/*.frag
 ```
 
 ## Wake and authentication
