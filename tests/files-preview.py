@@ -16,7 +16,8 @@ shell = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy")) / "shell"
 LIMIT = 120
 
 # The highlighter as it was: pygments HTML for a rich-text <pre>. The cut's ellipsis now
-# follows the colour rather than going through it, so it is plain here too.
+# follows the colour rather than going through it, so it is plain here too, and after a
+# blank last line, which pygments' output drops, it takes the next line as everywhere else.
 RICH = """import sys
 from pygments import highlight
 from pygments.lexers import get_lexer_for_filename
@@ -31,7 +32,7 @@ try:
 except Exception:
     lx = TextLexer()
 out = highlight(src, lx, HtmlFormatter(nowrap=True, noclasses=True, style='one-dark'))
-sys.stdout.write(out + '\u2026' if cut else out)
+sys.stdout.write(out + ('\\n' if src.endswith('\\n') else '') + '\u2026' if cut else out)
 """ % (LIMIT, LIMIT)
 
 samples = {
@@ -48,6 +49,7 @@ samples = {
     "bold.py": "def f():\n    '''doc\n    string'''\n    return 1\n# end",
     "italic.rst": "Title\n=====\n\n*emphasis* and **strong**\n",
     "truncated.txt": "\n".join("line %d" % i for i in range(LIMIT + 30)),
+    "blank-cut.sh": "x=1\n" * (LIMIT - 1) + "\ny=2\n",
 }
 files = [repo / "plugins/xpo.wheel/MenuIndex.js", repo / "plugins/xpo.wheel/Wheel.qml",
          repo / "install.sh", repo / "tests/install.py"]
