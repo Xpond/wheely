@@ -4,7 +4,8 @@ set -euo pipefail
 
 SHELL_DIR=/usr/share/omarchy/shell
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-CONF=~/.config/omarchy/shell.json
+# Resolved, so a write replaces a symlink's target rather than the link.
+CONF=$(realpath -m ~/.config/omarchy/shell.json)
 STATE=~/.local/state/wheely
 source "$REPO/scripts/shell-files.sh"
 

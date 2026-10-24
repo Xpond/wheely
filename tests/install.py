@@ -42,6 +42,20 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert not (fixture.base / "injected").exists()
     print("ok: idempotent registration and generated hook execution")
 
+    # A shell.json kept in dotfiles stays a link; install and revert write its target.
+    dotfile = fixture.user / "dotfiles/shell.json"
+    dotfile.parent.mkdir()
+    dotfile.write_text(conf.read_text())
+    conf.unlink()
+    conf.symlink_to(dotfile)
+    assert fixture.run("revert.sh").returncode == 0 and conf.is_symlink()
+    assert json.loads(dotfile.read_text())["plugins"] == [{"id": "other", "enabled": False}]
+    assert fixture.run().returncode == 0 and conf.is_symlink()
+    assert json.loads(dotfile.read_text())["plugins"] == [{"id": "other", "enabled": False}] + expected
+    conf.unlink()
+    conf.write_text(dotfile.read_text())
+    print("ok: a symlinked shell.json stays a link through revert and install")
+
     # An unrelated Quickshell instance must neither hide nor cause a render failure.
     for failure in ["render", "no-shell"]:
         result = fixture.run(failure=failure)
