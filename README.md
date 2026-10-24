@@ -82,6 +82,9 @@ original shell files, and unlinks the lock-screen designs and forgets the chosen
 after a successful restore, then restarts the shell. Originals are checked against
 pacman's checksums before they are written, and a shell file changed outside
 this project is left untouched and reported.
+Your settings stay: `wheel.json`, `wheel-blur`, `wheel-shortcut` and
+`wallpaper-pause-shortcut` in `~/.config/omarchy/`, and your picks in
+`~/.local/state/omarchy/wheel-uses.json`, so a reinstall starts where you left off.
 
 ## Why sudo
 
