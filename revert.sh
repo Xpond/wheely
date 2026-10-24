@@ -33,9 +33,7 @@ done
 failed=0
 stock=$(mktemp)
 trap 'rm -f "$stock"' EXIT
-for f in Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml \
-         plugins/clipboard/Clipboard.qml plugins/lock/LockView.qml plugins/lock/Service.qml \
-         services/PluginShellApi.qml shell.qml; do
+for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
   written="$STATE/installed/$f"
   if [[ -z $(stock_sum "$f") ]]; then

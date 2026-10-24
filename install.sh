@@ -4,9 +4,6 @@ set -uo pipefail
 
 SHELL_DIR=/usr/share/omarchy/shell
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-FILES=(Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml
-       plugins/clipboard/Clipboard.qml plugins/lock/LockView.qml plugins/lock/Service.qml
-       services/PluginShellApi.qml shell.qml)
 # Resolved, so a write replaces a symlink's target rather than the link.
 CONF=$(realpath -m ~/.config/omarchy/shell.json)
 STATE=~/.local/state/wheely
