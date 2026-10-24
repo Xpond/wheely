@@ -134,7 +134,6 @@ things it needs — silently, because a denied call just returns `false`:
 | `shell.toggle("omarchy.menu", …)` | `false` — no panel ever opens |
 | `shell.summon("xpo.files", …)` | `false` — browser never opens |
 | `shell.isPluginOpen(other)` / `hide(other)` | `false` — close-others and Backspace-to-wheel dead |
-| `shell.appLibrary` | `null` — app launching dead |
 | shared surface reporting | absent — shared scrim never maps |
 | peer-panel coordination | absent — surfaces can stack and fight for focus |
 
@@ -383,7 +382,7 @@ and look at it.
 | `closeMotionDuration` | `150` | exit length |
 | `fadeDuration` | `180` | open fade |
 | `closeFadeDuration` | `130` | close fade |
-| `emergeScale` | `0.96` | start scale — above ~0.9 glyph stretching becomes visible |
+| `emergeScale` | `0.96` | start scale — below ~0.9 glyph stretching becomes visible |
 | `maxTravel` | `Style.space(56)` | the handoff slide distance |
 
 `patches/shell/plugins/bar/Bar.qml`:
