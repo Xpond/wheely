@@ -21,12 +21,6 @@ env = os.environ | {"QT_QPA_PLATFORM": "offscreen", "QT_QPA_PLATFORMTHEME": "gen
                     "QT_QUICK_BACKEND": "rhi", "QSG_RHI_BACKEND": "opengl"}
 
 
-def patch(text, old, new, count=-1):
-    """Replace old, which must be present: a stale pattern would leave real Hyprland code running."""
-    assert old in text, old
-    return text.replace(old, new, count)
-
-
 def stage(theme):
     """Omarchy's copy of the current theme, which the background link points into."""
     (theme / "backgrounds").mkdir(parents=True)
@@ -45,10 +39,10 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
     activity = output / "activity.json"
     activity.write_text('{"dpmsStatus": true}')
     shell = config / "wallpaper.qml"
-    qml = patch(shell.read_text(), 'import QtQuick\n', 'import QtQuick\nimport QtQuick.Window\n', 1)
-    qml = patch(qml, 'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
+    qml = qslog.patch(shell.read_text(), 'import QtQuick\n', 'import QtQuick\nimport QtQuick.Window\n', 1)
+    qml = qslog.patch(qml, 'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
     # Supply compositor snapshots without changing the user's display or lock state.
-    qml = patch(qml, 'id: root', '''id: root
+    qml = qslog.patch(qml, 'id: root', '''id: root
   property var activity: ({})
   property var testScene: null
   property int scenes: 0
@@ -58,21 +52,21 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
     onFileChanged: reload()
     onLoaded: root.activity = JSON.parse(text())
   }''' % json.dumps(str(activity)), 1)
-    qml = patch(qml, 'function pause(): void', '''function status(): string {
+    qml = qslog.patch(qml, 'function pause(): void', '''function status(): string {
       return JSON.stringify({animated: root.animated, loaded: !!root.testScene, scenes: root.scenes,
         running: root.testScene ? root.testScene.running : false,
         ready: root.testScene ? !!root.testScene.layout.cutout : false,
         turn: root.testScene ? root.testScene.wheelTurn : 0, frames: root.frames})
     }
     function pause(): void''')
-    qml = patch(qml, 'onTriggered: Hyprland.refreshMonitors()', 'onTriggered: {}')
-    qml = patch(qml, 'PanelWindow {', 'Window {\n      width: 640; height: 360; visible: true')
-    qml = patch(qml, 'screen: modelData', '')
-    qml = patch(qml, 'monitor: Hyprland.monitorFor(screen)', 'monitor: null')
-    qml = patch(qml, 'monitorState: monitor ? monitor.lastIpcObject : ({})', 'monitorState: root.activity')
+    qml = qslog.patch(qml, 'onTriggered: Hyprland.refreshMonitors()', 'onTriggered: {}')
+    qml = qslog.patch(qml, 'PanelWindow {', 'Window {\n      width: 640; height: 360; visible: true')
+    qml = qslog.patch(qml, 'screen: modelData', '')
+    qml = qslog.patch(qml, 'monitor: Hyprland.monitorFor(screen)', 'monitor: null')
+    qml = qslog.patch(qml, 'monitorState: monitor ? monitor.lastIpcObject : ({})', 'monitorState: root.activity')
     qml, removed = re.subn(r'^      (anchors \{|exclusionMode:|mask:|WlrLayershell\.).*\n', '', qml, flags=re.M)
     assert removed == 6, removed
-    qml = patch(qml, 'Surface { anchors.fill:', '''Connections {
+    qml = qslog.patch(qml, 'Surface { anchors.fill:', '''Connections {
         target: wallpaper
         function onFrameSwapped() { root.frames++ }
       }
@@ -87,25 +81,8 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
         process = subprocess.Popen(["quickshell", "--no-color", "-p", str(shell)],
                                    env=env, stdout=log, stderr=subprocess.STDOUT)
         try:
-            def ipc(action):
-                result = subprocess.run(["quickshell", "ipc", "-p", str(shell), "call", "wheelie", action],
-                                        env=env, capture_output=True, text=True, timeout=5)
-                assert result.returncode == 0, result.stderr + log_path.read_text()
-                return json.loads(result.stdout) if action == "status" else None
-
-            def wait_for(predicate):
-                deadline = time.monotonic() + 6
-                while time.monotonic() < deadline:
-                    assert process.poll() is None, log_path.read_text()
-                    try:
-                        current = ipc("status")
-                        if predicate(current):
-                            return current
-                    except AssertionError:
-                        if process.poll() is not None:
-                            raise
-                    time.sleep(0.05)
-                raise AssertionError(log_path.read_text())
+            wheelie = qslog.Instance(process, shell, "wheelie", env, log_path)
+            ipc, wait_for = wheelie.ipc, wheelie.wait_for
 
             def frozen():
                 time.sleep(0.15)  # Drain the last submitted frame.

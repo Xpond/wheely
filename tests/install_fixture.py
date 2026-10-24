@@ -6,12 +6,7 @@ import shlex
 import shutil
 import subprocess
 from desktop import prepare
-
-
-def swap(text, old, new):
-    """Replace old, which must be present: a stale pattern would leave the test on real system paths."""
-    assert old in text, old
-    return text.replace(old, new)
+from qslog import patch
 
 
 class Installer:
@@ -33,14 +28,14 @@ class Installer:
             (self.repo / "plugins" / plugin.name).mkdir(parents=True)
         for name in ["install.sh", "revert.sh"]:
             text = (source / name).read_text()
-            (self.repo / name).write_text(swap(text, "SHELL_DIR=/usr/share/omarchy/shell",
-                                               "SHELL_DIR=" + shlex.quote(str(self.shell))))
+            (self.repo / name).write_text(patch(text, "SHELL_DIR=/usr/share/omarchy/shell",
+                                                "SHELL_DIR=" + shlex.quote(str(self.shell))))
             (self.repo / name).chmod(0o755)
         helper = self.repo / "scripts/shell-files.sh"
-        text = swap(helper.read_text(), "PACKAGE_LOCAL=/var/lib/pacman/local",
-                    "PACKAGE_LOCAL=" + shlex.quote(str(self.package / "local")))
-        helper.write_text(swap(text, "PACKAGE_CACHE=/var/cache/pacman/pkg",
-                               "PACKAGE_CACHE=" + shlex.quote(str(self.package / "cache"))))
+        text = patch(helper.read_text(), "PACKAGE_LOCAL=/var/lib/pacman/local",
+                     "PACKAGE_LOCAL=" + shlex.quote(str(self.package / "local")))
+        helper.write_text(patch(text, "PACKAGE_CACHE=/var/cache/pacman/pkg",
+                                "PACKAGE_CACHE=" + shlex.quote(str(self.package / "cache"))))
         commands = {
             "sudo": '''if [[ "$*" == *shell.qml ]]; then
   if [[ "${CHECK_FAIL:-}" == partial ]]; then head -c -4 "${@: -2:1}" > "${@: -1}"; exit 1; fi

@@ -11,12 +11,6 @@ import time
 import qslog
 
 
-def patch(text, old, new, count=-1):
-    """Replace old, which must be present: a stale pattern would leave real desktop state in use."""
-    assert old in text, old
-    return text.replace(old, new, count)
-
-
 repo = Path(__file__).resolve().parents[1]
 output = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/tidal-lifecycle").resolve()
 config = output / "controller"
@@ -34,19 +28,19 @@ theme.write_text("tidal\n")
 activity = state / "activity.json"
 activity.write_text('{"dpmsStatus": true}')
 shell = config / "shell.qml"
-source = patch(shell.read_text(), 'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
+source = qslog.patch(shell.read_text(), 'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
 # One windowless surface stands for the displays, and the compositor's monitor state comes from a file.
-source = patch(source, "model: root.animated ? Quickshell.screens : []", "model: root.animated ? [0] : []")
-source = patch(source, "PanelWindow {", "Item {")
+source = qslog.patch(source, "model: root.animated ? Quickshell.screens : []", "model: root.animated ? [0] : []")
+source = qslog.patch(source, "PanelWindow {", "Item {")
 source, removed = re.subn(r"^      (screen:|anchors \{|color:|exclusionMode:|mask:|WlrLayershell\.).*\n", "", source, flags=re.M)
 assert removed == 8, removed
-source = patch(source, "monitor: Hyprland.monitorFor(screen)", "monitor: null")
-source = patch(source, "monitorState: monitor ? monitor.lastIpcObject : ({})", "monitorState: root.activity")
-source = patch(source, "onTriggered: Hyprland.refreshMonitors()", "onTriggered: {}")
-source = patch(source, "Surface {", '''Surface {
+source = qslog.patch(source, "monitor: Hyprland.monitorFor(screen)", "monitor: null")
+source = qslog.patch(source, "monitorState: monitor ? monitor.lastIpcObject : ({})", "monitorState: root.activity")
+source = qslog.patch(source, "onTriggered: Hyprland.refreshMonitors()", "onTriggered: {}")
+source = qslog.patch(source, "Surface {", '''Surface {
         Component.onCompleted: console.log("SURFACE")
         onRunningChanged: console.log("RUNNING", running)''')
-source = patch(source, "id: root", '''id: root
+source = qslog.patch(source, "id: root", '''id: root
   property var activity: ({})
   FileView {
     path: %s; watchChanges: true
@@ -55,7 +49,7 @@ source = patch(source, "id: root", '''id: root
   }
   onAnimatedChanged: console.log("STATE", root.animated)
   Component.onCompleted: console.log("STATE", root.animated)''' % json.dumps(str(activity)), 1)
-source = patch(source, "root.background = path", '''root.background = path
+source = qslog.patch(source, "root.background = path", '''root.background = path
         console.log("SELECTION", path, root.animated, root.muted)
         if (root.tidalTheme) console.log("READY watching")''')
 shell.write_text(source)

@@ -5,7 +5,6 @@ Usage: python3 tests/wheelie-dust.py [bake-directory]
 Requires the graphics session, Quickshell and ImageMagick.
 QSG_RHI_BACKEND=vulkan uses a temporary Wayland background-layer window.
 """
-import json
 import os
 from pathlib import Path
 import shutil
@@ -76,26 +75,8 @@ Window {
         process = subprocess.Popen(["quickshell", "--no-color", "-p", str(shell)],
                                    env=env, stdout=log, stderr=subprocess.STDOUT)
         try:
-            def ipc(action, *args):
-                result = subprocess.run(
-                    ["quickshell", "ipc", "-p", str(shell), "call", "dust", action, *map(str, args)],
-                    env=env, capture_output=True, text=True, timeout=5)
-                assert result.returncode == 0, result.stderr + log_path.read_text()
-                return json.loads(result.stdout) if action == "status" else None
-
-            def wait_for(predicate):
-                deadline = time.monotonic() + 6
-                while time.monotonic() < deadline:
-                    assert process.poll() is None, log_path.read_text()
-                    try:
-                        state = ipc("status")
-                        if predicate(state):
-                            return state
-                    except AssertionError:
-                        if process.poll() is not None:
-                            raise
-                    time.sleep(0.05)
-                raise AssertionError(log_path.read_text())
+            dust = qslog.Instance(process, shell, "dust", env, log_path)
+            ipc, wait_for = dust.ipc, dust.wait_for
 
             def capture(name):
                 path = output / f"{name}.png"
