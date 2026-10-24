@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Route the shared pause key to the currently selected animated theme.
+read -r theme 2>/dev/null < "$HOME/.local/state/omarchy/current/theme.name" || exit 0
+case "$theme" in
+  tidal|wheelie)
+    controller="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/$theme/$theme"
+    if [[ -x "$controller" ]]; then exec "$controller" toggle; fi
+    ;;
+esac

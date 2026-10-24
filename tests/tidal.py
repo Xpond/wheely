@@ -70,6 +70,7 @@ for name in ["alacritty.toml", "foot.ini", "ghostty.conf", "kitty.conf", "hyprla
     text = (staged / name).read_text()
     assert not re.search(r"\{\{.*?\}\}", text), name
 assert tomllib.loads((staged / "alacritty.toml").read_text())["colors"]["primary"]["background"] == palette["background"]
+shutil.rmtree(staged)
 print("ok: Omarchy generates the terminal, editor, monitor, and border configurations", flush=True)
 
 shutil.copytree(theme / "animated", output / "animated", dirs_exist_ok=True)

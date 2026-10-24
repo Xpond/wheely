@@ -4,9 +4,10 @@ const path = require("node:path")
 
 // The mycelium design's colony, grown outside Qt from fixed seeds (mulberry32), at 1080 units high.
 const source = fs.readFileSync(path.join(__dirname, "../lock/mycelium/grow.js"), "utf8").replace(/^\.pragma .*$/m, "")
-const { begin } = new Function(`${source}\nreturn { begin }`)()
+const math = Object.create(Math)
+const { begin } = new Function("Math", `${source}\nreturn { begin }`)(math)
 let seed = 1
-Math.random = () => {
+math.random = () => {
   seed = (seed + 0x6D2B79F5) >>> 0
   let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t

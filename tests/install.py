@@ -42,6 +42,20 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert not (fixture.base / "injected").exists()
     print("ok: idempotent registration and generated hook execution")
 
+    # A shell.json kept in dotfiles stays a link; install and revert write its target.
+    dotfile = fixture.user / "dotfiles/shell.json"
+    dotfile.parent.mkdir()
+    dotfile.write_text(conf.read_text())
+    conf.unlink()
+    conf.symlink_to(dotfile)
+    assert fixture.run("revert.sh").returncode == 0 and conf.is_symlink()
+    assert json.loads(dotfile.read_text())["plugins"] == [{"id": "other", "enabled": False}]
+    assert fixture.run().returncode == 0 and conf.is_symlink()
+    assert json.loads(dotfile.read_text())["plugins"] == [{"id": "other", "enabled": False}] + expected
+    conf.unlink()
+    conf.write_text(dotfile.read_text())
+    print("ok: a symlinked shell.json stays a link through revert and install")
+
     # An unrelated Quickshell instance must neither hide nor cause a render failure.
     for failure in ["render", "no-shell"]:
         result = fixture.run(failure=failure)
@@ -106,17 +120,26 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     (fixture.shell / relative).write_bytes(update)  # the package update replaced our patch
     result = fixture.run()
     assert result.returncode == 0 and "rebased onto new upstream: shell.qml" in result.stdout, result.stderr
-    assert (fixture.repo / "patches/orig" / relative).read_bytes() == update
     assert fixture.installed(relative) != update and fixture.installed(relative).endswith(b"// upstream addition\n")
+    # The rebase is kept in the state, never in the checkout, so git pull keeps working.
+    assert not fixture.git("status", "--porcelain", "patches").stdout
+    rebased = fixture.user / ".local/state/wheely/rebased"
+    assert (rebased / "orig" / relative).read_bytes() == update
+    assert (rebased / "shell" / relative).read_bytes() == fixture.installed(relative)
+    assert "already up to date" in fixture.run().stdout
+    shutil.rmtree(fixture.package / "cache")
     assert fixture.run("revert.sh").returncode == 0 and fixture.installed(relative) == update
+    assert not rebased.exists()
     fixture.publish(fixture.stock)
-    for directory in ("orig", "shell"):
-        (fixture.repo / "patches" / directory / relative).write_bytes((source / "patches" / directory / relative).read_bytes())
     (fixture.shell / relative).write_bytes(fixture.stock[relative])
-    print("ok: a package update is rebased onto, and revert restores the updated stock file")
+    print("ok: a package update is rebased onto outside the checkout, and revert restores the updated stock file")
 
     # A lock file left stock holds back its partner, even one that rebased cleanly.
     lock = ["plugins/lock/LockView.qml", "plugins/lock/Service.qml"]
+    notes = fixture.user / ".local/state/omarchy/notifications"
+    notes.mkdir(parents=True)
+    toast = {"app": "notify-send", "summary": "wheely", "body": "Not patched: plugins/lock/Service.qml"}
+    (notes / "1-1.json").write_text(json.dumps(toast))
     for conflicted, partner in [lock, lock[::-1]]:
         update = {**fixture.stock, conflicted: fixture.stock[conflicted].replace(b"\n", b" \n"),
                   partner: b"// upstream addition\n" + fixture.stock[partner]}
@@ -127,14 +150,18 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
         assert result.returncode == 1 and f"rebased onto new upstream: {partner}" in result.stdout, result.stderr
         assert all(fixture.installed(relative) == update[relative] for relative in lock), partner
         assert "Held back" in result.stderr and partner in result.stderr, result.stderr
+        assert (notes / "1-1.json").exists()
+        assert not (rebased / "shell" / conflicted).exists()  # no conflict markers to publish
         assert fixture.installed("shell.qml") == fixture.patched("shell.qml")
         assert fixture.run("revert.sh").returncode == 0
         fixture.publish(fixture.stock)
         for relative in lock:
-            for directory in ("orig", "shell"):
-                (fixture.repo / "patches" / directory / relative).write_bytes((source / "patches" / directory / relative).read_bytes())
             (fixture.shell / relative).write_bytes(fixture.stock[relative])
+    assert fixture.run().returncode == 0
+    assert (notes / "history/1-1.json").exists() and not (notes / "1-1.json").exists()
+    assert fixture.run("revert.sh").returncode == 0
     print("ok: a lock file that cannot be patched holds back its partner, keeping the stock lock")
+    print("ok: the next clean install archives the failed run's toast")
 
     relative = "plugins/bar/Bar.qml"
     edited = fixture.stock[relative] + b"// personal edit\n"

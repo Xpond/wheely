@@ -122,11 +122,9 @@ Item {
   readonly property bool showsVideo: !!root.settledSel && !root.settledSel.isDir && !root.settledSel.missing
                                      && FilesIndex.isVideo(root.settledSel.name)
   property string imageDims: ""
-  Process {
+  FilesProcess {
     id: measurer
-    stdout: StdioCollector {
-      onStreamFinished: root.imageDims = text.split("\n")[0].trim()
-    }
+    onFinished: output => root.imageDims = output.split("\n")[0].trim()
   }
   readonly property bool showsMarkdown: !root.showsDiff && !!root.settledSel && !root.settledSel.isDir
                                         && !root.settledSel.missing && FilesIndex.isMarkdown(root.settledSel.name)
@@ -159,21 +157,18 @@ Item {
     interval: 60
     onTriggered: {
       if (!root.fullText || root.showsMarkdown) return
-      highlighter.command = ["python3", root.highlightScript, root.previewPath]
-      highlighter.running = true
+      highlighter.start(["python3", root.highlightScript, root.previewPath])
     }
   }
 
-  Process {
+  FilesProcess {
     id: highlighter
-    stdout: StdioCollector {
-      onStreamFinished: root.previewHtml = text
-    }
+    onFinished: output => root.previewHtml = output
   }
 
   onFullTextChanged: {
     root.previewHtml = ""
-    highlighter.running = false
+    highlighter.cancel()
     if (root.fullText && !root.showsMarkdown) highlightSoon.restart()
   }
 
@@ -188,7 +183,7 @@ Item {
     decodeURIComponent(String(Qt.resolvedUrl("git-preview.py")).replace(/^file:\/\//, ""))
   readonly property var changes: root.listedStatus.marks
   readonly property var childChanges: root.childStatus.marks
-  FilesGitProcess {
+  FilesProcess {
     id: gitStatus
     onFinished: function (output, code) {
       root.status = code === 0 ? output : ""
@@ -221,7 +216,7 @@ Item {
   // A diff on its way: with the diff on, the preview waits for it instead of flashing the file.
   property bool diffLoading: false
   readonly property bool showsDiff: root.diffMode && (!!root.diffText || root.diffLoading) && !root.editing
-  FilesGitProcess {
+  FilesProcess {
     id: differ
     onFinished: function (output, code) {
       // --no-index returns 1 when a new file has content.
@@ -280,11 +275,9 @@ Item {
     root.readDiff()
     root.dirEntries = []
     root.imageDims = ""
-    measurer.running = false
-    if (root.showsImage) {
-      measurer.command = ["identify", "-format", "%w×%h\n", root.settledSel.path]
-      measurer.running = true
-    }
+    measurer.cancel()
+    if (root.showsImage)
+      measurer.start(["identify", "-ping", "-format", "%w×%h\n", root.settledSel.path])
   }
 
   readonly property string metaLine:

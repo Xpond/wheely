@@ -20,7 +20,9 @@ Item {
   property string editing: ""
   property bool editingRing: false
   property string listing: ""
-  readonly property bool searching: query.length > 0
+  property bool windowed: false
+  property bool reading: false
+''' + line(wheel, r"^  readonly property bool searching:.*$") + '''
   property var results: [{ action: "picked" }]
   property int resultIndex: 0
   property int resultTop: 0

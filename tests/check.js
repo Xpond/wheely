@@ -1,9 +1,13 @@
-// Pure logic and lifecycle regressions. Run: node tests/check.js
+// Logic and lifecycle regressions; a few also need Qt's qsb and the omarchy CLI. Run: node tests/check.js
 
 require("./files-index.js")
 require("./files-git.js")
 require("./files-performance.js")
 require("./wheel-menu.js")
+require("./wheel-search.js")
+require("./wheel-binds.js")
+require("./wheel-calc.js")
+require("./wheel-conditions.js")
 require("./files-navigation.js")
 require("./wheel-input.js")
 require("./wheel-navigation.js")
@@ -18,5 +22,8 @@ require("./wheel-actions.js")
 require("./wheel-close.js")
 require("./files-ops.js")
 require("./lock-design.js")
+require("./lock.js")
+require("./lock-idle.js")
+require("./mycelium.js")
 require("./scene.js")
 require("./trails.js")

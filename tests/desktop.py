@@ -30,7 +30,7 @@ esac
 def verify(user, repo, installed=True):
     config = (user / ".config/hypr/hyprland.lua").read_text()
     assert ("-- BEGIN wheely\n" in config) == installed
-    for name in ("omarchy-open-path", "omarchy-wheel-close", "omarchy-lock-design"):
+    for name in ("omarchy-open-path", "omarchy-wheel-close", "omarchy-lock-design", "omarchy-wallpaper-toggle"):
         link = user / ".local/bin" / name
         assert link.is_symlink() == installed
         if installed:
@@ -43,16 +43,15 @@ def check():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     reload_config = module.reload
-    module.reload = lambda: None
-    for errors in ([], [""], ["invalid config"], {}):
-        response = subprocess.CompletedProcess([], 0, stdout=json.dumps(errors))
+    module.reload = lambda: []
+    for answer, errors in (([], []), ([""], []), (["invalid config"], ["invalid config"]), ({}, None)):
+        response = subprocess.CompletedProcess([], 0, stdout=json.dumps(answer))
         with patch.object(module.subprocess, "run", return_value=response):
             try:
-                reload_config()
-                assert errors in ([], [""])
+                assert reload_config() == errors
             except ValueError:
-                assert errors not in ([], [""])
-    print("ok: reload accepts clean Hyprland responses and rejects config errors")
+                assert errors is None
+    print("ok: reload reports Hyprland's configuration errors and rejects unexpected responses")
     with tempfile.TemporaryDirectory(prefix="omarchy-desktop-") as temporary:
         root = Path(temporary)
         config, state, bindir = root / "hyprland.lua", root / "state", root / "bin"
@@ -151,8 +150,10 @@ def check():
             before = config.read_bytes()
             record = state / "user-config.json"
             old_record = record.read_bytes() if record.exists() else None
+            # Hyprland reports an error only once the change is written.
             with patch.object(module, "REPO", updated_repo), \
-                 patch.object(module, "reload", side_effect=ValueError("invalid config")), \
+                 patch.object(module, "reload",
+                              side_effect=lambda: ["invalid config"] if config.read_bytes() != before else []), \
                  patch.object(module.subprocess, "run"):
                 for mode in (["install", "revert"] if existing else ["install"]):
                     try:
@@ -169,9 +170,20 @@ def check():
                 run("revert")
         print("ok: failed reload validation rolls back fresh setup, updates, and removals")
 
+        # Errors the user's config already has are theirs: they block neither install nor revert, and
+        # an install with nothing to change (the post-update hook) leaves Hyprland alone.
+        with patch.object(module, "reload", return_value=["personal error"]):
+            run("install")
+            assert config.read_text().count(module.BEGIN) == 1
+            with patch.object(module, "reload", side_effect=AssertionError("reloaded an unchanged config")):
+                run("install")
+            run("revert")
+        assert config.read_bytes() == original.encode()
+        print("ok: configuration errors the user already had block neither install nor revert")
+
     # The shortcut and blur files are data: a key the row could have written is bound, anything else is
-    # the default, and "off" turns the backdrop's blur, and Hyprland's, off. The pause key is bound only
-    # with Wheelie installed, and the wheel's key wins a clash.
+    # the default, and "off" turns the backdrop's blur, and Hyprland's, off. Windows keep the blur they
+    # had. The pause key is bound with either animated theme installed; the wheel's key wins a clash.
     for name, saved, key, blur, pause in [("wheel-shortcut", None, "SUPER + A", "on", None),
                                           ("wheel-shortcut", "SUPER + SHIFT + B\n", "SUPER + SHIFT + B", "on", None),
                                           ("wheel-shortcut", "  ALT + SPACE \r\n", "ALT + SPACE", "on", None),
@@ -180,6 +192,7 @@ def check():
                                           ("wheel-shortcut", 'super + b") os.execute("touch pwned\n', "SUPER + A", "on", None),
                                           ("wheel-blur", "off\n", "SUPER + A", "off", None),
                                           ("wheel-blur", "on\n", "SUPER + A", "on", None),
+                                          ("wheel-blur", None, "SUPER + A", "user", None),
                                           ("wallpaper-pause-shortcut", None, "SUPER + A", "on", "CTRL + SPACE"),
                                           ("wallpaper-pause-shortcut", "ALT + P\n", "SUPER + A", "on", "ALT + P"),
                                           ("wallpaper-pause-shortcut", "SPACE\n", "SUPER + A", "on", "CTRL + SPACE"),
@@ -195,6 +208,12 @@ def check():
                             *([pause] if pause else [])],
                            check=True, cwd=home, env=dict(os.environ, HOME=home))
             assert not (Path(home) / "pwned").exists()
+            if pause:
+                (Path(home) / ".config/omarchy/themes/wheelie/wheelie").unlink()
+                (Path(home) / ".config/omarchy/themes/tidal").mkdir()
+                (Path(home) / ".config/omarchy/themes/tidal/tidal").touch()
+                subprocess.run(["lua", str(source / "tests/desktop.lua"), str(source / "config/hyprland.lua"),
+                                key, blur, pause], check=True, cwd=home, env=dict(os.environ, HOME=home))
     print("ok: shipped Lua binds the direct shortcut and pause key as saved, render environment and shared blur")
 
 

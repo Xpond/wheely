@@ -5,7 +5,7 @@ const fs = require("fs")
 const path = require("path")
 const { execSync, spawnSync } = require("child_process")
 
-const here = __dirname
+const here = path.join(__dirname, "../plugins/xpo.wheel")
 const omarchy = process.env.OMARCHY_PATH || "/usr/share/omarchy"
 const home = process.env.HOME
 
@@ -32,7 +32,7 @@ const cond = M.parseConditions(scan, items)
 
 // Scan every caller; ignore the library URL in imports and worker sources.
 const callers = fs.readdirSync(here)
-  .filter(f => /\.(qml|js)$/.test(f) && f !== "MenuIndex.js" && f !== "check.js")
+  .filter(f => /\.(qml|js)$/.test(f) && f !== "MenuIndex.js")
   .map(f => fs.readFileSync(path.join(here, f), "utf8").replace(/^import .*$/gm, "")
     .replace(/(["'])MenuIndex\.js\1/g, "")).join("\n")
 const missing = [...new Set([...callers.matchAll(/MenuIndex\.(\w+)/g)].map(m => m[1]))]
@@ -75,7 +75,8 @@ const bindCommand = JSON.parse(fs.readFileSync(path.join(here, "Wheel.qml"), "ut
   .match(/id: bindList[^]*?command: (\[.*\])/)[1])
 const binds = M.bindRows(spawnSync(bindCommand[0], bindCommand.slice(1), { encoding: "utf8" }).stdout)
 check(binds.length > 0, `keybindings load (${binds.length} runnable)`, "no records from omarchy-menu-keybindings")
-const fixed = [...M.panelRows([...M.panels(null), ...M.EXTRAS]), ...rows, ...M.settingRows(M.SHORTCUT, false, [], M.SKIPPED)]
+const fixed = [...M.panelRows([...M.panels(null), ...M.EXTRAS]), ...rows,
+               ...M.settingRows(M.SHORTCUT, false, [], M.SKIPPED, 0, true, M.PAUSE_KEY)]
 // Windows are uncounted because every launch has a new address.
 const counted = M.withBindings(fixed, binds, items)
 const unfound = binds.filter(b => !M.search(counted, b.label, Infinity, {})

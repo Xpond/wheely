@@ -100,6 +100,8 @@ Window {
             width: parent.width; height: 232
             source: Qt.resolvedUrl("backgrounds/" + parent.modelData.file + ".jpg")
             fillMode: Image.PreserveAspectCrop
+            // Decoded near display size: full size is ~67 MB each.
+            sourceSize.width: width * 2
             asynchronous: true
             smooth: true
           }

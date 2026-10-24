@@ -5,7 +5,7 @@ import subprocess
 
 
 def check(repo, files, base, run, block, line):
-    shutil.copyfile(repo / "plugins/xpo.files/FilesGitProcess.qml", base / "FilesGitProcess.qml")
+    shutil.copyfile(repo / "plugins/xpo.files/FilesProcess.qml", base / "FilesProcess.qml")
     # A real pipe has bytes buffered before cancellation. Wait for the producer's marker.
     helper = base / "slow-diff.py"
     helper.write_text("""import pathlib, sys, time
@@ -30,7 +30,7 @@ if name == 'old.txt':
   property string diffText: ""
   property bool diffLoading: false
   property bool switched: false
-''' + block(files, r"^  FilesGitProcess \{\n    id: differ") + block(files, r"^  function readDiff\(") + '''
+''' + block(files, r"^  FilesProcess \{\n    id: differ") + block(files, r"^  function readDiff\(") + '''
   FileView {
     path: root.listedDir + '/ready'
     watchChanges: true
@@ -81,7 +81,7 @@ if name == 'old.txt':
   property string previewHtml: ''
   function readDiff() { diffText = '@@ -1 +1 @@\\n-old\\n+new\\n' }
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
-  QtObject { id: measurer; property bool running: false; property var command: [] }
+  QtObject { id: measurer; function cancel() {} }
 ''' + preview.replace("Style.font.subtitle", "14") + line(files, r"^  readonly property bool showsDiff: .*")
         + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14") + '''
   Timer { interval: 0; running: true; onTriggered: {
@@ -117,7 +117,7 @@ if name == 'old.txt':
   property string previewHtml: ''
   property var seen: []
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
-  QtObject { id: measurer; property bool running: false; property var command: [] }
+  QtObject { id: measurer; function cancel() {} }
 ''' + preview.replace("Style.font.subtitle", "14")
         + segment("  readonly property bool showsMarkdown:", "  readonly property string previewPath:")
         + line(files, r"^  readonly property bool showsCode: .*")
