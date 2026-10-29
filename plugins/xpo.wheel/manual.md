@@ -17,8 +17,8 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 | `↑` `↓` | jump to that compass point |
 | `←` `→` | step around the ring |
 | `Enter` | run, or open a submenu |
-| `Backspace` | up a level, or back to the wheel |
-| `Esc` | clear, up a level, then close |
+| `Backspace` | back to the ring you came from, or to the wheel |
+| `Esc` | clear, back a ring, then close |
 | mouse | flick or click a slice |
 
 ## Search
