@@ -92,6 +92,10 @@ Item {
   property int launchedAt: -1
   property string editing: ""
   property real daylight: 0
+  property real charge: 0
+  property real hold: 0
+  property int markWait: 0
+  property real markOpacity: 0
   property var copied: []
   property int picks: 0
   function countUse(e) { root.picks++ }

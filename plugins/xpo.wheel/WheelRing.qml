@@ -10,8 +10,7 @@ Item {
 
   property var wheel: null
   // Repeated passes merge into quiet illumination as sustained spin builds.
-  property real spin: Math.max(0, Math.min(1, (root.wheel.charge - 0.35) / 0.5))
-  Behavior on spin { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+  property real spin: root.wheel.spinFade
 
   anchors.fill: parent
   // Stop compositing after the transition to search results.
