@@ -240,15 +240,12 @@ thing the wheel's geometry exists to avoid. Selection is the same signature
 everywhere -- accent fill, accent hairline, accent label -- on a disc, on a
 bead, and on a row of the file browser.
 
-Opening spins the comet once around the ring -- the wheel introduces itself
-with the streak it already draws. `spin` is a `Timer` that steps `arcTarget`
-by a whole slice every 25ms for one lap, and it has to work that way: the
-streak *is* the gap the two followers open up behind a jump, so a target that
-slides smoothly is tracked almost exactly and draws no trail at all. Eight
-45-degree jumps 25ms apart is the same 40Hz input a held arrow delivers, which
-is why it produces the same streak. Selecting during the lap stops the timer.
+Opening sends the selection bracket once around the ring. `spin` is a `Timer`
+that steps `arcTarget` by a whole slice every 25ms for one lap. The lap draws no
+streak: the trail and disc light wait for four seconds of sustained spin.
+Selecting during the lap stops the timer.
 
-The comet shows while anything is selected or while `arcDrag` is non-zero, so
+The bracket shows while anything is selected or while `arcDrag` is non-zero, so
 it stays up past the end of the lap for as long as the tail needs to catch up,
 then fades on its own.
 
