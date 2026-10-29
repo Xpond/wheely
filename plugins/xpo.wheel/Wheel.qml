@@ -54,6 +54,8 @@ Item {
     MenuIndex.lockItems(MenuIndex.lines(root.lockText))), root.userMenu)
   // [] is home; nested ids point at submenu rings.
   property var path: []
+  // Where the ring was before each submenu opened, so going up retraces the route.
+  property var trail: []
   readonly property string crumb: MenuIndex.crumb(root.menuItems, root.path)
   readonly property var conditions: MenuIndex.parseConditions(root.conditionText, root.menuItems)
   // Prefer the user's bar layout over the stock one.
@@ -377,6 +379,7 @@ Item {
     root.originX = -1
     root.query = ""
     root.path = []
+    root.trail = []
     root.launched = ""
     root.launchedAt = -1
     root.queued = null
@@ -510,7 +513,8 @@ Item {
 
   function up() {
     if (!root.path.length) return false
-    root.enter(root.path.slice(0, -1).join("."))
+    root.enter(root.trail[root.trail.length - 1].join("."))
+    root.trail = root.trail.slice(0, -1)
     return true
   }
 
@@ -520,7 +524,7 @@ Item {
     root.fileAction = ""
     if (root.editingRing) { root.pin(e); return }
     if (root.listing && root.listing !== "history") { root.addEntry(e); return }
-    if (e.node) { root.countUse(e); root.enter(e.node); return }
+    if (e.node) { root.countUse(e); root.trail = root.trail.concat([root.path]); root.enter(e.node); return }
     if (e.setting) { root.edit(e); return }
     if (e.manual) { root.readManual(); return }
     root.launchedAt = root.slices.indexOf(e)
