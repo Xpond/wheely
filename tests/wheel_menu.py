@@ -93,6 +93,7 @@ Item {
   property string editing: ""
   property real daylight: 0
   property real charge: 0
+  property real huePhase: 0
   property real hold: 0
   property int markWait: 0
   property real markOpacity: 0

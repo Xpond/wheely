@@ -16,7 +16,7 @@ disc, because a ring you have to read is slower than a word you can type.
       manifest.json    kinds: "overlay", "menu"; keepLoaded
       Wheel.qml        surface, geometry, state, and the comet
       WheelRing.qml    discs, labels, illumination and the disc mask
-      RingTrack.qml    ring shader bindings and the visible trail's clock
+      RingTrack.qml    ring shader bindings
       ring.frag       antialiased circle, fading trail and disc cutouts
       WheelResults.qml the ring unrolled: the ranked list and its rail
       WheelManual.qml  the manual sheet, filtered as you type
@@ -132,10 +132,10 @@ continues forward. At rest, the arc brackets the selected disc.
 
 After four seconds of sustained spin, the trail widens to at most two thirds
 of the ring and the resting circle fades out. The trail follows the same selection
-head throughout, so starting or ending the effects changes neither its position nor
-its speed. Selection's emphasis fades while spinning fast, so the comet carries the
-motion without the discs flashing on every key repeat. `tests/trails.js` checks the
-handoff and trail length.
+head throughout; starting or ending the effects eases its length and color over
+240ms without moving its tip. Selection's emphasis fades while spinning fast, so
+the comet carries the motion without the discs flashing on every key repeat.
+`tests/trails.js` checks the handoff and trail length.
 
 The dial's stroke runs through every disc's **center**, so slice labels sit
 outside the ring on their own spokes rather than hung under their discs -- a
@@ -197,15 +197,15 @@ omarchy restart shell
 
 `tests/scene.js`, included by `tests/check.js`, checks the shaders' QML
 uniform interfaces and the sky's arc, day/night, haze and light directions.
-`tests/trails.js` checks disc-light continuity, trail length, visible speed,
-and the transition between spinning and selection.
+`tests/trails.js` checks disc-light continuity, trail length, and the eased
+handoff between spinning and selection.
 Render visual checks on a graphics backend: Qt's offscreen software renderer
 does not reproduce the shaders and star blur.
 
 To rebuild `mark.png`, run `python3 scripts/generate-mark.py` with NumPy and
 ImageMagick available. The generator writes coverage to alpha, path distance
-to R, and bevel normal XY to GB. An optional output path after the stroke
-width allows comparison before replacing the shipped asset.
+to R, and bevel normal XY to GB. Optional arguments, a stroke width and then
+an output path, allow comparison before replacing the shipped asset.
 
 ## Transitions
 

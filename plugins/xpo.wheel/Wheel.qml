@@ -244,7 +244,7 @@ Item {
   // Bound illumination drag; cap the visible trail below.
   readonly property real arcDrag: Math.max(-300, Math.min(300, root.arcHead - root.arcTail))
   readonly property real arcFrom: root.arcDrag >= 0 ? root.arcHead + root.arcSpread - root.arcSpan : root.arcHead - root.arcSpread
-  readonly property real arcSpan: Math.min(240, (root.spinning ? Math.abs(root.arcDrag) : 0) + root.arcSpread * 2)
+  readonly property real arcSpan: Math.min(240, Math.abs(root.arcDrag) * root.spinFade + root.arcSpread * 2)
   // Charge tracks recent navigation; the effects wait for a sustained hold.
   property real charge: 0
 
@@ -252,6 +252,9 @@ Item {
   property real hold: 0
   property int markWait: 0
   readonly property bool spinning: root.markWait >= 4000
+  // Eases the trail, disc light and comet color in and out with the effects.
+  property real spinFade: root.spinning ? 1 : 0
+  Behavior on spinFade { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
   property real markOpacity: 0
   Behavior on markOpacity { NumberAnimation { duration: 40 } }
 
@@ -282,7 +285,7 @@ Item {
       root.charge = Math.max(0, root.charge - 0.09)
       root.markWait = root.charge > 0.6 && !root.searching ? Math.min(4000, root.markWait + 40) : 0
       if (root.spinning) {
-        root.markOpacity = root.hold === 0 ? 1 : Math.min(1, root.markOpacity + 0.08)
+        root.markOpacity = 1
         root.hold = Math.min(1, root.hold + 0.018)
       } else {
         root.markOpacity = Math.max(0, root.markOpacity - 0.2)
@@ -327,13 +330,12 @@ Item {
                    enc(-0.0041960863 * lb - 0.7034186147 * mb + 1.7076147010 * sb), 1)
   }
 
-  readonly property color cometColor: !root.spinning ? Commons.Color.accent
-    : root.cometAt(root.huePhase * root.charge, root.charge)
+  readonly property color cometColor: root.spinFade <= 0 ? Commons.Color.accent
+    : root.cometAt(root.huePhase * root.charge * root.spinFade, root.charge * root.spinFade)
 
   // Disc illumination follows the input head and eases at both ends.
   function sweepAt(deg) {
-    if (!root.spinning) return 0
-    var moving = Math.min(1, Math.abs(root.arcDrag) / root.arcSpread)
+    var moving = root.spinFade * Math.min(1, Math.abs(root.arcDrag) / root.arcSpread)
     if (moving <= 0) return 0
     var span = Math.abs(root.arcDrag) + root.arcSpread
     // Wrap ahead of the leading edge so long tails cross north intact.
@@ -943,6 +945,7 @@ Item {
     if (!root.opened) {
       root.dropScan()
       root.charge = 0
+      root.huePhase = 0
       root.hold = 0
       root.markWait = 0
       root.markOpacity = 0
