@@ -200,7 +200,7 @@ assert.equal(walk.dir, "/home/test", "and it does not climb past home on the way
 console.log("ok: backspace shortens, then climbs, then leaves for the wheel")
 
 // Going up lands on the folder just left, not on whichever row sorts first.
-const climber = { home: "/home/test", dir: "/home/test/a/docs",
+const climber = { home: "/home/test", dir: "/home/test/a/docs", folders: ["/mnt"],
   enter(d) { this.dir = F.within(d, ["/home/test", "/mnt"]); this.pending = "" } }
 const climb = method(source, "up", { root: climber, FilesIndex: F })
 climb()
@@ -213,8 +213,12 @@ climber.dir = "/mnt/share"
 climb()
 assert.deepEqual([climber.dir, climber.pending], ["/mnt", "share"])
 climb()
-assert.deepEqual([climber.dir, climber.pending], ["/home/test", ""], "above another root lies home")
+assert.deepEqual([climber.dir, climber.pending], ["/home/test", "/mnt"], "above another root lies home, on its row")
 assert.equal(F.within("/mnt2", ["/home/test", "/mnt"]), "/home/test", "a root matched a sibling")
+// Home lists the roots outside it, by full path, and only home does.
+const listed = dir => F.withRoots([{ name: "a" }], dir, "/home/test", ["/mnt", "/home/test/inside"]).map(e => e.name)
+assert.deepEqual([listed("/home/test"), listed("/home/test/"), listed("/mnt")], [["a", "/mnt"], ["a", "/mnt"], ["a"]],
+  "a root outside home is unreachable from it, or shows where it should not")
 console.log("ok: going up selects the folder it came from")
 
 // A click in a folder's preview enters that folder and lands on the entry; a double click opens it.
