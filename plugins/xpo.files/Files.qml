@@ -70,7 +70,8 @@ Item {
 
   // FolderListModel cannot combine directory filtering with our ranking.
   property var entries: []
-  readonly property var listedEntries: FilesIndex.withDeleted(root.entries, root.listedStatus, root.listedDir, "", root.showHidden)
+  readonly property var listedEntries: FilesIndex.withRoots(FilesIndex.withDeleted(root.entries, root.listedStatus,
+    root.listedDir, "", root.showHidden), root.listedDir, root.home, root.folders)
   readonly property string query: root.pathMode ? root.typedLeaf : root.filter
   readonly property var orderedEntries: FilesIndex.ordered(root.listedEntries, root.order)
   readonly property var rows: FilesIndex.matching(root.orderedEntries, root.query, root.order)
@@ -414,9 +415,10 @@ Item {
   // only with git's status, after the rows, so nothing is selected until it lands.
   function up() {
     var from = root.dir
-    // Above another root lies home, with nothing there to land on.
     root.enter(FilesIndex.parentOf(from))
+    // Above another root lies home, which lands on that root's row.
     if (root.dir === FilesIndex.parentOf(from)) { root.pending = from.slice(from.lastIndexOf("/") + 1); root.index = -1 }
+    else if (root.folders.indexOf(from) >= 0) { root.pending = from; root.index = -1 }
   }
 
   // A click on an entry in a folder's preview enters that folder, landing on the entry; the second
@@ -515,7 +517,7 @@ Item {
   property int renameAt: 0
 
   function beginRename() {
-    if (!root.sel || root.sel.missing || root.editing) return
+    if (!root.sel || root.sel.missing || root.sel.shortcut || root.editing) return
     root.renameTo = root.sel.name
     var dot = root.renameTo.lastIndexOf(".")
     root.renameAt = dot > 0 ? dot : root.renameTo.length
