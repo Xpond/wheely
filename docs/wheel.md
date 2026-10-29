@@ -125,17 +125,17 @@ wheel installed.
 the track hidden beneath translucent fills. The trail has softly fading ends
 and no exterior glow.
 
-`arcHead` and `arcTail` follow the selection at different speeds, and charge
-widens the gap; their separation is the trail's length and lights the discs it
-passes. `select()` accumulates the shortest angular delta, so crossing north
+`arcHead` and `arcTail` follow the selection at different speeds. Once the effects
+start, their separation sets the trail's length and lights the discs it passes.
+`select()` accumulates the shortest angular delta, so crossing north
 continues forward. At rest, the arc brackets the selected disc.
 
-During sustained spin, `RingTrack.qml` moves the visible head one lap every two
-seconds, independent of key repeat, with the trail covering at most two thirds
-of the ring and the resting circle faded out. On release the trail rejoins the
-selection along the shortest arc. Selection's emphasis fades while spinning
-fast, so the comet carries the motion without the discs flashing on every key
-repeat. `tests/trails.js` pins these speeds and lengths.
+After four seconds of sustained spin, the trail widens to at most two thirds
+of the ring and the resting circle fades out. The trail follows the same selection
+head throughout, so starting or ending the effects changes neither its position nor
+its speed. Selection's emphasis fades while spinning fast, so the comet carries the
+motion without the discs flashing on every key repeat. `tests/trails.js` checks the
+handoff and trail length.
 
 The dial's stroke runs through every disc's **center**, so slice labels sit
 outside the ring on their own spokes rather than hung under their discs -- a
@@ -147,16 +147,18 @@ the gap as the disc scales up.
 
 ## Logo and background points
 
-Sustained spinning draws the Omarchy mark along its strokes over about 2.2s, then
-a runner light keeps travelling the path, its tail fading behind it; releasing
-the key drains the reveal. The mark has rounded bevels, a satin finish and the
-wheel's `MultiEffect` shadow, lit by a grazing key light that is the `key`
+After the same four-second hold, the Omarchy mark draws along its strokes over
+about 2.2s, then a soft runner circles every 3s over a faint outline. Brief spins
+stay quiet; release quickly fades the whole scene, even mid-draw. Closing the wheel
+clears it immediately. The thin strokes have a satin finish without an offset edge
+or drop shadow, lit by a grazing key light that is the `key`
 uniform: it points at whichever of the sun or the moon is up (The day), so the
 mark is lit from the left at dawn, overhead at noon and from the right at dusk.
 The bevel normals are baked into `mark.png`'s GB channels.
 
 `QuietPoints.qml` fills cells of roughly 100×90px with stationary, jittered points
-in three sizes and brightnesses for depth, dimmer around the controls.
+in three sizes and brightnesses for depth, dimmer around the controls. Their soft
+white stays fixed while the comet changes color.
 
 ## The day
 
@@ -200,7 +202,7 @@ and the transition between spinning and selection.
 Render visual checks on a graphics backend: Qt's offscreen software renderer
 does not reproduce the shaders and star blur.
 
-To rebuild `mark.png`, run `python3 scripts/generate-mark.py 4` with NumPy and
+To rebuild `mark.png`, run `python3 scripts/generate-mark.py` with NumPy and
 ImageMagick available. The generator writes coverage to alpha, path distance
 to R, and bevel normal XY to GB. An optional output path after the stroke
 width allows comparison before replacing the shipped asset.

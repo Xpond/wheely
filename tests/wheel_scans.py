@@ -26,6 +26,10 @@ def check(wheel, run_case, block):
   property bool filesReady: false
   property var folders: """ + folders + """
   property real daylight: 0
+  property real charge: 0
+  property real hold: 0
+  property int markWait: 0
+  property real markOpacity: 0
   property string editing: ""
   function paths() { return root.filesReady ? JSON.stringify(root.fileResults.map(e => e.path).sort()) : "null" }
 """ + re.search(r"  readonly property string emptyText:.*?(?=\n\n)", wheel, re.S).group() + "\n"
