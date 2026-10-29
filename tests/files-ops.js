@@ -101,6 +101,13 @@ try {
   const after = calls.length
   ops.remove(); ops.remove()
   assert.equal(calls.length, after, "Delete must not trash while editing")
+  // A root's row at home is a way in, not a file: it cannot be held, renamed or trashed.
+  const place = { path: "/mnt", name: "/mnt", isDir: true, shortcut: true }
+  panel.editing = false; panel.sel = place; ops.held = null
+  ops.hold(place, true); ops.remove(); ops.remove()
+  const naming = { sel: place, editing: false, naming: "" }
+  method(panelSource, "beginRename", { root: naming })()
+  assert.deepEqual([ops.held, calls.length, naming.naming], [null, after, ""], "a root's row was held, trashed or renamed")
   assert.equal(fs.existsSync(path.join(base, "injected")), false)
 } finally {
   fs.rmSync(base, { recursive: true, force: true })

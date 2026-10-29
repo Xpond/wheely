@@ -16,7 +16,7 @@ Item {
   function note(text) { root.fileNote = text; noteFade.restart() }
 
   function hold(e, move) {
-    if (!e || e.missing) return
+    if (!e || e.missing || e.shortcut) return
     root.held = { path: e.path, name: e.name, move: !!move }
     root.note((move ? "moving " : "copying ") + e.name)
   }
@@ -82,7 +82,7 @@ Item {
   Timer { id: doomArmed; interval: 3000; onTriggered: root.doomed = "" }
   function remove() {
     var e = root.panel.sel
-    if (!e || e.missing || root.panel.editing) return
+    if (!e || e.missing || e.shortcut || root.panel.editing) return
     if (root.doomed !== e.path) {
       root.doomed = e.path
       doomArmed.restart()

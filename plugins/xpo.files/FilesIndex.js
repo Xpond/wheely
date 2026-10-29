@@ -276,6 +276,14 @@ function readStatus(text, under) {
 
 var UNCHANGED = readStatus("", "")
 
+// Roots outside home sit in home's listing as folders named by their full path: the way to walk to them.
+function withRoots(entries, dir, home, folders) {
+  if (dir.replace(/\/$/, "") !== home) return entries
+  return entries.concat(folders.filter(function (f) { return f.indexOf(home + "/") !== 0 }).map(function (f) {
+    return { name: f, path: f, isDir: true, size: 0, modified: null, shortcut: true }
+  }))
+}
+
 // Keep deleted files and their missing parent folders reachable in the existing list.
 function withDeleted(entries, status, dir, under, hidden) {
   var out = entries.slice(), seen = Object.create(null), deleted = status.deleted
