@@ -132,9 +132,10 @@ continues forward. At rest, the arc brackets the selected disc.
 
 After four seconds of sustained spin, the trail widens to at most two thirds
 of the ring and the resting circle fades out. The trail follows the same selection
-head throughout; starting or ending the effects eases its length and color over
-240ms without moving its tip. Selection's emphasis fades while spinning fast, so
-the comet carries the motion without the discs flashing on every key repeat.
+head throughout; starting or ending the effects eases its length over 240ms
+without moving its tip. The comet keeps the theme's accent color throughout.
+Selection's emphasis fades while spinning fast, so the comet carries the motion
+without the discs flashing on every key repeat.
 `tests/trails.js` checks the handoff and trail length.
 
 The dial's stroke runs through every disc's **center**, so slice labels sit
@@ -158,7 +159,7 @@ The bevel normals are baked into `mark.png`'s GB channels.
 
 `QuietPoints.qml` fills cells of roughly 100×90px with stationary, jittered points
 in three sizes and brightnesses for depth, dimmer around the controls. Their soft
-white stays fixed while the comet changes color.
+white stays fixed under the accent-colored comet.
 
 ## The day
 
