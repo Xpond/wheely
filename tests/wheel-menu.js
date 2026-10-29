@@ -92,10 +92,16 @@ console.log("ok: every panel the bar can open is searchable, on the ring or not"
   assert.deepEqual(binding("results", { root: hist, MenuIndex: M }).map(r => r.label), ["Lock", "a.txt"])
   assert.deepEqual([binding("listed", { root: hist }), binding("emptyText", { root: hist })], [[], "Nothing picked yet"])
   const added = []
-  const hr = { opened: true, listing: "history", editingRing: false, path: [], countUse() {}, addEntry(e) { added.push(e) } }
-  for (const name of ["run", "enter"]) hr[name] = method(wheelSource, name, { root: hr, spin: { restart() {} }, unmap: { running: false } })
+  const hr = { opened: true, listing: "history", editingRing: false, path: [], trail: [], countUse() {}, addEntry(e) { added.push(e) } }
+  for (const name of ["run", "enter", "up"]) hr[name] = method(wheelSource, name, { root: hr, spin: { restart() {} }, unmap: { running: false } })
   hr.run({ node: "system", label: "System" })
   assert.deepEqual([added.length, hr.listing, hr.path.join(".")], [0, "", "system"], "a submenu from history was added, or kept the list")
+  // Going up retraces the route: a submenu jumped to from search returns where the search began.
+  hr.run({ node: "style.bar" })
+  assert.deepEqual([hr.up(), hr.path.join(".")], [true, "system"], "a jump went up to its menu parent, not back")
+  hr.run({ node: "style" }); hr.run({ node: "style.bar" })
+  const route = [hr.up() && hr.path.join("."), hr.up() && hr.path.join("."), hr.up() && hr.path.join(".")]
+  assert.deepEqual([route, hr.up()], [["style", "system", ""], false], "stepping back down a walked route lost a level")
 
 }
 
@@ -113,5 +119,8 @@ console.log("ok: every panel the bar can open is searchable, on the ring or not"
   const slices = path => binding("slices", { root: { menuItems: items, path, conditions: cond, ring: [{ label: "Home" }] }, MenuIndex: M })
   assert.deepEqual([slices([]).map(e => e.label), slices(["s"]).map(e => e.label)], [["Home"], ["Full", "Tool ✓"]],
     "the ring did not show home, or a submenu's own rows")
+  const bar = { "p.top": { label: "Top" }, "p.bottom": { label: "Bottom" }, "p.left": { label: "Left" }, "p.right": { label: "Right" } }
+  assert.deepEqual(M.ringSlices(bar, ["p"], M.NO_CONDITIONS, []).map(e => e.label), ["Top", "Right", "Bottom", "Left"],
+    "a ring of directions does not sit where its labels point")
 }
 console.log("ok: submenus show what passes and list their own children, and descriptions search")
