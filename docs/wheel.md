@@ -51,7 +51,7 @@ key means and the dial performs it, which is what lets a test press a key.
 | `↑` `↓` `Ctrl+P` `Ctrl+N` | step the result list while searching |
 | `Ctrl+Home` `Ctrl+End` | the first and last of the forty results, from wherever you are |
 | type anything | search menu entries, apps, windows, themes and fonts |
-| `Backspace` | delete the character before the caret, then go up one level |
+| `Backspace` | delete the character before the caret, then go back to the ring you came from |
 | `Del` | delete the character after the caret |
 | `Ctrl+W` `Ctrl+Backspace` | delete the word before the caret |
 | `←` `→` | move the caret through the query; with `Ctrl`, a word at a time |
@@ -404,6 +404,10 @@ A `when` that fails hides the row, and a submenu whose children all failed is
 hidden too, so a slice never drills into an empty ring. A `checked` that holds
 appends ✓ to its row, on the ring and in search: the default browser,
 terminal, editor and agent, the DNS, the update channel.
+
+A submenu's slices run clockwise from north in menu order, except a ring made
+only of Top, Right, Bottom and Left: it puts each where it points, so the bar
+position menu matches the screen.
 
 Applications come from `shell.appLibrary` (`services/AppLibrary.qml`), which
 wraps Quickshell's `DesktopEntries`: it sorts, drops entries marked hidden,

@@ -350,8 +350,14 @@ function withList(raw, key, list) {
   return JSON.stringify(cfg, null, 2) + "\n"
 }
 
+// A ring of directions puts each where it points: the first slice is north, then clockwise.
+var COMPASS = ["top", "right", "bottom", "left"]
+
 function ringSlices(items, path, cond, ring) {
-  return path.length ? childrenOf(items, path.join("."), cond) : ring
+  if (!path.length) return ring
+  var out = childrenOf(items, path.join("."), cond)
+  var at = function (s) { return COMPASS.indexOf(s.label.toLowerCase()) }
+  return out.every(function (s) { return at(s) >= 0 }) ? out.sort(function (a, b) { return at(a) - at(b) }) : out
 }
 
 function panelRows(panels) {
