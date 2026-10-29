@@ -8,7 +8,7 @@ import numpy as np
 
 SRC = "/usr/share/omarchy/icon.png"
 UP = 4
-T = int(sys.argv[1]) if len(sys.argv) > 1 else 4
+T = int(sys.argv[1]) if len(sys.argv) > 1 else 2
 OUT = (sys.argv[2] if len(sys.argv) > 2 else
        str(Path(__file__).resolve().parents[1] / "plugins/xpo.wheel/mark.png"))
 

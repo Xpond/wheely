@@ -11,14 +11,10 @@ layout(std140, binding = 0) uniform buf {
     // Normalized path progress; runs slightly past 1 to reach the end.
     float reveal;
     float feather;
-    // How far back from the tip the stroke is still hot.
-    float head;
+    // How far back from the tip the light reaches, while drawing and running.
+    float tail;
     // The drawing tip's position, continuing forward as the runner once drawn.
     float phase;
-    // How far the runner's tail reaches back along the path.
-    float pulse;
-    // One screen pixel in texture coordinates, for the contact edge.
-    vec2 pixel;
     // Sky light direction in baked-normal space: negative X left, Y above.
     vec2 key;
     vec4 tint;
@@ -32,13 +28,9 @@ float trail(float along) {
     float drawn = 1.0 - smoothstep(reveal - feather, reveal, along);
     float behind = phase - along;
     if (phase >= 1.0) behind = fract(behind);
-    float tail = mix(head, pulse, smoothstep(0.80, 1.0, reveal));
-    return (1.0 - smoothstep(feather, tail, behind)) * drawn;
-}
-
-float coverage(vec2 uv) {
-    vec4 stroke = texture(source, uv);
-    return stroke.a * trail(stroke.r);
+    float hot = smoothstep(0.0, feather, behind) * (1.0 - smoothstep(feather, tail, behind));
+    // The trace leaves a quiet outline, so the moving light reads as part of a whole mark.
+    return (0.16 + 0.64 * hot) * drawn;
 }
 
 void main() {
@@ -50,10 +42,7 @@ void main() {
 
     float hot = trail(s.r);
     float a = ink * hot;
-    // Keep just a faint contact edge. The layer adds the diffuse shadow.
-    float side = coverage(qt_TexCoord0 - pixel);
-    float sideAlpha = side * 0.25 * (1.0 - a);
-    if (a == 0.0 && sideAlpha == 0.0) {
+    if (a == 0.0) {
         fragColor = vec4(0.0);
         return;
     }
@@ -77,6 +66,5 @@ void main() {
     face = clamp(face, 0.0, 1.0);
 
     // Qt Quick composites premultiplied.
-    fragColor = vec4(face * a + tint.rgb * 0.16 * sideAlpha,
-                     a + sideAlpha) * qt_Opacity;
+    fragColor = vec4(face * a, a) * qt_Opacity;
 }
