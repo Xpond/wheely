@@ -16,7 +16,7 @@ disc, because a ring you have to read is slower than a word you can type.
       manifest.json    kinds: "overlay", "menu"; keepLoaded
       Wheel.qml        surface, geometry, state, and the comet
       WheelRing.qml    discs, labels, illumination and the disc mask
-      RingTrack.qml    ring shader bindings and the visible trail's clock
+      RingTrack.qml    ring shader bindings
       ring.frag       antialiased circle, fading trail and disc cutouts
       WheelResults.qml the ring unrolled: the ranked list and its rail
       WheelManual.qml  the manual sheet, filtered as you type
@@ -125,17 +125,18 @@ wheel installed.
 the track hidden beneath translucent fills. The trail has softly fading ends
 and no exterior glow.
 
-`arcHead` and `arcTail` follow the selection at different speeds, and charge
-widens the gap; their separation is the trail's length and lights the discs it
-passes. `select()` accumulates the shortest angular delta, so crossing north
+`arcHead` and `arcTail` follow the selection at different speeds. Once the effects
+start, their separation sets the trail's length and lights the discs it passes.
+`select()` accumulates the shortest angular delta, so crossing north
 continues forward. At rest, the arc brackets the selected disc.
 
-During sustained spin, `RingTrack.qml` moves the visible head one lap every two
-seconds, independent of key repeat, with the trail covering at most two thirds
-of the ring and the resting circle faded out. On release the trail rejoins the
-selection along the shortest arc. Selection's emphasis fades while spinning
-fast, so the comet carries the motion without the discs flashing on every key
-repeat. `tests/trails.js` pins these speeds and lengths.
+After four seconds of sustained spin, the trail widens to at most two thirds
+of the ring and the resting circle fades out. The trail follows the same selection
+head throughout; starting or ending the effects eases its length over 240ms
+without moving its tip. The comet keeps the theme's accent color throughout.
+Selection's emphasis fades while spinning fast, so the comet carries the motion
+without the discs flashing on every key repeat.
+`tests/trails.js` checks the handoff and trail length.
 
 The dial's stroke runs through every disc's **center**, so slice labels sit
 outside the ring on their own spokes rather than hung under their discs -- a
@@ -147,16 +148,18 @@ the gap as the disc scales up.
 
 ## Logo and background points
 
-Sustained spinning draws the Omarchy mark along its strokes over about 2.2s, then
-a runner light keeps travelling the path, its tail fading behind it; releasing
-the key drains the reveal. The mark has rounded bevels, a satin finish and the
-wheel's `MultiEffect` shadow, lit by a grazing key light that is the `key`
+After the same four-second hold, the Omarchy mark draws along its strokes over
+about 2.2s, then a soft runner circles every 3s over a faint outline. Brief spins
+stay quiet; release quickly fades the whole scene, even mid-draw. Closing the wheel
+clears it immediately. The thin strokes have a satin finish without an offset edge
+or drop shadow, lit by a grazing key light that is the `key`
 uniform: it points at whichever of the sun or the moon is up (The day), so the
 mark is lit from the left at dawn, overhead at noon and from the right at dusk.
 The bevel normals are baked into `mark.png`'s GB channels.
 
 `QuietPoints.qml` fills cells of roughly 100×90px with stationary, jittered points
-in three sizes and brightnesses for depth, dimmer around the controls.
+in three sizes and brightnesses for depth, dimmer around the controls. Their soft
+white stays fixed under the accent-colored comet.
 
 ## The day
 
@@ -195,15 +198,15 @@ omarchy restart shell
 
 `tests/scene.js`, included by `tests/check.js`, checks the shaders' QML
 uniform interfaces and the sky's arc, day/night, haze and light directions.
-`tests/trails.js` checks disc-light continuity, trail length, visible speed,
-and the transition between spinning and selection.
+`tests/trails.js` checks disc-light continuity, trail length, and the eased
+handoff between spinning and selection.
 Render visual checks on a graphics backend: Qt's offscreen software renderer
 does not reproduce the shaders and star blur.
 
-To rebuild `mark.png`, run `python3 scripts/generate-mark.py 4` with NumPy and
+To rebuild `mark.png`, run `python3 scripts/generate-mark.py` with NumPy and
 ImageMagick available. The generator writes coverage to alpha, path distance
-to R, and bevel normal XY to GB. An optional output path after the stroke
-width allows comparison before replacing the shipped asset.
+to R, and bevel normal XY to GB. Optional arguments, a stroke width and then
+an output path, allow comparison before replacing the shipped asset.
 
 ## Transitions
 
@@ -237,15 +240,12 @@ thing the wheel's geometry exists to avoid. Selection is the same signature
 everywhere -- accent fill, accent hairline, accent label -- on a disc, on a
 bead, and on a row of the file browser.
 
-Opening spins the comet once around the ring -- the wheel introduces itself
-with the streak it already draws. `spin` is a `Timer` that steps `arcTarget`
-by a whole slice every 25ms for one lap, and it has to work that way: the
-streak *is* the gap the two followers open up behind a jump, so a target that
-slides smoothly is tracked almost exactly and draws no trail at all. Eight
-45-degree jumps 25ms apart is the same 40Hz input a held arrow delivers, which
-is why it produces the same streak. Selecting during the lap stops the timer.
+Opening sends the selection bracket once around the ring. `spin` is a `Timer`
+that steps `arcTarget` by a whole slice every 25ms for one lap. The lap draws no
+streak: the trail and disc light wait for four seconds of sustained spin.
+Selecting during the lap stops the timer.
 
-The comet shows while anything is selected or while `arcDrag` is non-zero, so
+The bracket shows while anything is selected or while `arcDrag` is non-zero, so
 it stays up past the end of the lap for as long as the tail needs to catch up,
 then fades on its own.
 

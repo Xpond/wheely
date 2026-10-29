@@ -241,30 +241,35 @@ Item {
   property real arcTail: root.arcTarget
   Behavior on arcTail { NumberAnimation { duration: 300 + 160 * root.charge; easing.type: Easing.OutCubic } }
   readonly property real arcSpread: root.sliceStep / 2 * 0.85
-  // Bound illumination drag; RingTrack owns the shorter visible trail.
+  // Bound illumination drag; cap the visible trail below.
   readonly property real arcDrag: Math.max(-300, Math.min(300, root.arcHead - root.arcTail))
   readonly property real arcFrom: root.arcDrag >= 0 ? root.arcHead + root.arcSpread - root.arcSpan : root.arcHead - root.arcSpread
-  readonly property real arcSpan: Math.min(240, Math.abs(root.arcDrag) + root.arcSpread * 2)
-  // Charge separates deliberate steps from sustained key-repeat spin.
+  readonly property real arcSpan: Math.min(240, Math.abs(root.arcDrag) * root.spinFade + root.arcSpread * 2)
+  // Charge tracks recent navigation; the effects wait for a sustained hold.
   property real charge: 0
 
-  // Hold reveals the mark only after sustained spin.
+  // Sustained spin draws the trace; release fades the whole scene without unwinding it.
   property real hold: 0
+  property int markWait: 0
+  readonly property bool spinning: root.markWait >= 4000
+  // Eases the trail and disc light in and out with the effects.
+  property real spinFade: root.spinning ? 1 : 0
+  Behavior on spinFade { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+  property real markOpacity: 0
+  Behavior on markOpacity { NumberAnimation { duration: 40 } }
 
   property real markReveal: root.hold * 1.05
   Behavior on markReveal { NumberAnimation { duration: 40 } }
 
-  // Pause the runner while the mark draws or drains.
+  // Pause the runner while the mark draws.
   property real markPhase: 0
   NumberAnimation on markPhase {
     running: root.markReveal > 0
     paused: running && root.markReveal < 1.05
     loops: Animation.Infinite
     from: 0; to: 1
-    duration: 1400
+    duration: 3000
   }
-
-  property real huePhase: 0
 
   // Unwrapped shared sky/fluid clock; about 7s per day at full spin.
   property real daylight: 0
@@ -273,57 +278,26 @@ Item {
   Timer {
     interval: 40
     repeat: true
-    running: root.charge > 0 || root.hold > 0
+    running: root.opened && (root.charge > 0 || root.hold > 0)
     onTriggered: {
       root.charge = Math.max(0, root.charge - 0.09)
-      root.hold = root.charge > 0.9
-        ? Math.min(1, root.hold + 0.018)
-        : Math.max(0, root.hold - 0.045)
-      if (root.charge <= 0) root.huePhase = 0
-      root.daylight += 0.0012 + 0.0045 * root.charge
+      root.markWait = root.charge > 0.6 && !root.searching ? Math.min(4000, root.markWait + 40) : 0
+      if (root.spinning) {
+        root.markOpacity = 1
+        root.hold = Math.min(1, root.hold + 0.018)
+      } else {
+        root.markOpacity = Math.max(0, root.markOpacity - 0.2)
+        if (root.markOpacity === 0) root.hold = 0
+      }
+      if (root.hold > 0) root.daylight += 0.0012 + 0.0045 * root.charge
     }
   }
 
-  // Rotate in OKLCH to keep perceived lightness and chroma stable across hues.
-  function cometAt(turns, amount) {
-    function cb(v) { return Math.pow(Math.max(0, v), 1 / 3) }
-    function lin(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
-    var c = Commons.Color.accent
-    var r = lin(c.r), g = lin(c.g), b = lin(c.b)
-    var la = cb(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
-    var ma = cb(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
-    var sa = cb(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
-    var L = 0.2104542553 * la + 0.7936177850 * ma - 0.0040720468 * sa
-    var A = 1.9779984951 * la - 2.4285922050 * ma + 0.4505937099 * sa
-    var B = 0.0259040371 * la + 0.7827717662 * ma - 0.8086757660 * sa
-
-    var C = Math.sqrt(A * A + B * B)
-    var h = Math.atan2(B, A) + turns * 2 * Math.PI
-    // Move low-chroma accents toward a visible palette as spin builds.
-    L += (0.78 - L) * amount
-    C += (0.13 - C) * amount
-
-    A = C * Math.cos(h)
-    B = C * Math.sin(h)
-    var lb = L + 0.3963377774 * A + 0.2158037573 * B
-    var mb = L - 0.1055613458 * A - 0.0638541728 * B
-    var sb = L - 0.0894841775 * A - 1.2914855480 * B
-    lb = lb * lb * lb; mb = mb * mb * mb; sb = sb * sb * sb
-    function enc(v) {
-      v = v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(Math.max(0, v), 1 / 2.4) - 0.055
-      return Math.max(0, Math.min(1, v))
-    }
-    return Qt.rgba(enc( 4.0767416621 * lb - 3.3077115913 * mb + 0.2309699292 * sb),
-                   enc(-1.2684380046 * lb + 2.6097574011 * mb - 0.3413193965 * sb),
-                   enc(-0.0041960863 * lb - 0.7034186147 * mb + 1.7076147010 * sb), 1)
-  }
-
-  readonly property color cometColor: root.charge <= 0 ? Commons.Color.accent
-    : root.cometAt(root.huePhase * root.charge, root.charge)
+  readonly property color cometColor: Commons.Color.accent
 
   // Disc illumination follows the input head and eases at both ends.
   function sweepAt(deg) {
-    var moving = Math.min(1, Math.abs(root.arcDrag) / root.arcSpread)
+    var moving = root.spinFade * Math.min(1, Math.abs(root.arcDrag) / root.arcSpread)
     if (moving <= 0) return 0
     var span = Math.abs(root.arcDrag) + root.arcSpread
     // Wrap ahead of the leading edge so long tails cross north intact.
@@ -775,7 +749,6 @@ Item {
     var n = root.sliceCount
     if (!n) return
     root.charge = Math.min(1, root.charge + 0.16)
-    root.huePhase += 0.012
     // A fresh ring steps from its north-facing resting slice.
     var from = root.selected < 0 ? root.nearestSlice(0) : root.selected
     root.select((from + step + n) % n)
@@ -932,6 +905,10 @@ Item {
     if (root.shell) root.shell.panelSurfaceVisible(root.opened)
     if (!root.opened) {
       root.dropScan()
+      root.charge = 0
+      root.hold = 0
+      root.markWait = 0
+      root.markOpacity = 0
       root.daylight = 0
       root.editing = ""
       // A tick later, so the unmap reaches Hyprland first.
@@ -1154,8 +1131,9 @@ Item {
     // Idle, the reveal scene holds ~44 MB, so it exists only while the mark shows.
     Loader {
       anchors.fill: parent
-      active: root.markReveal > 0
+      active: root.opened && root.markOpacity > 0
       asynchronous: true
+      opacity: root.markOpacity
       sourceComponent: Item {
         Sky {
           id: sky
@@ -1179,7 +1157,7 @@ Item {
           anchors.fill: parent
           progress: root.markReveal
           quietRadius: root.ringRadius + root.itemSize
-          tint: root.cometColor
+          tint: "#f5f3ed"
           daylight: sky.light
           haze: sky.dusk
         }
@@ -1197,20 +1175,11 @@ Item {
           height: width
           visible: root.hold > 0
           fragmentShader: Qt.resolvedUrl("logo.frag.qsb")
-          layer.enabled: visible
-          layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowOpacity: 0.65
-            shadowHorizontalOffset: 2
-            shadowVerticalOffset: 5
-          }
           property var source: logoMask
           readonly property real reveal: root.markReveal
-          readonly property real feather: 0.02
-          readonly property real head: 0.10
+          readonly property real feather: 0.035
+          readonly property real tail: 0.28
           readonly property real phase: root.markReveal + root.markPhase
-          readonly property real pulse: 0.12
-          readonly property vector2d pixel: Qt.vector2d(1 / width, 1 / height)
           readonly property vector2d key: sky.keyDirection
           readonly property color keyColor: sky.keyColor
           readonly property real keyStrength: sky.keyStrength
