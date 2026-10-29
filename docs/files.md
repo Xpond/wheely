@@ -105,6 +105,11 @@ resolves *to* home rather than being refused, so going up from a searched folder
 lands at home. There is no state the panel can be left holding that it cannot
 get out of.
 
+Each root outside home is listed at home as a folder named by its full path
+(`/mnt`), so it is a walk away and a held copy or move can be carried there;
+going up from it lands back on its row. The row stands for the root itself, so
+it cannot be held, renamed or trashed.
+
 It tests `root + "/"` rather than a bare prefix, because `/home/xpo2` starts
 with `/home/xpo` and is not inside it.
 

@@ -171,7 +171,7 @@ if name == 'old.txt':
   property int stage: 0
   QtObject { id: preview; function resetScroll() {} }
 ''' + files[start:end].replace('Qt.resolvedUrl("git-preview.py")', json.dumps(str(repo / "plugins/xpo.files/git-preview.py")))
-        + "".join(line(files, p) for p in [r"^  readonly property var listedEntries: .*", r"^  readonly property var orderedEntries: .*",
+        + "".join(line(files, p) for p in [r"^  readonly property var listedEntries: .*(?:\n    .*)*", r"^  readonly property var orderedEntries: .*",
                                            r"^  readonly property var rows: .*"])
         + block(files, r"^  FolderListModel \{\n    id: listedFolder") + '''
   Component.onCompleted: root.readChanges()
@@ -228,7 +228,7 @@ if name == 'old.txt':
 ''' + files[files.index("  // A leading / or ~ enters"):files.index("  property bool showHidden:")]
         + files[start:end].replace('Qt.resolvedUrl("git-preview.py")', json.dumps(str(repo / "plugins/xpo.files/git-preview.py")))
                           .replace("interval: 60", "interval: 1")
-        + "".join(line(files, p) for p in [r"^  readonly property var listedEntries: .*", r"^  readonly property string query: .*",
+        + "".join(line(files, p) for p in [r"^  readonly property var listedEntries: .*(?:\n    .*)*", r"^  readonly property string query: .*",
                                            r"^  readonly property var orderedEntries: .*", r"^  readonly property var rows: .*"])
         + files[files.index("  readonly property var sel:"):files.index("  // Debounce preview work")]
         + files[files.index("  // A one-shot selection"):files.index("  function close()")]
