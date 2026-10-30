@@ -201,6 +201,17 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: stock comes from the cached package when needed, and is never guessed")
 
+    # An edited block is reported, but revert still restores Omarchy's files.
+    assert fixture.run().returncode == 0
+    lua = fixture.user / ".config/hypr/hyprland.lua"
+    lua.write_text(lua.read_text().replace("-- END wheely\n", "-- my edit\n-- END wheely\n"))
+    result = fixture.run("revert.sh")
+    assert result.returncode == 1 and "was edited" in result.stderr, result.stderr
+    assert fixture.all_stock() and not hook.exists()
+    lua.write_text(lua.read_text().replace("-- my edit\n", ""))
+    assert fixture.run("revert.sh").returncode == 0 and "BEGIN wheely" not in lua.read_text()
+    print("ok: an edited Hyprland block does not stop revert restoring the shell")
+
     fixture.publish(fixture.stock, "4.0.5-1")
     result = fixture.run()
     assert result.returncode == 1 and "needs Omarchy 4.0.6 or newer" in result.stderr, result.stderr

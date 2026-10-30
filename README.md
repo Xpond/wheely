@@ -81,7 +81,8 @@ button opens native mpv, which Omarchy includes.
 
 Removes the hook, plugins, Hyprland block and helper links, puts back Omarchy's
 original shell files, and unlinks the lock-screen designs and forgets the chosen one
-after a successful restore, then restarts the shell. Originals are checked against
+after a successful restore, then restarts the shell. It also works from a TTY or over
+SSH when the desktop will not start. Originals are checked against
 pacman's checksums before they are written, and a shell file changed outside
 this project is left untouched and reported.
 Your settings stay: `wheel.json`, `wheel-blur`, `wheel-shortcut` and
