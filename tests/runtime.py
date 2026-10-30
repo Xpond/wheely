@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-runtime-") as temporary:
         assert not Path(f"/proc/{pidfile.read_text()}").exists(), "scanner was not reaped"
     print("ok: closed scan reader stays quiet and reaps its child")
 
-    for path in ["xpo.files/FilesIndex.js", "xpo.files/FilesList.qml", "xpo.files/FilesPreview.qml",
+    for path in ["xpo.files/FilesIndex.js", "xpo.files/FilesProcess.qml", "xpo.files/FilesList.qml", "xpo.files/FilesPreview.qml",
                  "xpo.wheel/MenuIndex.js", "xpo.wheel/scan.py", "xpo.wheel/MenuKeys.js", "xpo.wheel/WheelResults.qml",
                  "xpo.wheel/ClickShield.qml", "xpo.wheel/PanelIcon.qml"]:
         shutil.copyfile(repo / "plugins" / path, base / Path(path).name)

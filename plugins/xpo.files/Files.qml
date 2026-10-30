@@ -611,11 +611,20 @@ Item {
     onStatusChanged: if (status === FolderListModel.Ready) root.relist()
     onCountChanged: if (status === FolderListModel.Ready) root.relist()
   }
-  property bool unlisted: false
+  readonly property bool unlisted: !root.entries.length
+                                   && (listedFolder.count > 0 || root.unreadable === root.listedDir)
   function relist() {
     root.entries = FilesIndex.snapshot(listedFolder, root.listedDir)
-    root.unlisted = listedFolder.count > 0 && !root.entries.length
   }
+
+  // FolderListModel lists an unreadable or gone folder as empty and its signals can't tell, so each
+  // folder entered is asked, and a previewed one when it lists empty.
+  property string unreadable: ""
+  function checkAccess(dir) {
+    access.start(["sh", "-c", 'test -r "$1" -a -x "$1" || printf %s "$1"', "files", dir])
+  }
+  onListedDirChanged: root.checkAccess(root.listedDir)
+  FilesProcess { id: access; onFinished: output => root.unreadable = output }
 
   FolderListModel {
     id: childFolder
@@ -626,7 +635,10 @@ Item {
     onCountChanged: if (status === FolderListModel.Ready) root.dirEntries = root.childEntries()
   }
 
-  readonly property bool childUnlisted: childFolder.count > 0 && !root.dirEntries.length
+  readonly property bool childUnlisted: !root.dirEntries.length && !!root.settledSel
+    && (childFolder.count > 0 || root.unreadable === root.settledSel.path)
+  onDirEntriesChanged: if (!root.dirEntries.length && root.settledSel && root.settledSel.isDir)
+    root.checkAccess(root.settledSel.path)
   function childEntries() {
     if (!root.settledSel || !root.settledSel.isDir) return []
     // One past what the preview displays preserves its overflow ellipsis.
