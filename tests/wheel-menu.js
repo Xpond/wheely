@@ -36,9 +36,9 @@ assert.deepEqual(M.panels(M.barWidgets(JSON.stringify({ bar: { layout: {
 console.log("ok: a string alias and a bare-id bar widget read as Omarchy reads them")
 
 // Any script's letters are words; a query of symbols alone matches nothing.
-const scripts = ["Телеграм", "日本語入力", "Café Bar", "Wi-Fi"].map(label => ({ label, kind: M.KIND.app, keywords: label }))
-assert.deepEqual(["тел", "日本", "café", "bar", "wifi", "++", "—"].map(q => M.search(scripts, q, 40, {}).map(r => r.label)),
-  [["Телеграм"], ["日本語入力"], ["Café Bar"], ["Café Bar"], ["Wi-Fi"], [], []])
+const scripts = ["Телеграм", "日本語入力", "Café Bar", "Wi-Fi", "ⲁⲗⲫⲁ"].map(label => ({ label, kind: M.KIND.app, keywords: label }))
+assert.deepEqual(["тел", "日本", "café", "bar", "wifi", "ⲁⲗ", "++", "—"].map(q => M.search(scripts, q, 40, {}).map(r => r.label)),
+  [["Телеграм"], ["日本語入力"], ["Café Bar"], ["Café Bar"], ["Wi-Fi"], ["ⲁⲗⲫⲁ"], [], []])
 console.log("ok: non-Latin names are found, and a symbol-only query matches nothing")
 
 // A holding `checked` marks its row wherever it shows, as do the current theme and font, and an

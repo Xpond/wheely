@@ -606,8 +606,8 @@ function bindingAt(raw, combo) {
 }
 
 // Letters of any script are word characters; V4 has no \p{L}, so punctuation and symbols are the
-// ASCII ones, U+2000-U+303F, and what sits between.
-var NON_WORD = /[^a-z0-9\u00c0-\u1fff\u3040-\uffff]+/g
+// ASCII ones, U+2000-U+2BFF, U+2E00-U+303F, and what sits between.
+var NON_WORD = /[^a-z0-9\u00c0-\u1fff\u2c00-\u2dff\u3040-\uffff]+/g
 
 // Menu terms start words; app and window text also accepts substrings.
 // Windows rank as direct hits unless a term only matched inside a word; squashed text keeps
