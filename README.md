@@ -36,7 +36,7 @@ A radial control center, a file browser and centered shell panels for
   `omarchy-shell lock preview`. Work in progress; see
   [`docs/lockscreen.md`](docs/lockscreen.md).
 
-Tested only on Omarchy 4.0.6 with Quickshell 0.3.2. It patches the packaged
+Tested only on Omarchy 4.0.6 with Quickshell 0.3.2, and refuses older releases. It patches the packaged
 shell, so it is not a plugin `omarchy plugin add` can install.
 
 [Tidal](themes/tidal/README.md) is our independent light Omarchy theme: an
@@ -98,8 +98,9 @@ Everything else stays in your home directory.
 Because the package owns them, `omarchy update` overwrites them. The hook then
 reruns `install.sh`, which merges the patches onto the new version; a conflict
 leaves the shipped file as it is and is reported, on the desktop too when
-`notify-send` is available. The lock screen's two files are patched together or
-not at all, so a conflict in either leaves Omarchy's own lock screen working.
+`notify-send` is available. The lock screen's two files are never merged: when an
+update changes either, both stay Omarchy's own until wheely is updated for it
+(`git pull && ./install.sh`).
 
 ## License
 

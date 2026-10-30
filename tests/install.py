@@ -134,29 +134,33 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     (fixture.shell / relative).write_bytes(fixture.stock[relative])
     print("ok: a package update is rebased onto outside the checkout, and revert restores the updated stock file")
 
-    # A lock file left stock holds back its partner, even one that rebased cleanly.
+    # An upstream change to either lock file keeps Omarchy's own lock: never merged, both stay stock.
     lock = ["plugins/lock/LockView.qml", "plugins/lock/Service.qml"]
+    for changed in lock:
+        update = {**fixture.stock, changed: b"// upstream addition\n" + fixture.stock[changed]}
+        fixture.publish(update)
+        (fixture.shell / changed).write_bytes(update[changed])
+        result = fixture.run()
+        assert result.returncode == 0 and "Lock screen left as Omarchy's" in result.stdout, result.stdout + result.stderr
+        assert all(fixture.installed(relative) == update[relative] for relative in lock), changed
+        assert fixture.installed("shell.qml") == fixture.patched("shell.qml")
+        assert fixture.run("revert.sh").returncode == 0
+        fixture.publish(fixture.stock)
+        (fixture.shell / changed).write_bytes(fixture.stock[changed])
+    print("ok: an upstream change to either lock file keeps Omarchy's own lock pair")
+
+    # A lock file left stock holds back its partner.
     notes = fixture.user / ".local/state/omarchy/notifications"
     notes.mkdir(parents=True)
     toast = {"app": "notify-send", "summary": "wheely", "body": "Not patched: plugins/lock/Service.qml"}
     (notes / "1-1.json").write_text(json.dumps(toast))
-    for conflicted, partner in [lock, lock[::-1]]:
-        update = {**fixture.stock, conflicted: fixture.stock[conflicted].replace(b"\n", b" \n"),
-                  partner: b"// upstream addition\n" + fixture.stock[partner]}
-        fixture.publish(update)
-        for relative in lock:
-            (fixture.shell / relative).write_bytes(update[relative])
-        result = fixture.run()
-        assert result.returncode == 1 and f"rebased onto new upstream: {partner}" in result.stdout, result.stderr
-        assert all(fixture.installed(relative) == update[relative] for relative in lock), partner
-        assert "Held back" in result.stderr and partner in result.stderr, result.stderr
-        assert (notes / "1-1.json").exists()
-        assert not (rebased / "shell" / conflicted).exists()  # no conflict markers to publish
-        assert fixture.installed("shell.qml") == fixture.patched("shell.qml")
-        assert fixture.run("revert.sh").returncode == 0
-        fixture.publish(fixture.stock)
-        for relative in lock:
-            (fixture.shell / relative).write_bytes(fixture.stock[relative])
+    edited = fixture.stock[lock[0]] + b"// personal edit\n"
+    (fixture.shell / lock[0]).write_bytes(edited)
+    result = fixture.run()
+    assert result.returncode == 1 and "Held back" in result.stderr and lock[1] in result.stderr, result.stderr
+    assert fixture.installed(lock[0]) == edited and fixture.installed(lock[1]) == fixture.stock[lock[1]]
+    assert (notes / "1-1.json").exists()
+    (fixture.shell / lock[0]).write_bytes(fixture.stock[lock[0]])
     assert fixture.run().returncode == 0
     assert (notes / "history/1-1.json").exists() and not (notes / "1-1.json").exists()
     assert fixture.run("revert.sh").returncode == 0
@@ -196,3 +200,9 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     (fixture.package / "hidden").rename(fixture.package / "local")
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: stock comes from the cached package when needed, and is never guessed")
+
+    fixture.publish(fixture.stock, "4.0.5-1")
+    result = fixture.run()
+    assert result.returncode == 1 and "needs Omarchy 4.0.6 or newer" in result.stderr, result.stderr
+    assert fixture.all_stock() and not asset_dir.exists() and not hook.exists()
+    print("ok: an older Omarchy is refused before anything changes")
