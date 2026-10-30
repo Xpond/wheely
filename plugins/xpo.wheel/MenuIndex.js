@@ -11,6 +11,13 @@ function parse(raw) {
   }
 }
 
+// Only objects are entries, as Omarchy reads a menu file: a null or a string never replaces a default.
+function menuOf(raw) {
+  var cfg = parse(raw), out = {}
+  for (var id in cfg) if (cfg[id] && typeof cfg[id] === "object" && !Array.isArray(cfg[id])) out[id] = cfg[id]
+  return out
+}
+
 function merge(defaults, user) {
   var out = {}
   for (var a in defaults) out[a] = defaults[a]
@@ -279,17 +286,17 @@ function populated(items, cond) {
 
 function shows(id, e, cond) {
   if (!passes(e, id, cond)) return false
-  return e.action || e.provider || !cond.ready || cond.full[id] === true
+  return e.action || e.provider || !cond.ready || cond.full[e.target || id] === true
 }
 
-// Providers hand off to Omarchy; nodes carry the id the ring drills into. Omarchy's own marks
-// sit in a font of their own, at codepoints a Nerd Font fills with other glyphs.
+// Providers hand off to Omarchy; nodes carry the id the ring drills into, a link its target's.
+// Omarchy's own marks sit in a font of their own, at codepoints a Nerd Font fills with other glyphs.
 function entryOf(id, e, cond) {
   var s = { id: id, icon: e.icon || "󰍜", label: (e.label || id) + (cond.checked[id] ? " ✓" : "") }
   if (e.iconFont) s.iconFont = e.iconFont
   if (e.action) s.action = e.action
   else if (e.provider) s.action = "omarchy-menu summon " + id
-  else s.node = id
+  else s.node = e.target || id
   return s
 }
 

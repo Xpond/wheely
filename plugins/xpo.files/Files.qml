@@ -136,6 +136,7 @@ Item {
   // and twice as many whenever scrolling nears their end.
   property string fullText: ""
   property bool utf8: false
+  property bool rewrites: false
   property int shownLines: 1
   // The diff takes the file's place in the preview; edits still start from the file.
   readonly property string shownText: root.showsDiff ? root.diffText : root.fullText
@@ -143,7 +144,7 @@ Item {
   readonly property bool previewCut: root.previewText !== root.shownText
   function showAll() { root.shownLines = root.shownText.split("\n").length }
   onPreviewPathChanged: {
-    root.fullText = ""; root.utf8 = false; root.previewHtml = ""; root.saving = null
+    root.fullText = ""; root.utf8 = false; root.rewrites = false; root.previewHtml = ""; root.saving = null
     root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / Style.font.subtitle))
   }
 
@@ -465,14 +466,15 @@ Item {
   property bool editing: false
   property bool dirty: false
   property bool saveError: false
-  // Never edit non-UTF-8 text; saving it would lose data.
-  readonly property bool editable: root.utf8 && !!root.previewPath
+  // Never edit text a save would change: non-UTF-8, or characters the editor rewrites.
+  readonly property bool editable: root.utf8 && !!root.previewPath && !root.rewrites
                                    && (!!root.fullText || root.settledSel.size === 0)
 
   // Saves go only to the file the edit began on.
   property string editedPath: ""
   function edit() {
     if (root.previewPath && !root.utf8) { ops.note("not UTF-8; preview only"); return }
+    if (root.rewrites) { ops.note("text the editor would change; preview only"); return }
     if (!root.editable || root.editing) return
     root.editedPath = root.previewPath
     ops.fileNote = ""
@@ -649,7 +651,11 @@ Item {
     // Preserve the old file if a write stops partway.
     atomicWrites: true
     onLoaded: {
+      // A file grown past the limit since it was listed is not decoded here: 200 MB blocks for seconds.
+      // A save's own read-back still verifies.
+      if (root.saving === null && data().byteLength > root.previewLimit) return
       root.utf8 = FilesIndex.isUtf8(data())
+      root.rewrites = FilesIndex.hasBom(data()) || FilesIndex.rewritten(text())
       root.fullText = FilesIndex.looksBinary(text()) ? "" : text()
       // Typing during save verification leaves the editor dirty.
       if (root.saving !== null) {
