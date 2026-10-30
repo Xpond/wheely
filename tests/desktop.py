@@ -192,7 +192,7 @@ def check():
 
     # The shortcut and blur files are data: a key the row could have written is bound, anything else is
     # the default, and "off" turns the backdrop's blur, and Hyprland's, off. Windows keep the blur they
-    # had. The pause key is bound with either animated theme installed; the wheel's key wins a clash.
+    # had. The pause key is bound only while an animated theme is active; the wheel's key wins a clash.
     for name, saved, key, blur, pause in [("wheel-shortcut", None, "SUPER + A", "on", None),
                                           ("wheel-shortcut", "SUPER + SHIFT + B\n", "SUPER + SHIFT + B", "on", None),
                                           ("wheel-shortcut", "  ALT + SPACE \r\n", "ALT + SPACE", "on", None),
@@ -210,19 +210,29 @@ def check():
             if saved is not None:
                 (Path(home) / ".config/omarchy").mkdir(parents=True)
                 (Path(home) / ".config/omarchy" / name).write_text(saved)
+            def lua(*expected):
+                subprocess.run(["lua", str(source / "tests/desktop.lua"), str(source / "config/hyprland.lua"),
+                                key, blur, *expected], check=True, cwd=home, env=dict(os.environ, HOME=home))
+            def activate(theme):
+                state = Path(home) / ".local/state/omarchy/current"
+                state.mkdir(parents=True, exist_ok=True)
+                (state / "theme.name").write_text(theme + "\n")
             if pause:
-                (Path(home) / ".config/omarchy/themes/wheelie").mkdir(parents=True)
-                (Path(home) / ".config/omarchy/themes/wheelie/wheelie").touch()
-            subprocess.run(["lua", str(source / "tests/desktop.lua"), str(source / "config/hyprland.lua"), key, blur,
-                            *([pause] if pause else [])],
-                           check=True, cwd=home, env=dict(os.environ, HOME=home))
+                for theme in ["wheelie", "tidal"]:
+                    (Path(home) / ".config/omarchy/themes" / theme).mkdir(parents=True)
+                    (Path(home) / ".config/omarchy/themes" / theme / theme).touch()
+                activate("wheelie")
+            lua(*([pause] if pause else []))
             assert not (Path(home) / "pwned").exists()
             if pause:
-                (Path(home) / ".config/omarchy/themes/wheelie/wheelie").unlink()
-                (Path(home) / ".config/omarchy/themes/tidal").mkdir()
-                (Path(home) / ".config/omarchy/themes/tidal/tidal").touch()
-                subprocess.run(["lua", str(source / "tests/desktop.lua"), str(source / "config/hyprland.lua"),
-                                key, blur, pause], check=True, cwd=home, env=dict(os.environ, HOME=home))
+                activate("tidal")
+                lua(pause)
+                # Installed but not active: the key stays the app's, for an IME or autocomplete.
+                activate("tokyo-night")
+                lua()
+                (Path(home) / ".config/omarchy/themes/tidal/tidal").unlink()
+                activate("tidal")
+                lua()
     print("ok: shipped Lua binds the direct shortcut and pause key as saved, render environment and shared blur")
 
 

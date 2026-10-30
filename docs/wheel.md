@@ -583,7 +583,8 @@ cancels. Saved to `~/.config/omarchy/wheel-shortcut`, then Hyprland reloads.
 Pressing the shortcut with the wheel up closes it.
 
 **Wallpaper pause** (`CTRL + SPACE`), while Wheelie or Tidal is installed: the
-key that pauses and resumes the active theme's scene, recorded the same way. SUPER is optional
+key that pauses and resumes the active theme's scene, recorded the same way. It is bound only
+while one of them is the active theme; otherwise apps keep it. SUPER is optional
 here, as the default shows, but the combo needs CTRL, ALT or SUPER, and the
 wheel's own keys are refused. Saved to
 `~/.config/omarchy/wallpaper-pause-shortcut`, then Hyprland reloads.
