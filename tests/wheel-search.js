@@ -42,21 +42,22 @@ assert.deepEqual(M.search(spread, "workspace 2", 40, {}).map(r => r.label), ["Se
 
 // An independent scorer keeps stable ties in input order and returns original rows.
 function reference(rows, query, limit, uses) {
+  const sep = /[^\p{L}\p{M}\p{N}]+/gu
   const q = query.trim().toLowerCase()
-  if (!q) return []
-  const terms = q.split(/[^a-z0-9]+/).filter(Boolean)
-  const squashed = q.replace(/[^a-z0-9]+/g, "")
-  const spaced = q.replace(/[^a-z0-9]+/g, " ").trim()
+  const terms = q.split(sep).filter(Boolean)
+  const squashed = q.replace(sep, "")
+  if (!squashed) return []
+  const spaced = q.replace(sep, " ").trim()
   const tokens = text => {
     const low = String(text || "").toLowerCase()
-    return low.split(/[^a-z0-9]+/).filter(Boolean).concat(low.replace(/[^a-z0-9]+/g, ""))
+    return low.split(sep).filter(Boolean).concat(low.replace(sep, ""))
   }
   return rows.map((entry, i) => {
-    const label = entry.label.toLowerCase().replace(/[^a-z0-9]+/g, "")
+    const label = entry.label.toLowerCase().replace(sep, "")
     const words = tokens(entry.keywords), ident = tokens(entry.ident)
     const partial = entry.kind === M.KIND.app || entry.kind === M.KIND.window
     if (!terms.every(t => words.some(w => partial ? w.includes(t) : w.startsWith(t)) || ident.includes(t))) return null
-    const labelWords = " " + entry.label.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+    const labelWords = " " + entry.label.toLowerCase().replace(sep, " ").trim()
       + " " + label + " "
     const inside = terms.some(t => !words.some(w => w.startsWith(t)))
     const rank = entry.kind === M.KIND.window && !inside || label.startsWith(squashed) ? 0
@@ -70,7 +71,7 @@ function reference(rows, query, limit, uses) {
 }
 
 const labels = ["Wi-Fi", "Wifi Settings", "Lock", "Lockscreen Designs", "Alacritty", "Visual Studio Code",
-  "System Monitor", "Open Files", "Files", "éclair", "हिन्दी", "Audio Output", "Music", "---"]
+  "System Monitor", "Open Files", "Files", "éclair", "हिन्दी", "Телеграм", "Audio Output", "Music", "---"]
 function fixture(renamed = false) {
   const menu = {}
   for (let i = 0; i < 200; i++) menu["test.item" + i] = {
@@ -85,7 +86,7 @@ function fixture(renamed = false) {
     M.liveRows({ apps, windows, focusOrder: [] }), M.styles(labels, "", labels, ""))
 }
 const queries = ["", "  ", "a", "app", "ap", "0", "wifi", "wi fi", "wi-fi", "lock", "lockscreen",
-  "files", "open f", "system", "sys m", "audio output", "screen", "utility", "renamed", "é", "हिन्दी",
+  "files", "open f", "system", "sys m", "audio output", "screen", "utility", "renamed", "é", "हिन्दी", "тел",
   "---", "...", "  LOCK  ", "@#", "zzzz", "visual code", "audio - o", "acrit", "itor"]
 let checked = 0
 for (const renamed of [false, true]) {

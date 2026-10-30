@@ -608,10 +608,14 @@ function bindingAt(raw, combo) {
 // Menu terms start words; app and window text also accepts substrings.
 // Windows rank as direct hits unless a term only matched inside a word; squashed text keeps
 // "wifi" matching "Wi-Fi".
+// Letters of any script are word characters; V4 has no \p{L}, so punctuation and symbols are the
+// ASCII ones, U+2000-U+303F, and what sits between.
+var NON_WORD = /[^a-z0-9\u00c0-\u1fff\u3040-\uffff]+/g
+
 function words(text) {
   var low = String(text || "").toLowerCase()
-  return " " + low.replace(/[^a-z0-9]+/g, " ").trim()
-       + " " + low.replace(/[^a-z0-9]+/g, "") + " "
+  return " " + low.replace(NON_WORD, " ").trim()
+       + " " + low.replace(NON_WORD, "") + " "
 }
 
 function startsWord(padded, term) {
@@ -623,15 +627,16 @@ function wholeWord(padded, term) {
 }
 
 function squash(text) {
-  return String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, "")
+  return String(text || "").toLowerCase().replace(NON_WORD, "")
 }
 
 function search(index, query, limit, uses) {
   var q = String(query || "").trim().toLowerCase()
-  if (!q) return []
-  var terms = q.split(/[^a-z0-9]+/)
-  var spaced = q.replace(/[^a-z0-9]+/g, " ").trim()
   var squashed = squash(q)
+  // A query of symbols alone has no term to match.
+  if (!squashed) return []
+  var terms = q.split(NON_WORD)
+  var spaced = q.replace(NON_WORD, " ").trim()
   var hits = []
   for (var i = 0; i < index.length; i++) {
     var e = index[i]
