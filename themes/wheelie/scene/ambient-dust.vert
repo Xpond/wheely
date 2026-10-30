@@ -3,6 +3,7 @@ layout(location = 0) in vec4 qt_Vertex;
 layout(location = 1) in vec2 qt_MultiTexCoord0;
 layout(location = 0) out vec2 uv;
 layout(location = 1) out float fade;
+layout(location = 2) out vec2 place;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
@@ -20,6 +21,7 @@ layout(std140, binding = 0) uniform buf {
     vec3 sizes;
     vec4 shape;
     vec4 tint;
+    vec4 force; // Acceleration, drag, and the row a falling grain lands on; 0 for none.
 };
 
 // A full-period generator with intermediates that remain exact in 32-bit floats.
@@ -60,9 +62,13 @@ void main() {
     float t = age / life;
     float size = max(3.0, mix(max(0.0, sizes.x + offset), max(0.0, sizes.y + offset), t * t));
     fade = clamp(t * 10.0, 0.0, 1.0) * clamp((1.0 - t) * 4.0, 0.0, 1.0);
-    if (age > life) size = 0.0;
+    float drag = force.z;
+    vec2 centre = origin + (drag > 0.0 ? speed * (1.0 - exp(-drag * age)) / drag : age * speed)
+                + 0.5 * force.xy * age * age;
+    if (age > life || (force.w > 0.0 && centre.y > force.w)) size = 0.0;
     vec2 corner = (uv - 0.5) * size * shape.xy;
     float c = cos(angle), s = sin(angle);
-    vec2 position = origin + age * speed + mat2(c, s, -s, c) * corner;
+    vec2 position = centre + mat2(c, s, -s, c) * corner;
+    place = position / extent;
     gl_Position = qt_Matrix * vec4(position, 0.0, 1.0);
 }

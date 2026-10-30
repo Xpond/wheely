@@ -79,7 +79,15 @@ behind the bar. Pausing holds every particle in place.
 - `HorizonStorm.qml` times the storm; `storm-wall.frag` scales and gently distorts
   `storm.png`, which holds only the dust and is 6336 pixels wide, so it never enlarges
   over the native scene.
-- `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities;
+- `Surface.qml` runs one clock at 60 updates a second. A Qt animation or `ParticleSystem`
+  would redraw at the display's own rate, so the scene uses neither; on a 144 Hz display
+  that alone cost 2.4 times the frames.
+- Only what moves is redrawn. `view` holds the still scene, storm included, in one graded
+  texture that changes twice a second. Wheels, chain, covers, shadow and dust draw over it
+  and grade themselves with `scene-light.glsl`: a layer over moving parts would present
+  every update twice.
+- `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities,
+  and the rear wheel's spray, which is two more layers with gravity, drag and a landing row;
   `ambient-dust.vert` moves fixed meshes on the GPU, so thousands of particles need no
   geometry uploads each frame. Its clock wraps every 2376 seconds, a common multiple of
   the particle-slot periods, and a generation counter continues the random sequence
@@ -95,6 +103,8 @@ After editing a shader in `scene/`, recompile it:
 ```sh
 scripts/build-shaders.sh themes/wheelie/scene/*.{frag,vert}
 ```
+
+`scene-light.glsl` is included by four shaders, so rebuild all of them after changing it.
 
 ## Asset provenance
 

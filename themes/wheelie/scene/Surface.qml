@@ -1,23 +1,32 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Particles
 import Quickshell.Io
 
 // The baked scene, cropped to fill, with each wheel turning over its plate and under its cover.
 Item {
   id: root
   property bool running: true
-  property bool particlesRunning: running
   property int revolution: 1200
-  property real wheelTurn
+  property real seconds
+  property real stormSeconds
+  property double previous: Date.now()
+  readonly property real wheelTurn: (seconds * 1000 / revolution) % 1
   property var layout: ({ size: [1, 1], wheels: {} })
   readonly property real dpr: Screen.devicePixelRatio || 1
 
-  NumberAnimation on wheelTurn {
-    from: 0; to: 1; duration: root.revolution
-    loops: Animation.Infinite; paused: !root.running
+  // One clock at 60 updates a second: an animation would redraw at the display's own rate.
+  onRunningChanged: previous = Date.now()
+  Timer {
+    interval: 16; repeat: true; running: root.running
+    onTriggered: {
+      const now = Date.now()
+      root.seconds += Math.min(0.2, (now - root.previous) / 1000)
+      root.previous = now
+    }
   }
+  // The storm moves less than a pixel between updates; each one regrades the cached scene.
+  Timer { interval: 500; repeat: true; running: root.running; onTriggered: root.stormSeconds = root.seconds }
 
   FileView {
     path: decodeURIComponent(Qt.resolvedUrl("layout.json").toString().slice(7))
@@ -30,9 +39,13 @@ Item {
   Loader {
     anchors.fill: parent
     active: root.width > 0 && root.height > 0 && !!root.layout.cutout
-    // Light a screen-sized texture, so it reaches the display pixel for pixel.
     sourceComponent: Item {
+     // The still scene and its grade, in a screen-sized texture that reaches the display pixel for
+     // pixel. What moves is drawn over it and grades itself: a layer over moving parts would
+     // present every update twice.
+     Item {
       id: view
+      anchors.fill: parent
       layer.enabled: true
       layer.smooth: true
       layer.textureSize: Qt.size(Math.max(1, Math.ceil(width * root.dpr)), Math.max(1, Math.ceil(height * root.dpr)))
@@ -64,7 +77,7 @@ Item {
         // Sized by bindings, not anchors: anchors apply only after the storm image starts loading.
         HorizonStorm {
           width: parent.width; height: parent.height; horizon: root.layout.horizon || 0
-          decode: scene.decode; running: root.particlesRunning
+          decode: scene.decode; seconds: root.stormSeconds
         }
         // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
         Item {
@@ -87,6 +100,12 @@ Item {
           width: root.layout.cutout[2]; height: root.layout.cutout[3]
           sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
         }
+      }
+     }
+     Item {
+        width: scene.width; height: scene.height
+        transformOrigin: Item.TopLeft
+        x: scene.x; y: scene.y; scale: scene.scale
         Repeater {
           model: Object.keys(root.layout.wheels)
           Item {
@@ -102,6 +121,8 @@ Item {
               property real turn: root.wheelTurn
               property real tireRadius: axle.wheel.radius / axle.wheel.size
               property real exposure: axle.modelData === "rear" ? 0.92 : 1.0
+              property vector4d rect: Qt.vector4d(axle.x / scene.width, axle.y / scene.height,
+                                                  width / scene.width, height / scene.height)
               property var source: Image {
                 source: axle.modelData + ".png"
                 visible: false
@@ -114,87 +135,47 @@ Item {
               active: axle.modelData === "rear" && !!root.layout.chain
               x: root.layout.chain ? root.layout.chain.box[0] - parent.x : 0
               y: root.layout.chain ? root.layout.chain.box[1] - parent.y : 0
-              sourceComponent: AnimatedSprite {
-                source: "chain-motion.png"
-                width: root.layout.chain.box[2]; height: root.layout.chain.box[3]
-                frameWidth: width; frameHeight: height
-                frameCount: root.layout.chain.frames
-                paused: true // The wheel's clock advances the links, one pitch per tooth.
-                interpolate: false
-                currentFrame: Math.floor((root.wheelTurn * root.layout.chain.teeth % 1) * frameCount)
+              sourceComponent: ShaderEffect {
+                readonly property var chain: root.layout.chain
+                width: chain.box[2]; height: chain.box[3]
+                // The wheel's clock advances the links, one pitch per tooth.
+                property real frame: Math.floor((root.wheelTurn * chain.teeth % 1) * chain.frames)
+                property vector2d grid: Qt.vector2d(chain.columns, Math.ceil(chain.frames / chain.columns))
+                property vector4d rect: Qt.vector4d(chain.box[0] / scene.width, chain.box[1] / scene.height,
+                                                    width / scene.width, height / scene.height)
+                property var source: Image { source: "chain-motion.png"; visible: false; smooth: true }
+                fragmentShader: Qt.resolvedUrl("chain-light.frag.qsb")
               }
             }
-            Image {
-              source: axle.modelData + "-cover.png"
+            LitImage {
+              image: axle.modelData + "-cover.png"
               x: axle.wheel.box[0] - parent.x; y: axle.wheel.box[1] - parent.y
               width: axle.wheel.box[2]; height: axle.wheel.box[2]
-              sourceSize: Qt.size(axle.decoded, axle.decoded)
+              decoded: Qt.size(axle.decoded, axle.decoded)
+              rect: Qt.vector4d(axle.wheel.box[0] / scene.width, axle.wheel.box[1] / scene.height,
+                                width / scene.width, height / scene.height)
             }
           }
         }
 
         // Tight contact shadow with a soft falloff, over the sand cover and under the dust.
-        Image {
+        LitImage {
           readonly property var rear: root.layout.wheels.rear
-          source: "contact-shadow.svg"
+          image: "contact-shadow.svg"
           x: rear ? rear.center[0] - 240 : 0
           y: rear ? rear.contactY - 12 : 0
+          width: source.implicitWidth; height: source.implicitHeight
           visible: !!rear
-          smooth: true
+          rect: Qt.vector4d(x / scene.width, y / scene.height, width / scene.width, height / scene.height)
         }
 
-        // Loose sand lifts briefly, spreads, and settles beside the painted ground trail.
-        // Measured in rear-wheel radii so the dust keeps its size at any resolution.
-        Loader {
-          active: !!root.layout.wheels.rear
-          sourceComponent: Item {
-            id: spray
-            readonly property var rear: root.layout.wheels.rear
-            readonly property real r: rear.radius || rear.size / 2
-            // Particle colors need premultiplication; the SVG texture is premultiplied by Qt.
-            function sand(a) { const c = Qt.lighter(Qt.color(root.layout.dust), 1.08); return Qt.rgba(c.r * a, c.g * a, c.b * a, a) }
-            x: rear.center[0]; y: rear.contactY || rear.center[1] + r
-
-            ParticleSystem { id: dust; paused: !root.particlesRunning }
-            ImageParticle {
-              system: dust; groups: ["grain"]
-              source: "dust.svg"
-              color: parent.sand(0.4)
-              rotationVariation: 180
-            }
-            ImageParticle {
-              system: dust; groups: ["puff"]
-              source: "dust.svg"
-              color: parent.sand(0.32)
-              rotationVariation: 35
-              rotationVelocityVariation: 25
-              xVector: PointDirection { x: 1.35; y: 0 }
-              yVector: PointDirection { x: 0; y: 0.6 }
-            }
-            Emitter {
-              system: dust; group: "grain"
-              x: 0.3 * spray.r; y: -0.14 * spray.r; width: 0.2 * spray.r; height: 0.04 * spray.r
-              emitRate: 32; lifeSpan: 750; lifeSpanVariation: 200
-              size: 0.025 * spray.r; endSize: 0.012 * spray.r; sizeVariation: 0.01 * spray.r
-              velocity: AngleDirection { angle: -30; angleVariation: 12; magnitude: 1.8 * spray.r; magnitudeVariation: 0.45 * spray.r }
-              acceleration: PointDirection { y: 3 * spray.r }
-            }
-            // Grains land: none falls through the sand.
-            Age { system: dust; groups: ["grain"]; x: -spray.r; y: -0.08 * spray.r; width: 6 * spray.r; height: 2 * spray.r; lifeLeft: 0 }
-            Emitter {
-              system: dust; group: "puff"
-              x: 0.35 * spray.r; y: -0.16 * spray.r; width: 0.4 * spray.r; height: 0.06 * spray.r
-              emitRate: 22; lifeSpan: 1600; lifeSpanVariation: 400
-              size: 0.28 * spray.r; endSize: 0.9 * spray.r; sizeVariation: 0.12 * spray.r
-              velocity: PointDirection { x: 1.5 * spray.r; xVariation: 0.6 * spray.r; y: -0.64 * spray.r; yVariation: 0.14 * spray.r }
-              acceleration: PointDirection { y: 0.4 * spray.r }
-            }
-            Friction { system: dust; groups: ["puff"]; factor: 1 }
-          }
+        AmbientDust {
+          anchors.fill: parent
+          seconds: root.seconds
+          rear: root.layout.wheels.rear
+          sand: Qt.lighter(root.layout.dust, 1.08)
         }
-
-        AmbientDust { anchors.fill: parent; running: root.particlesRunning }
-      }
+     }
     }
   }
 }

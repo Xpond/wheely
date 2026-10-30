@@ -33,6 +33,7 @@ Window {
   id: window
   width: 640; height: 360; visible: true
   property string saved: ""
+  Timer { id: tick; interval: 16; repeat: true; running: true; onTriggered: dust.seconds += 0.016 }
   Rectangle {
     id: canvas; anchors.fill: parent; color: "black"
     Item {
@@ -46,10 +47,10 @@ Window {
     function status(): string {
       return JSON.stringify({clock: dust.clock, epoch: dust.epoch, saved: window.saved})
     }
-    function pause(): void { dust.running = false }
-    function resume(): void { dust.running = true }
+    function pause(): void { tick.running = false }
+    function resume(): void { tick.running = true }
     function freeze(t: real, e: int): void {
-      dust.running = false; dust.epoch = e; dust.clock = t
+      tick.running = false; dust.epoch = e; dust.clock = t
     }
     function capture(path: string): void {
       window.saved = ""

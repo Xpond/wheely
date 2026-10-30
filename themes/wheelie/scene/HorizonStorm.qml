@@ -2,24 +2,13 @@ import QtQuick
 
 Item {
   id: root
-  property bool running: true
+  property real seconds
   property real horizon: 0 // Scene row where the storm ends, just inside the redrawn dunes.
-  property real approach
-  property real phase
-  property real decode: 1 // The share of native resolution to decode, as in Surface.qml.
-
-  // Approach once over four minutes, then keep rolling at the distant dunes. Once it has
-  // finished, pausing would only warn.
-  NumberAnimation on approach {
-    from: 0; to: 1; duration: 240000
-    easing.type: Easing.OutSine
-    paused: running && !root.running
-  }
+  // Approach once over four minutes, then keep rolling at the distant dunes.
+  readonly property real approach: Math.sin(Math.min(1, seconds / 240) * Math.PI / 2)
   // Circular noise coordinates keep the ten-minute billowing loop seamless.
-  NumberAnimation on phase {
-    from: 0; to: Math.PI * 2; duration: 600000
-    loops: Animation.Infinite; paused: !root.running
-  }
+  readonly property real phase: (seconds % 600) / 600 * Math.PI * 2
+  property real decode: 1 // The share of native resolution to decode, as in Surface.qml.
 
   ShaderEffect {
     width: parent.width; height: root.horizon
