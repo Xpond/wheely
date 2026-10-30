@@ -14,8 +14,8 @@ rm -f ~/.config/omarchy/hooks/post-update.d/wheely
 echo "removed post-update hook"
 
 # An edited block is reported, not fatal: the shell files below matter more.
-failed=0
-python3 "$REPO/scripts/user-config.py" revert ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin || failed=1
+config_failed=0
+python3 "$REPO/scripts/user-config.py" revert ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin || config_failed=1
 
 # Unregister every plugin before unlinking any: the shell rebuilds registered plugins when their
 # files change, and would load one from files that are gone.
@@ -32,6 +32,7 @@ for id in "${ids[@]}"; do
 done
 
 # Only bytes matching pacman's checksum are written, and only over files that are ours.
+failed=0
 stock=$(mktemp)
 trap 'rm -f "$stock"' EXIT
 for f in "${FILES[@]}"; do
@@ -72,4 +73,4 @@ if (( failed == 0 )); then
 fi
 
 omarchy restart shell
-(( failed == 0 ))
+(( failed == 0 && config_failed == 0 ))

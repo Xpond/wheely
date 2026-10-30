@@ -168,7 +168,7 @@ fi
 
 (( ${#rebased[@]} )) && printf 'rebased onto new upstream: %s\n' "${rebased[*]}"
 (( ${#applied[@]} )) && printf 'installed: %s\n' "${applied[*]}"
-(( ${#applied[@]} + ${#conflicts[@]} + ${#foreign[@]} + ${#failed[@]} )) || echo "already up to date"
+(( ${#applied[@]} + ${#conflicts[@]} + ${#foreign[@]} + ${#failed[@]} + ${#untested[@]} )) || echo "already up to date"
 if (( ${#untested[@]} )); then
   echo "Lock screen left as Omarchy's: wheely is not yet updated for Omarchy $VERSION. Later: git pull && ./install.sh"
   command -v notify-send >/dev/null && notify-send "wheely" "Lock screen left as Omarchy's until wheely supports Omarchy $VERSION"

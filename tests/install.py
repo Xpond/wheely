@@ -141,7 +141,8 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
         fixture.publish(update)
         (fixture.shell / changed).write_bytes(update[changed])
         result = fixture.run()
-        assert result.returncode == 0 and "Lock screen left as Omarchy's" in result.stdout, result.stdout + result.stderr
+        assert result.returncode == 0 and "Lock screen left as Omarchy's" in result.stdout \
+            and "already up to date" not in result.stdout, result.stdout + result.stderr
         assert all(fixture.installed(relative) == update[relative] for relative in lock), changed
         assert fixture.installed("shell.qml") == fixture.patched("shell.qml")
         assert fixture.run("revert.sh").returncode == 0
@@ -207,7 +208,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     lua.write_text(lua.read_text().replace("-- END wheely\n", "-- my edit\n-- END wheely\n"))
     result = fixture.run("revert.sh")
     assert result.returncode == 1 and "was edited" in result.stderr, result.stderr
-    assert fixture.all_stock() and not hook.exists()
+    assert fixture.all_stock() and not hook.exists() and not asset_dir.exists()
     lua.write_text(lua.read_text().replace("-- my edit\n", ""))
     assert fixture.run("revert.sh").returncode == 0 and "BEGIN wheely" not in lua.read_text()
     print("ok: an edited Hyprland block does not stop revert restoring the shell")
