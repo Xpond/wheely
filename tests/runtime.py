@@ -63,7 +63,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-runtime-") as temporary:
                QT_FORCE_STDERR_LOGGING="1", XDG_RUNTIME_DIR=str(base / "runtime"),
                XDG_CACHE_HOME=str(base / "cache"))
 
-    def run(name, body, extra=None, expected=()):
+    def run(name, body, extra=None, expected=(), imports=""):
         qml = base / (name + ".qml")
         qml.write_text('''import QtQuick
 import QtQml.WorkerScript
@@ -73,6 +73,7 @@ import Quickshell.Io
 import "FilesIndex.js" as FilesIndex
 import "MenuIndex.js" as MenuIndex
 import "MenuKeys.js" as MenuKeys
+''' + imports + '''
 Scope {
   id: root
   Timer { interval: 3000; running: true; onTriggered: { console.error("FAIL timeout"); Qt.exit(1) } }
@@ -86,6 +87,15 @@ Scope {
         print("ok:", name)
         return log
 
+    # The checks below run fragments, which can't see a file that does not compile: compile each plugin
+    # whole. PanelWindow needs Wayland to compile, and nothing here is instantiated, so no window opens.
+    shutil.copytree(repo / "plugins", base / "plugins")
+    for plugin, entry in [("xpo.files", "Files"), ("xpo.wheel", "Wheel")]:
+        run("loads-" + plugin, '''
+  Component { ''' + entry + ''' {} }
+  Timer { interval: 1; running: true; onTriggered: { console.log("PASS"); Qt.quit() } }
+''', imports='import "plugins/' + plugin + '"', expected=(r"Module path contains invalid characters",),
+            extra={"QT_QPA_PLATFORM": "wayland", "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"]})
     check_plugin_shell(repo, base, run, block)
     check_wheel_refresh(wheel, run, block, line)
 
