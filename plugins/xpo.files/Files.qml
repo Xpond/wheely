@@ -211,6 +211,7 @@ Item {
     // listedEntries, which a fresh [] would re-enter.
     if (root.entries.length) root.entries = []
     root.readChanges()
+    root.checkAccess(root.listedDir)
   }
   onEntriesChanged: root.readChanges()
 
@@ -625,7 +626,6 @@ Item {
   function checkAccess(dir) {
     access.start(["sh", "-c", 'test -r "$1" -a -x "$1" || printf %s "$1"', "files", dir])
   }
-  onListedDirChanged: root.checkAccess(root.listedDir)
   FilesProcess { id: access; onFinished: output => root.unreadable = output }
 
   FolderListModel {

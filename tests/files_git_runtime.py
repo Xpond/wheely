@@ -157,6 +157,7 @@ if name == 'old.txt':
     start = files.index('  property string status:')
     end = files.index('  // Fill folder previews', start)
     run("git-deleted-navigation", '''
+  function checkAccess(dir) {}
   property bool shown: true
   property string listedDir: ''' + json.dumps(str(directory)) + '''
   property bool showHidden: false
@@ -221,6 +222,7 @@ if name == 'old.txt':
   property var settledSel: null
   property bool showsImage: false
   property bool showsVideo: false
+  function checkAccess(dir) {}
   property bool diffMode: false
   property bool editing: false
   QtObject { id: preview; function resetScroll() {} }
