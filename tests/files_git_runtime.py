@@ -173,7 +173,7 @@ if name == 'old.txt':
 ''' + files[start:end].replace('Qt.resolvedUrl("git-preview.py")', json.dumps(str(repo / "plugins/xpo.files/git-preview.py")))
         + "".join(line(files, p) for p in [r"^  readonly property var listedEntries: .*(?:\n    .*)*", r"^  readonly property var orderedEntries: .*",
                                            r"^  readonly property var rows: .*"])
-        + block(files, r"^  FolderListModel \{\n    id: listedFolder") + '''
+        + block(files, r"^  FolderListModel \{\n    id: listedFolder") + block(files, r"^  property bool unlisted:.*?\n  function relist\(") + '''
   Component.onCompleted: root.readChanges()
   Timer { interval: 50; running: true; repeat: true; onTriggered: {
     if (root.stage < 2) {
@@ -233,7 +233,7 @@ if name == 'old.txt':
         + files[files.index("  readonly property var sel:"):files.index("  // Debounce preview work")]
         + files[files.index("  // A one-shot selection"):files.index("  function close()")]
         + files[files.index("  // Empty while the preview"):files.index("  // Payloads may choose")]
-        + "".join(block(files, p) + "\n" for p in [r"^  FolderListModel \{\n    id: listedFolder", r"^  function enter\(",
+        + "".join(block(files, p) + "\n" for p in [r"^  FolderListModel \{\n    id: listedFolder", r"^  property bool unlisted:.*?\n  function relist\(", r"^  function enter\(",
                                                    r"^  function up\(", r"^  function move\(", r"^  onRowsChanged: \{"]) + '''
   property var cases: [{ from: 'gone', want: 'gone' }, { from: 'a', want: 'a' }, { from: '.hid', want: 'a' },
                        { from: 'gone', key: 1, want: 'a' }, { from: 'gone', key: -1, want: 'wide' },

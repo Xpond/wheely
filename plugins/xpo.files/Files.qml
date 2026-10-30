@@ -284,8 +284,8 @@ Item {
   readonly property string metaLine:
     !root.settledSel ? ""
     : root.settledSel.missing ? (root.settledSel.isDir ? "deleted folder" : "deleted")
-    : root.settledSel.isDir ? FilesIndex.countLabel(childFolder.count + root.previewEntries.length - root.dirEntries.length,
-        childFolder.count + root.previewEntries.length - root.dirEntries.length, "", root.showHidden)
+    : root.settledSel.isDir ? (root.childUnlisted ? "" : FilesIndex.countLabel(childFolder.count + root.previewEntries.length - root.dirEntries.length,
+        childFolder.count + root.previewEntries.length - root.dirEntries.length, "", root.showHidden))
     : FilesIndex.humanSize(root.settledSel.size)
       + (root.imageDims ? "  ·  " + root.imageDims : "")
       + (root.fullText ? "  ·  " + FilesIndex.lineLabel(root.fullText) : "")
@@ -295,8 +295,8 @@ Item {
   // Empty while the preview has content of its own, or waits for a diff or a landing.
   readonly property string previewNote:
     root.editing ? ""
-    : !root.settledSel ? (root.pending ? "" : root.query ? "No match" : "Empty")
-    : root.settledSel.isDir ? (root.showsDir ? "" : "Empty folder")
+    : !root.settledSel ? (root.pending ? "" : root.unlisted ? "Can't list this folder" : root.query ? "No match" : "Empty")
+    : root.settledSel.isDir ? (root.showsDir ? "" : root.childUnlisted ? "Can't list this folder" : "Empty folder")
     : root.showsCode || root.previewBody || root.showsDiff ? ""
     : root.settledSel.missing ? "Deleted · Ctrl+D shows changes"
     : (root.showsVideo && preview.videoStatus !== Loader.Error) ? ""
@@ -469,9 +469,12 @@ Item {
   readonly property bool editable: root.utf8 && !!root.previewPath
                                    && (!!root.fullText || root.settledSel.size === 0)
 
+  // Saves go only to the file the edit began on.
+  property string editedPath: ""
   function edit() {
     if (root.previewPath && !root.utf8) { ops.note("not UTF-8; preview only"); return }
     if (!root.editable || root.editing) return
+    root.editedPath = root.previewPath
     ops.fileNote = ""
     preview.editorText = root.fullText
     root.dirty = false
@@ -486,6 +489,7 @@ Item {
   property var saving: null
   function save() {
     if (!root.editing || root.saving !== null) return
+    if (root.previewPath !== root.editedPath) { ops.note("file is gone; not saved"); return }
     root.saveError = false
     ops.fileNote = ""
     root.saving = FilesIndex.endLine(preview.editorText)
@@ -604,8 +608,13 @@ Item {
     showDirsFirst: true
     showHidden: root.showHidden
     // Ready gates both initial loads and later count changes.
-    onStatusChanged: if (status === FolderListModel.Ready) root.entries = FilesIndex.snapshot(listedFolder)
-    onCountChanged: if (status === FolderListModel.Ready) root.entries = FilesIndex.snapshot(listedFolder)
+    onStatusChanged: if (status === FolderListModel.Ready) root.relist()
+    onCountChanged: if (status === FolderListModel.Ready) root.relist()
+  }
+  property bool unlisted: false
+  function relist() {
+    root.entries = FilesIndex.snapshot(listedFolder, root.listedDir)
+    root.unlisted = listedFolder.count > 0 && !root.entries.length
   }
 
   FolderListModel {
@@ -617,10 +626,11 @@ Item {
     onCountChanged: if (status === FolderListModel.Ready) root.dirEntries = root.childEntries()
   }
 
+  readonly property bool childUnlisted: childFolder.count > 0 && !root.dirEntries.length
   function childEntries() {
     if (!root.settledSel || !root.settledSel.isDir) return []
     // One past what the preview displays preserves its overflow ellipsis.
-    return FilesIndex.snapshot(childFolder, root.dirLimit + 1)
+    return FilesIndex.snapshot(childFolder, root.settledSel.path, root.dirLimit + 1)
   }
 
   FileView {
@@ -653,7 +663,11 @@ Item {
   }
 
   onRowsChanged: {
-    if (root.index >= root.rows.length) root.index = 0
+    // A folder change shifts the rows; an open edit or rename stays on its file.
+    var held = (root.editing || root.naming === "rename") && root.settledSel
+      ? root.rows.findIndex(e => e.path === root.settledSel.path) : -1
+    if (held >= 0) root.index = held
+    else if (root.index >= root.rows.length) root.index = 0
     root.claimPending()
   }
 

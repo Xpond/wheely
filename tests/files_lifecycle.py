@@ -86,3 +86,35 @@ def check(files, run, block, line):
     }
   } }
 ''')
+
+    # A save that reorders the folder, or a file landing above, must not move an edit or rename.
+    run("files-rows-hold-edit", '''
+  property int index: 0
+  property var settledSel: null
+  property bool editing: false
+  property string naming: ""
+  property var entries: []
+  readonly property var listedEntries: entries
+  property string query: ""
+  property string order: "date"
+  function claimPending() {}
+  function file(name, modified) { return { name: name, path: "/d/" + name, modified: modified, isDir: false } }
+  function check(ok, message) {
+    if (!ok) { console.error("FAIL", message); Qt.exit(1) }
+  }
+''' + line(files, r"^  readonly property var orderedEntries: .*") + line(files, r"^  readonly property var rows: .*")
+        + line(files, r"^  readonly property var sel: .*\n.*") + block(files, r"^  onRowsChanged: \{") + '''
+  Timer { interval: 50; running: true; onTriggered: {
+    entries = [file("a", 2000), file("b", 1000)]
+    index = 1; settledSel = sel; editing = true
+    entries = [file("a", 2000), file("b", 3000)]
+    check(sel.path === "/d/b", "a save that made the file newest moved the edit to another file")
+    editing = false; naming = "rename"
+    entries = [file("a", 2000), file("b", 3000), file("c", 4000)]
+    check(sel.path === "/d/b", "a new file above moved the rename to another file")
+    naming = ""
+    entries = [file("a", 2000), file("b", 3000), file("c", 5000), file("d", 6000)]
+    check(sel.path === "/d/c", "browsing rows no longer stay by position")
+    console.log("PASS"); Qt.quit()
+  } }
+''')

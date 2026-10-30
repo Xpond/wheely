@@ -2,6 +2,7 @@
 import gzip
 import hashlib
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -84,7 +85,9 @@ exit 0''',
         self.git("commit", "-qm", "patches")
 
     # A pacman package: its mtree checksums say what stock is, and its cached archive holds it.
-    def publish(self, files):
+    def publish(self, files, version=None):
+        version = version or re.search(r"^BASE=(\S+)", (self.repo / "install.sh").read_text(), re.M)[1] + "-1"
+        shutil.rmtree(self.package / "local", ignore_errors=True)
         root = self.package / "root"
         shutil.rmtree(root, ignore_errors=True)
         shutil.rmtree(self.package / "cache", ignore_errors=True)
@@ -96,11 +99,11 @@ exit 0''',
             path.write_bytes(data)
             lines.append(f"./usr/share/omarchy/shell/{relative} mode=644 "
                          f"sha256digest={hashlib.sha256(data).hexdigest()}")
-        db = self.package / "local/omarchy-4.0.3-1"
+        db = self.package / f"local/omarchy-{version}"
         db.mkdir(parents=True, exist_ok=True)
         with gzip.open(db / "mtree", "wt") as stream:
             stream.write("\n".join(lines) + "\n")
-        subprocess.run(["bsdtar", "-c", "--zstd", "-f", str(self.package / "cache/omarchy-4.0.3-1-x86_64.pkg.tar.zst"),
+        subprocess.run(["bsdtar", "-c", "--zstd", "-f", str(self.package / f"cache/omarchy-{version}-x86_64.pkg.tar.zst"),
                         "-C", str(root), "usr"], check=True)
 
     def git(self, *args):

@@ -13,7 +13,9 @@ source "$REPO/scripts/shell-files.sh"
 rm -f ~/.config/omarchy/hooks/post-update.d/wheely
 echo "removed post-update hook"
 
-python3 "$REPO/scripts/user-config.py" revert ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin
+# An edited block is reported, not fatal: the shell files below matter more.
+config_failed=0
+python3 "$REPO/scripts/user-config.py" revert ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin || config_failed=1
 
 # Unregister every plugin before unlinking any: the shell rebuilds registered plugins when their
 # files change, and would load one from files that are gone.
@@ -71,4 +73,4 @@ if (( failed == 0 )); then
 fi
 
 omarchy restart shell
-(( failed == 0 ))
+(( failed == 0 && config_failed == 0 ))

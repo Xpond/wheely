@@ -36,7 +36,7 @@ A radial control center, a file browser and centered shell panels for
   `omarchy-shell lock preview`. Work in progress; see
   [`docs/lockscreen.md`](docs/lockscreen.md).
 
-Tested only on Omarchy 4.0.6 with Quickshell 0.3.2. It patches the packaged
+Tested only on Omarchy 4.0.6 with Quickshell 0.3.2, and refuses older releases. It patches the packaged
 shell, so it is not a plugin `omarchy plugin add` can install.
 
 [Tidal](themes/tidal/README.md) is our independent light Omarchy theme: an
@@ -65,7 +65,9 @@ blur, render loop) to `~/.config/hypr/hyprland.lua`, links three helpers into
 `~/.local/bin`, links the lock-screen designs in `lock/` into
 `~/.local/share/wheely/`, patches eight shell files, installs a post-update
 hook, and restarts the shell. Rerunning is safe, and `git pull && ./install.sh`
-updates it. Keep the checkout where it is: the hook points to it.
+updates it. Keep the checkout where it is: the hook, plugins and helpers point to it.
+Run `./revert.sh` before moving or deleting it. If it goes missing anyway, the lock screen
+still locks, without its design.
 
 Video previews also need `qt6-multimedia` and `qt6-multimedia-ffmpeg`
 (`sudo pacman -S --needed qt6-multimedia qt6-multimedia-ffmpeg`). The fullsize
@@ -79,7 +81,8 @@ button opens native mpv, which Omarchy includes.
 
 Removes the hook, plugins, Hyprland block and helper links, puts back Omarchy's
 original shell files, and unlinks the lock-screen designs and forgets the chosen one
-after a successful restore, then restarts the shell. Originals are checked against
+after a successful restore, then restarts the shell. It also works from a TTY or over
+SSH when the desktop will not start. Originals are checked against
 pacman's checksums before they are written, and a shell file changed outside
 this project is left untouched and reported.
 Your settings stay: `wheel.json`, `wheel-blur`, `wheel-shortcut` and
@@ -96,8 +99,9 @@ Everything else stays in your home directory.
 Because the package owns them, `omarchy update` overwrites them. The hook then
 reruns `install.sh`, which merges the patches onto the new version; a conflict
 leaves the shipped file as it is and is reported, on the desktop too when
-`notify-send` is available. The lock screen's two files are patched together or
-not at all, so a conflict in either leaves Omarchy's own lock screen working.
+`notify-send` is available. The lock screen's two files are never merged: when an
+update changes either, both stay Omarchy's own until wheely is updated for it
+(`git pull && ./install.sh`).
 
 ## License
 

@@ -131,7 +131,10 @@ Item {
   readonly property var subfolderPaths: {
     var model = subfolders.item as FolderListModel, out = []
     for (let i = 0; model && i < model.count; i++) out.push(model.get(i, "filePath"))
-    return out
+    // Its model lists the wrong folder for #, ? or %XX in the path, and the working directory for a
+    // path not there yet.
+    var dir = root.query.slice(0, root.query.lastIndexOf("/") + 1)
+    return out.filter(p => p.slice(0, p.lastIndexOf("/") + 1) === dir)
   }
   // The folder whose subfolders a path typed into the folders list would add. Made only then:
   // a model with no folder lists the shell's working directory, home, and watches it.

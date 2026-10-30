@@ -60,7 +60,11 @@ file beside it for revert. To publish a clean rebase, copy its `orig/` and
 
 The lock screen's `LockView.qml` and `Service.qml` only load as a pair (our
 `Service.qml` sets properties only our `LockView.qml` has), so when either is
-left untouched, the other is held back too.
+left untouched, the other is held back too. They are never merged: a clean merge
+can still leave the lock unable to lock (our 4.0.6 `Service.qml` merges onto 4.0.5
+without conflict, calling a function 4.0.5 lacks). When upstream changes either,
+both stay stock, with a note, until `orig/` catches up. An Omarchy older than
+`BASE` in `install.sh` is refused before anything changes.
 
 `revert.sh` writes stock back only over files that are ours, and only bytes
 matching pacman's checksum: `orig/` or a rebase's kept stock when one matches,
