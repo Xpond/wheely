@@ -1,19 +1,29 @@
 .pragma library
 
-// Snapshot because FolderListModel cannot filter directories and rank matches.
-function snapshot(model, limit) {
+// Snapshot because FolderListModel cannot filter directories and rank matches. It also lists
+// another folder for a path holding #, ? or %XX, and the working directory for one that is gone:
+// rows from anywhere but dir are never shown, so never acted on.
+function snapshot(model, dir, limit) {
   var out = []
   var count = limit === undefined ? model.count : Math.min(model.count, limit)
+  dir = String(dir).replace(/(.)\/$/, "$1") // a typed path keeps its trailing slash
   for (var i = 0; i < count; i++) {
+    var path = String(model.get(i, "filePath"))
+    if (i === 0 && parentOf(path) !== dir) return []
     out.push({
       name: String(model.get(i, "fileName")),
-      path: String(model.get(i, "filePath")),
+      path: path,
       isDir: !!model.get(i, "fileIsDir"),
       size: Number(model.get(i, "fileSize")) || 0,
       modified: model.get(i, "fileModified")
     })
   }
   return out
+}
+
+// Each segment encoded, so #, ?, spaces and Unicode stay literal filenames.
+function fileUrl(path) {
+  return "file://" + String(path).split("/").map(encodeURIComponent).join("/")
 }
 
 // Sort once per directory/order; typing reuses this order in matching().

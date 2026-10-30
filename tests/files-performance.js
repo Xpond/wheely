@@ -47,13 +47,19 @@ const mapped = [
   { fileName: "Folder", filePath: "/tmp/Folder", fileIsDir: 1, fileSize: undefined, fileModified: "invalid" }
 ]
 const model = { count: mapped.length, get: (i, field) => mapped[i][field] }
-assert.deepEqual(F.snapshot(model), [
+assert.deepEqual(F.snapshot(model, "/tmp"), [
   { name: "notes.txt", path: "/tmp/notes.txt", isDir: false, size: 1024, modified: null },
   { name: "Folder", path: "/tmp/Folder", isDir: true, size: 0, modified: "invalid" }
 ])
-assert.deepEqual(F.snapshot(model, 1), [
+assert.deepEqual(F.snapshot(model, "/tmp", 1), [
   { name: "notes.txt", path: "/tmp/notes.txt", isDir: false, size: 1024, modified: null }
 ])
+// A model that listed another folder, or the working directory for a gone one, yields no rows.
+assert.deepEqual(F.snapshot(model, "/tmp/#archive"), [])
+// A typed path lists its folder with a trailing slash; root has nothing to strip.
+assert.equal(F.snapshot(model, "/tmp/").length, 2)
+const rooted = { count: 1, get: (i, field) => ({ fileName: "etc", filePath: "/etc", fileIsDir: true })[field] }
+assert.equal(F.snapshot(rooted, "/").length, 1)
 
 // At 80 characters two 38-character columns fit, filled down before across.
 const preview = [
@@ -105,9 +111,9 @@ for (const count of [0, 1, 399, 400, 401, 2000]) {
     return ({ fileName: e.name, filePath: "/tmp/" + e.name, fileIsDir: e.isDir,
       fileSize: e.size, fileModified: e.modified })[field]
   } }
-  const capped = F.snapshot(model, 401)
+  const capped = F.snapshot(model, "/tmp", 401)
   assert.equal(reads, Math.min(count, 401) * 5)
-  const full = F.snapshot(model)
+  const full = F.snapshot(model, "/tmp")
   assert.equal(full.length, count, "main listing remains complete")
   for (const rows of [1, 12, 40])
     for (const width of [20, 80, 150])

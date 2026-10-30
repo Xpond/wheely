@@ -39,6 +39,10 @@ def reload():
 def change_config(config, before, after):
     if before == after:
         return
+    # From a TTY there is no Hyprland to validate with; it reads the file when it starts.
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        write(config, after)
+        return
     # Errors Hyprland already reports are the user's to fix; only errors this change adds roll it back.
     known = reload()
     write(config, after)

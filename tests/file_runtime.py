@@ -129,3 +129,26 @@ def check(files, ops, base, run, block):
             {"PATH": str(base) + ":" + os.environ["PATH"], "CHECK_COPY": str(captured),
              "CHECK_COPY_EXIT": str(code)})
         assert captured.read_text() == selected
+
+    # Qt's FolderListModel lists the parent for "#archive", and a fresh one the working directory
+    # for "q?x" or a gone folder; the panel shows none of those rows.
+    for name in ["#archive", "q?x", "plain"]:
+        (base / "listing" / name).mkdir(parents=True)
+        (base / "listing" / name / "inside").touch()
+    listing = '''
+  property bool showHidden: false
+  property string listedDir: ""
+  property var entries: []
+  property var dirs: ''' + json.dumps([str(base / "listing" / n) for n in ["#archive", "q?x", "gone", "plain"]]) + '''
+  property var seen: []
+''' + block(files, r"  FolderListModel \{\n    id: listedFolder") + block(files, r"  property bool unlisted:.*?\n  function relist\(") + '''
+  Timer { interval: 300; running: true; repeat: true; onTriggered: {
+    if (root.listedDir) root.seen.push(JSON.stringify([root.entries.map(e => e.path), root.unlisted]))
+    if (root.seen.length < root.dirs.length) { root.listedDir = root.dirs[root.seen.length]; return }
+    // A reused model reports nothing for ? and a gone folder; "#archive" lists its parent, caught.
+    var want = [[[], true], [[], false], [[], false], [[root.dirs[3] + "/inside"], false]].map(s => JSON.stringify(s))
+    if (JSON.stringify(root.seen) !== JSON.stringify(want)) { console.error("FAIL", JSON.stringify(root.seen)); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
+'''
+    run("files-lists-only-its-folder", listing, expected=(r"QFileSystemWatcher::removePath: path is empty$",))

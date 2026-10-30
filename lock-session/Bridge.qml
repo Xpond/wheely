@@ -22,6 +22,15 @@ Item {
     else Qt.callLater(root.launch)
   }
 
+  // Service.qml then locks in-process, taking over a lock this worker never took.
+  signal failed(bool lock)
+  function giveUp() {
+    const lock = !!pending && pending.action === "lock"
+    pending = null
+    ipc.enabled = false // frees the target for the in-process lock
+    failed(lock)
+  }
+
   function launch() {
     if (peer || worker.running || retry.running) return
     worker.running = true
@@ -81,8 +90,8 @@ Item {
     environment: variables
     onExited: code => {
       if (code === 0) return
-      root.pending = null
       console.error("Lockscreen worker failed to start: " + code)
+      root.giveUp()
     }
   }
   Timer {
@@ -95,14 +104,15 @@ Item {
     id: startup
     interval: 5000
     onTriggered: if (!root.peer) {
-      root.pending = null
       console.error("Lockscreen worker did not connect; check its Quickshell log")
+      root.giveUp()
     }
   }
   // A short-lived initial worker performs the existing stranded-lock recovery check.
   Component.onCompleted: Qt.callLater(root.launch)
 
   IpcHandler {
+    id: ipc
     target: "lock"
     function lock(): string {
       if (!root.passwordPamConfigured) return "missing-pam"

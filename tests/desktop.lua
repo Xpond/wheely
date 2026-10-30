@@ -23,7 +23,7 @@ assert(env.QT_FFMPEG_DECODING_HW_DEVICE_TYPES == ",")
 assert(#binds[key] == 1 and binds[key][1].command.global == "xpo.wheel:toggle",
   "wheel shortcut must deliver press/release directly without a subprocess")
 assert(key == "SUPER + A" or binds["SUPER + A"] == nil, "SUPER + A was taken as well as " .. key)
-assert(#binds["SUPER + W"] == 1 and binds["SUPER + W"][1].command == "omarchy-wheel-close")
+assert(#binds["SUPER + W"] == 1 and binds["SUPER + W"][1].command:find("exec omarchy-wheel-close;", 1, true))
 -- The pause key toggles the active theme unless the wheel holds it; without a theme it stays free.
 if pause and pause ~= key then
   assert(#binds[pause] == 1 and binds[pause][1].command == "omarchy-wallpaper-toggle",
