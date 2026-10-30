@@ -144,6 +144,7 @@ def check(files, ops, base, run, block):
   property var entries: []
   property var dirs: ''' + json.dumps([str(base / "listing" / n) for n in ["#archive", "q?x", "gone", "plain", "locked"]]) + '''
   property var seen: []
+  onListedDirChanged: root.checkAccess(root.listedDir)
 ''' + block(files, r"  FolderListModel \{\n    id: listedFolder") + re.search(r"  readonly property bool unlisted:.*?  FilesProcess \{ id: access.*?\n", files, re.S).group() + '''
   Timer { interval: 300; running: true; repeat: true; onTriggered: {
     if (root.listedDir) root.seen.push(JSON.stringify([root.entries.map(e => e.path), root.unlisted]))
