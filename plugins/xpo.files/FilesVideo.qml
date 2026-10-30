@@ -4,6 +4,7 @@ import QtMultimedia
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
+import "FilesIndex.js" as FilesIndex
 
 Rectangle {
   id: root
@@ -41,8 +42,7 @@ Rectangle {
 
   MediaPlayer {
     id: player
-    // Encode each path segment so #, %, ?, spaces and Unicode stay literal filenames.
-    source: root.path ? "file://" + root.path.split("/").map(encodeURIComponent).join("/") : ""
+    source: root.path ? FilesIndex.fileUrl(root.path) : ""
     videoOutput: video
     audioOutput: AudioOutput { id: audio; volume: 0.7; muted: root.muted }
     // Play muted as soon as it loads.

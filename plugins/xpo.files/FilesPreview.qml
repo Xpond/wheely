@@ -301,7 +301,7 @@ Item {
     anchors.fill: parent
     // Unsupported or corrupt images fall through to the preview note.
     visible: root.panel.showsImage && status !== Image.Error
-    source: root.panel.showsImage ? "file://" + root.panel.settledSel.path : ""
+    source: root.panel.showsImage ? FilesIndex.fileUrl(root.panel.settledSel.path) : ""
     fillMode: Image.PreserveAspectFit
     asynchronous: true
     sourceSize.width: width

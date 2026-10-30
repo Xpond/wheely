@@ -534,6 +534,14 @@ leaves every folder standing; and it sorts on one field, where a browser wants
 folders first *and* the filter's best match first *and* then alphabetical.
 `FilesIndex.snapshot()` costs one pass per directory entered and buys both.
 
+**`FolderListModel` can list the wrong folder.** It turns its URL into a path
+and parses that as a URL again, so a `#`, `?` or `%XX` in a folder name cuts
+the path short, encoded or not: `#archive` lists its parent. A fresh model given
+a folder that is not there lists the working directory. `snapshot()` drops
+every row not inside the folder asked for, so `Delete` or `F2` can never reach
+another folder's files; such a folder shows "Can't list this folder" or
+"Empty". Images and videos take `fileUrl()`, which carries `#` and `?` through.
+
 **Hover never claims the selection.** The selection is what `Return`, `F2` and
 `Delete` act on, so only a click moves it. When hover claimed it, a pointer
 drifting over the list moved the selection while you typed a rename, and `Return`
