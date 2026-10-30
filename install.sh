@@ -41,6 +41,10 @@ mkdir -p "$data/lock-session" &&
 
 # ------------------------------------------------------------------ plugins
 # Link plugins for live editing and register them idempotently via a temp file.
+# The reload below takes SUPER + A for the wheel, so read what held it first; a saved key was chosen.
+replaced=""
+[[ -e ~/.config/omarchy/wheel-shortcut ]] || replaced=$(hyprctl binds -j 2>/dev/null | jq -r 'first(.[] |
+  select(.modmask == 64 and .key == "A" and .description != "Wheel") | (.description | select(. != "")) // .arg) // empty')
 python3 "$REPO/scripts/user-config.py" install ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin ||
   { alert "Could not update the Hyprland configuration"; exit 1; }
 mkdir -p ~/.config/omarchy/plugins ~/.local/bin || exit 1
@@ -209,8 +213,10 @@ for _ in $(seq 20); do
 done
 
 (( render_ok )) || alert "Could not verify Omarchy shell's threaded render loop" \
-  'Check the managed block at the end of ~/.config/hypr/hyprland.lua;' \
-  'Then: hyprctl reload && omarchy restart shell'
+  'Check that shell.qml was patched;' \
+  'Then: omarchy restart shell'
 
 # Fail the hook when installation or rendering failed.
-(( plugins_ok == 1 && ${#broken[@]} == 0 && render_ok == 1 ))
+(( plugins_ok == 1 && ${#broken[@]} == 0 && render_ok == 1 )) || exit 1
+[[ -n $replaced ]] && echo "SUPER + A was \"$replaced\"; it opens the wheel now. To change that, search the wheel for: wheely settings"
+echo "wheely is installed. Press SUPER + A and type help."

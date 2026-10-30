@@ -17,7 +17,7 @@ try {
     if (name !== "notes") fs.writeFileSync(path.join(folder, "Scene.qml"), "")
   }
   assert.equal(design("list").stdout, "meadow\nrally\n")
-  assert.equal(design("current").stdout, "rally\n", "with no choice yet the lock screen shows rally")
+  assert.equal(design("current").stdout, "wallpaper\n", "with no choice yet the lock screen shows wallpaper")
   assert.equal(design("set", "meadow").status, 0)
   assert.deepEqual([fs.readFileSync(choice, "utf8"), design("current").stdout], ["meadow\n", "meadow\n"])
   for (const args of [["set", "missing"], []]) {
@@ -27,4 +27,4 @@ try {
 } finally {
   fs.rmSync(home, { recursive: true, force: true })
 }
-console.log("ok: designs are listed and chosen by name, rally until one is, and a bad name changes nothing")
+console.log("ok: designs are listed and chosen by name, wallpaper until one is, and a bad name changes nothing")

@@ -9,7 +9,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
 {
   const home = "/home/test"
   assert.equal(M.scanCommand([home], M.SKIPPED, home).join(" "),
-    "fd --hidden --max-depth 6 --exclude .cache --exclude .git --exclude node_modules . /home/test")
+    "fd --hidden --max-depth 6 --exclude .cache --exclude .git --exclude node_modules --exclude .ssh --exclude .gnupg --exclude .password-store . /home/test")
   const tree = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "wheel-scan-"))
   for (const name of ["home/.claude/CLAUDE.md", "home/Android/x", "home/Music [old]/x", "home/p/node_modules/m", "home/p/Android/x",
                       "home/1/2/3/4/5/6/deep", "mnt/Android/x"])
@@ -57,15 +57,15 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   for (const name of ["edit", "addEntry", "removeEntry", "saveList"]) ls[name] = method(wheelSource, name, { root: ls, ringFile: disk, MenuIndex: M })
   derive(ls, "folders", "skipped", "listed")
   ls.query = "wheely"; ls.edit({ setting: "skipped" })
-  assert.deepEqual([ls.query, ls.results.map(r => r.label + r.trail)], ["", [".cacheanywhere", ".gitanywhere", "node_modulesanywhere"]])
+  assert.deepEqual([ls.query, ls.results.map(r => r.label + r.trail)], ["", [".cacheanywhere", ".gitanywhere", "node_modulesanywhere", ".sshanywhere", ".gnupganywhere", ".password-storeanywhere"]])
   ls.query = "andr"
   assert.deepEqual(ls.results.map(r => r.label + " " + (r.path || r.trail)), ["Android anywhere", "Android /home/test/Android/"],
     "a skip was offered that is no folder under home")
   ls.addEntry(ls.results[1]); ls.query = "tar"; ls.addEntry(ls.results[0])
   ls.resultIndex = 1; ls.removeEntry()
   assert.deepEqual([ls.results.map(r => r.label), ls.resultIndex, saved.at(-1)],
-    [[".cache", "node_modules", "~/Android", "target"], 1,
-     { slices: ["system"], skipped: [".cache", "node_modules", "~/Android", "target"] }])
+    [[".cache", "node_modules", ".ssh", ".gnupg", ".password-store", "~/Android", "target"], 1,
+     { slices: ["system"], skipped: [".cache", "node_modules", ".ssh", ".gnupg", ".password-store", "~/Android", "target"] }])
   assert.deepEqual([ls.drops, ls.scans], [3, 3], "a saved list kept the old scan, or did not scan again")
   // With nothing selected, Del removes nothing.
   const writes = saved.length
