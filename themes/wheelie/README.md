@@ -40,7 +40,7 @@ pause. The controller checks monitor state in-process only while animation is se
 ~/.config/omarchy/themes/wheelie/wheelie toggle
 ```
 
-Wheely binds Ctrl+Space to `toggle` while Wheelie is installed. For an app that
+Wheely binds Ctrl+Space to `toggle` while Wheelie is the active theme. For an app that
 needs Ctrl+Space, change the key with Wheely's Wallpaper pause setting
 (`wheely settings`). It is separate from Omarchy's Super+Ctrl+Space background
 switcher.

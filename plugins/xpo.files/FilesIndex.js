@@ -376,6 +376,18 @@ function endLine(t) {
   return t && !/\n$/.test(t) ? t + "\n" : t
 }
 
+// Characters the editor rewrites: CR, CRLF, U+2028/9 and U+FDD0/1 become LF, a no-break space a space.
+function rewritten(text) {
+  return /[\r\u00a0\u2028\u2029\ufdd0\ufdd1]/.test(String(text || ""))
+}
+
+// FileView drops a UTF-8 BOM from text(), so only the bytes show it.
+function hasBom(data) {
+  if (!data || data.byteLength < 3) return false
+  var bytes = new Uint8Array(data, 0, 3)
+  return bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf
+}
+
 function looksBinary(text) {
   return String(text || "").slice(0, 1024).indexOf("\u0000") !== -1
 }

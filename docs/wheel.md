@@ -341,8 +341,9 @@ behaviour.
 `MenuIndex.js` reads both menu definitions —
 `$OMARCHY_PATH/default/omarchy/omarchy-menu.jsonc` and
 `~/.config/omarchy/extensions/omarchy-menu.jsonc` — strips JSONC comments and
-trailing commas, and merges the user's over the defaults by id. Ids are dotted
-(`trigger.capture.qr`), so an entry's breadcrumb is just its ancestors' labels.
+trailing commas, and merges the user's over the defaults by id, as Omarchy does:
+anything not an object is skipped, and an entry with a `target` opens that
+menu's ring. Ids are dotted (`trigger.capture.qr`), so an entry's breadcrumb is just its ancestors' labels.
 Both files are watched, as Omarchy's own menu watches them: an edit shows when
 it is saved, and an entry taken out of the user's file is gone rather than
 merged over.
@@ -583,7 +584,8 @@ cancels. Saved to `~/.config/omarchy/wheel-shortcut`, then Hyprland reloads.
 Pressing the shortcut with the wheel up closes it.
 
 **Wallpaper pause** (`CTRL + SPACE`), while Wheelie or Tidal is installed: the
-key that pauses and resumes the active theme's scene, recorded the same way. SUPER is optional
+key that pauses and resumes the active theme's scene, recorded the same way. It is bound only
+while one of them is the active theme; otherwise apps keep it. SUPER is optional
 here, as the default shows, but the combo needs CTRL, ALT or SUPER, and the
 wheel's own keys are refused. Saved to
 `~/.config/omarchy/wallpaper-pause-shortcut`, then Hyprland reloads.

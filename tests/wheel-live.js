@@ -22,8 +22,8 @@ const check = (ok, label, detail) => {
 }
 
 const items = M.merge(
-  M.parse(read(`${omarchy}/default/omarchy/omarchy-menu.jsonc`)),
-  M.parse(read(`${home}/.config/omarchy/extensions/omarchy-menu.jsonc`)))
+  M.menuOf(read(`${omarchy}/default/omarchy/omarchy-menu.jsonc`)),
+  M.menuOf(read(`${home}/.config/omarchy/extensions/omarchy-menu.jsonc`)))
 check(Object.keys(items).length > 0, "menu definitions load",
       `nothing parsed from ${omarchy}/default/omarchy/omarchy-menu.jsonc`)
 
