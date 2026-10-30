@@ -983,7 +983,7 @@ Item {
     path: root.omarchyPath + "/default/omarchy/omarchy-menu.jsonc"
     watchChanges: true
     onFileChanged: reload()
-    onLoaded: root.defaultMenu = MenuIndex.parse(text())
+    onLoaded: root.defaultMenu = MenuIndex.menuOf(text())
   }
 
   FileView {
@@ -991,7 +991,7 @@ Item {
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
-    onLoaded: root.userMenu = MenuIndex.parse(text())
+    onLoaded: root.userMenu = MenuIndex.menuOf(text())
     onLoadFailed: root.userMenu = ({})
   }
 
