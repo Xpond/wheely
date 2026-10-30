@@ -1,3 +1,4 @@
+//@ pragma Env QSG_RENDER_LOOP=threaded
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell

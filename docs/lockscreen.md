@@ -11,7 +11,7 @@ patches replace, so a design can span any number of files. Six ship: `rally`, `t
 In the wheel, Style › Lockscreen Designs lists the designs (search "lockscreen"); picking
 one only switches to it, and the next lock shows it. From a terminal,
 `omarchy-lock-design list`, `current` and `set <name>` do the same. The choice is one
-word in `~/.config/wheely/lock-design` (`rally` when absent). The lock and its preview
+word in `~/.config/wheely/lock-design` (`wallpaper` when absent). The lock and its preview
 build their view each time they show, reading that file then, so a switch needs no install or
 restart.
 

@@ -120,7 +120,7 @@ def configure(mode, config, state, bindir):
             else:
                 write(record, previous_record)
             raise
-        print("Installed wheel keys, shared blur, render loop, and helpers")
+        print("Installed wheel keys, shared blur, and helpers")
     else:
         change_config(config, text, text.replace(block, "", 1) if block else text)
         for name in saved["links"]:

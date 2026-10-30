@@ -23,7 +23,7 @@ Item {
   property bool blanked: false
   // Designs live outside the shell, a folder each; lock-design names the one shown.
   property string designs: Quickshell.env("HOME") + "/.local/share/wheely/lock/"
-  property string design: chosen.text().trim() || "rally"
+  property string design: chosen.text().trim() || "wallpaper"
 
   readonly property string placeholderText: "Enter Password"
   readonly property int fieldWidth: 380

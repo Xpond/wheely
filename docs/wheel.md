@@ -602,8 +602,8 @@ widget with no backdrop (`[wheely] panels = native` in `shell.toml`).
 
 **Searched folders** and **Skipped folders** change what `/` searches. By
 default: home, hidden files included, six levels deep, skipping every
-`.cache`, `.git` and `node_modules`, and whatever a git repository's
-`.gitignore` lists. Enter lists the entries. Type to find one to add and Enter
+`.cache`, `.git`, `node_modules`, `.ssh`, `.gnupg` and `.password-store`, and
+whatever a git repository's `.gitignore` lists. Enter lists the entries. Type to find one to add and Enter
 adds it: Searched takes a path from `/` outside home; Skipped offers folder
 names first, each skipping every folder called that, anywhere, as the defaults
 do, then single folders under home. Del removes; Esc or Backspace on an empty

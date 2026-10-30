@@ -86,7 +86,7 @@ Eight package-owned QML files plus Hyprland config.
 | `plugins/lock/LockView.qml` | hosts the chosen lock-screen design from `lock/` behind a frosted password field; not panel-related, but patched through the same machinery. See [`lockscreen.md`](lockscreen.md) |
 | `plugins/lock/Service.qml` | runs in its own worker process, started by `lock-session/Bridge.qml`; on successful authentication the design plays its exit before a timer releases the lock; tracks `blanked` for the wake flow |
 | `services/PluginShellApi.qml` | narrow peer-panel, popout, and shared-scrim callbacks without exposing host objects |
-| `shell.qml` | grants menu plugins control of enabled non-authentication UI plugins and implements the callbacks above |
+| `shell.qml` | sets the render loop and software video decoding; grants menu plugins control of enabled non-authentication UI plugins and implements the callbacks above |
 
 `config/hyprland.lua` is the installed source of truth. It explicitly disables
 blur on the wheel/files overlays, then installation reloads Hyprland and rolls
@@ -187,20 +187,16 @@ judder, on every panel, in both directions. Measured with a bare `qml6` app:
 | `threaded` | **6.9ms** | **145Hz** |
 | `basic` | 16.0ms | 62Hz |
 
-The installer includes this line in its managed Hyprland block:
+Every Quickshell process wheely runs sets it on the first lines of its root file:
+the patched `shell.qml`, the lock worker, and the Wheelie and Tidal scenes.
 
-```lua
-hl.env("QSG_RENDER_LOOP", "threaded")
+```qml
+//@ pragma Env QSG_RENDER_LOOP=threaded
 ```
 
-**It must be `hl.env()` in Lua.** Writing `env = QSG_RENDER_LOOP,threaded` in
-`hyprland.conf` is silently ignored — the same legacy-syntax trap as
-`layerrule` below. `hyprctl configerrors` stays clean, the line looks right,
-and the var is simply never exported.
-(`hyprland.conf` *is* loaded — its binds work — so this is specifically the
-`env` keyword, not the file.) Omarchy launches the shell from a `hyprland.start`
-callback, after configuration is parsed. Installation also reloads configuration
-before restarting the shell.
+**It belongs in the root file, not the session.** Quickshell applies the pragma
+before Qt starts, so only that process changes. `hl.env()` works too, but hands
+the variable to every Qt app in the session.
 
 In-shell, that took the entry animation from ~12 rendered frames to ~44.
 
@@ -213,8 +209,8 @@ The `height` loops in `network/Panel.qml` are unrelated, intermittent, and
 predate all of this work — they appear on shell starts going back well before
 the prototype.
 
-`hl.env` takes effect on `hyprctl reload` — no logout needed. Apply it with
-`hyprctl reload && omarchy restart shell`.
+A pragma takes effect when that process starts: `omarchy restart shell` for the
+shell, and reinstalling a theme for its scene.
 
 ### Verify it, don't assume it
 
