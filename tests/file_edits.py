@@ -18,6 +18,8 @@ def check(source, base, run, block):
   property string editedPath: ""
   property string fullText: ""
   property bool utf8: false
+  property bool rewrites: false
+  property int previewLimit: 64
   function showAll() {}
   property var settledSel: ({ size: 0 })
   property bool editing: false
@@ -42,7 +44,10 @@ def check(source, base, run, block):
   function check(ok, message) { if (!ok) throw new Error("FAIL " + message) }
 ''' + production
 
-    for name, content, note in [("non-utf8", b"caf\xe9\n", "not UTF-8; preview only")]:
+    for name, content, note in [("non-utf8", b"caf\xe9\n", "not UTF-8; preview only"),
+                                ("crlf", b"one\r\ntwo\r\n", "text the editor would change; preview only"),
+                                ("nbsp", "a\u00a0b\n".encode(), "text the editor would change; preview only"),
+                                ("bom", b"\xef\xbb\xbfhello\n", "text the editor would change; preview only")]:
         target = base / (name + ".txt")
         target.write_bytes(content)
         run("edit-refuses-" + name, common + '''
@@ -102,6 +107,33 @@ def check(source, base, run, block):
   } }
 ''')
     assert target.read_bytes() == b"saved edit\n", "pending newer edits must not replace the saved file"
+
+    # A file grown past the limit since it was listed is not read; a save past it still verifies.
+    grown, small = base / "grown.log", base / "small.txt"
+    grown.write_bytes(b"x" * 99 + b"\n")
+    small.write_bytes(b"small\n")
+    run("grown-file-not-read", common + '''
+  Component.onCompleted: root.previewPath = ''' + json.dumps(str(grown)) + '''
+  Timer { interval: 200; running: true; onTriggered: {
+    try {
+      root.check(root.fullText === "" && !root.utf8, "a file past the limit was read")
+      root.previewPath = ''' + json.dumps(str(small)) + '''
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+  Timer { interval: 400; running: true; onTriggered: {
+    try {
+      root.edit(); preview.editorText = "y".repeat(99)
+      root.save()
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+  Timer { interval: 800; running: true; onTriggered: {
+    try {
+      root.check(root.saving === null && !root.saveError, "a save past the limit never verified")
+      console.log("PASS"); Qt.quit()
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+''')
+    assert small.read_bytes() == b"y" * 99 + b"\n"
 
     # The preview moving to another file mid-edit must not carry the edit there.
     other = base / "other.txt"

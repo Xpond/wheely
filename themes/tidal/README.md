@@ -70,8 +70,8 @@ and fine detail still render at full resolution on every update.
 ~/.config/omarchy/themes/tidal/tidal stop
 ```
 
-With Wheely installed, Ctrl+Space pauses and resumes the active theme (Tidal or
-Wheelie). Change the key with Wheely's Wallpaper pause setting (`wheely settings`).
+With Wheely installed, Ctrl+Space pauses and resumes Tidal or Wheelie while one
+of them is the active theme. Change the key with Wheely's Wallpaper pause setting (`wheely settings`).
 
 Selecting a static wallpaper unloads the animated surfaces. The small controller
 stays idle, watching Omarchy's selection, so choosing either coast starts it again.

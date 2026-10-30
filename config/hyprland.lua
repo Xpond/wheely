@@ -42,17 +42,15 @@ local function saved_key(name, default)
   return default
 end
 
--- With an animated theme installed, the wallpaper pause key toggles the active theme. It is bound
--- before the wheel's keys, so they win a clash.
-for _, theme in ipairs({ "wheelie", "tidal" }) do
-  local controller = io.open(os.getenv("HOME") .. "/.config/omarchy/themes/" .. theme .. "/" .. theme)
-  if controller then
-    controller:close()
-    local pause_key = saved_key("wallpaper-pause-shortcut", "CTRL + SPACE")
-    hl.unbind(pause_key)
-    o.bind(pause_key, "Pause/resume wallpaper", "omarchy-wallpaper-toggle")
-    break
-  end
+-- With an animated theme active, the wallpaper pause key toggles it; otherwise the key stays the app's.
+-- Switching theme reloads this config. It is bound before the wheel's keys, so they win a clash.
+local theme_file = io.open(os.getenv("HOME") .. "/.local/state/omarchy/current/theme.name")
+local theme = theme_file and theme_file:read("*l") or ""
+if theme_file then theme_file:close() end
+if theme == "wheelie" or theme == "tidal" then
+  local pause_key = saved_key("wallpaper-pause-shortcut", "CTRL + SPACE")
+  hl.unbind(pause_key)
+  o.bind(pause_key, "Pause/resume wallpaper", "omarchy-wallpaper-toggle")
 end
 
 -- The global shortcut delivers both press and release directly to the wheel.
