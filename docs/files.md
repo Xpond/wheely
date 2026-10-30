@@ -546,6 +546,12 @@ every row not inside the folder asked for, so `Delete` or `F2` can never reach
 another folder's files; such a folder shows "Can't list this folder" or
 "Empty". Images and videos take `fileUrl()`, which carries `#` and `?` through.
 
+**An unreadable folder lists as empty.** `FolderListModel` has no permission
+roles, and a folder you may not read, or one that is gone, gives the same
+Ready and no rows as an empty one. So each folder entered, and a previewed one
+that lists empty, is asked with `test -r -x`; one that fails shows "Can't list
+this folder".
+
 **Hover never claims the selection.** The selection is what `Return`, `F2` and
 `Delete` act on, so only a click moves it. When hover claimed it, a pointer
 drifting over the list moved the selection while you typed a rename, and `Return`

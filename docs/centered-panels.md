@@ -82,7 +82,7 @@ Eight package-owned QML files plus Hyprland config.
 | `Ui/KeyboardPanel.qml` | centred placement in `cardOrigin`, unless `[wheely] panels` is `native`; `slideX`/`originScale` transform; entry/exit animations; reports surface visibility to the bar |
 | `Ui/PanelKeyCatcher.qml` | Ctrl+Left/Right → `tabRequested`; Backspace asks `xpo.wheel back` |
 | `plugins/bar/Bar.qml` | `PanelScrim` — the shared blurred backdrop; `lastSwitchDirection`; `visiblePanelSurfaces` counter; carries Wheely's return across panel switches |
-| `plugins/clipboard/Clipboard.qml` | Backspace past an empty filter asks `xpo.wheel back` — it rolls its own key handler instead of using `PanelKeyCatcher`; drops its own scrim for the shared one; bare Backspace cancels the clear-history confirmation |
+| `plugins/clipboard/Clipboard.qml` | Backspace past an empty filter asks `xpo.wheel back` — it rolls its own key handler instead of using `PanelKeyCatcher`; drops its own scrim for the shared one, keeping it only with a bar that has none to share; bare Backspace cancels the clear-history confirmation |
 | `plugins/lock/LockView.qml` | hosts the chosen lock-screen design from `lock/` behind a frosted password field; not panel-related, but patched through the same machinery. See [`lockscreen.md`](lockscreen.md) |
 | `plugins/lock/Service.qml` | runs in its own worker process, started by `lock-session/Bridge.qml`; on successful authentication the design plays its exit before a timer releases the lock; tracks `blanked` for the wake flow |
 | `services/PluginShellApi.qml` | narrow peer-panel, popout, and shared-scrim callbacks without exposing host objects |
@@ -100,7 +100,8 @@ remap as the wheel hands over to whatever you picked. A scrim inside any of
 them blinks out mid-handoff and takes Hyprland's blur with it. One bar-owned
 surface stays mapped across the whole interaction, and every one of those
 surfaces holds a count on it (`panelSurfaceVisible`) rather than drawing its
-own.
+own. Only the clipboard still can: a bar plugin in place of Omarchy's has no
+scrim to share.
 
 Ordering is by **Wayland layer**, not by `layer_rule`'s `order` field:
 
