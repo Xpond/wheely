@@ -65,7 +65,9 @@ blur, render loop) to `~/.config/hypr/hyprland.lua`, links three helpers into
 `~/.local/bin`, links the lock-screen designs in `lock/` into
 `~/.local/share/wheely/`, patches eight shell files, installs a post-update
 hook, and restarts the shell. Rerunning is safe, and `git pull && ./install.sh`
-updates it. Keep the checkout where it is: the hook points to it.
+updates it. Keep the checkout where it is: the hook, plugins and helpers point to it.
+Run `./revert.sh` before moving or deleting it. If it goes missing anyway, the lock screen
+still locks, without its design.
 
 Video previews also need `qt6-multimedia` and `qt6-multimedia-ffmpeg`
 (`sudo pacman -S --needed qt6-multimedia qt6-multimedia-ffmpeg`). The fullsize

@@ -8,9 +8,26 @@ import qs.Commons as Commons
 
 // Keep the renderer and its driver caches out of the long-lived desktop shell.
 Loader {
+  id: loader
+  // Without the bridge (checkout moved or deleted) or its worker, lock in-process as stock does.
+  property bool fallback: false
+  property bool relock: false
   source: Quickshell.env("OMARCHY_LOCK_SESSION") === "1" ? "" :
     "file://" + Quickshell.env("HOME") + "/.local/share/wheely/lock-session/Bridge.qml"
-  sourceComponent: Quickshell.env("OMARCHY_LOCK_SESSION") === "1" ? session : undefined
+  sourceComponent: Quickshell.env("OMARCHY_LOCK_SESSION") === "1" || fallback ? session : undefined
+  onStatusChanged: if (status === Loader.Error) fallback = true
+
+  // The lock the worker never took is taken here once PAM is known.
+  function takeOver() {
+    if (relock && item && item.passwordPamConfigured) { relock = false; item.beginLock() }
+  }
+  onLoaded: takeOver()
+  Connections {
+    target: loader.item
+    ignoreUnknownSignals: true
+    function onFailed(lock) { loader.relock = lock; loader.fallback = true }
+    function onPasswordPamConfiguredChanged() { loader.takeOver() }
+  }
 
   Component {
     id: session
