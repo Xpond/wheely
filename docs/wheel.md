@@ -49,7 +49,7 @@ key means and the dial performs it, which is what lets a test press a key.
 | `↑` `↓` `←` `→` | `↑`/`↓` jump to the slice at that compass point; `←`/`→` step around the ring |
 | `Enter` | fire the highlighted slice, or open it if it is a submenu |
 | `↑` `↓` `Ctrl+P` `Ctrl+N` | step the result list while searching |
-| `Ctrl+Home` `Ctrl+End` | the first and last of the forty results, from wherever you are |
+| `Ctrl+Home` `Ctrl+End` | the first and last result, from wherever you are |
 | type anything | search menu entries, apps, windows, themes and fonts |
 | `Backspace` | delete the character before the caret, then go back to the ring you came from |
 | `Del` | delete the character after the caret |
@@ -59,12 +59,12 @@ key means and the dial performs it, which is what lets a test press a key.
 | `Shift+←` `Shift+→` | select; with `Ctrl`, a word at a time |
 | `Shift+Home` `Shift+End` | select to the start, or to the end |
 | `Ctrl+A` | select the whole query |
-| `Ctrl+U` `Ctrl+K` | cut to the start, or to the end |
+| `Ctrl+U` `Ctrl+K` | delete to the start, or to the end |
 | `Ctrl+V` | paste at the caret or over the selection, runs of whitespace collapsed to one space |
 | `Ctrl+Y` | copy the highlighted path and close |
 | `Ctrl+Enter` | open a terminal in the highlighted path's folder; on any other row, as `Enter` |
 | `Ctrl+T` | pin the search as a window, and back — see [Pinning](#pinning) |
-| `Esc` | clear the query, then go up one level, then close |
+| `Esc` | clear the query, then go back to the ring you came from, then close |
 | `SUPER+W` | close the wheel and whatever it opened |
 
 The query is a Qt `TextInput`, which types, deletes, moves and selects on its

@@ -61,7 +61,7 @@ cd wheely
 
 It links `plugins/` into `~/.config/omarchy/plugins/` and registers them in
 `~/.config/omarchy/shell.json`, appends a marked block (keybinds, layer rules,
-blur, render loop) to `~/.config/hypr/hyprland.lua`, links three helpers into
+blur, render loop) to `~/.config/hypr/hyprland.lua`, links four helpers into
 `~/.local/bin`, links the lock-screen designs in `lock/` into
 `~/.local/share/wheely/`, patches eight shell files, installs a post-update
 hook, and restarts the shell. Rerunning is safe, and `git pull && ./install.sh`
@@ -88,6 +88,8 @@ this project is left untouched and reported.
 Your settings stay: `wheel.json`, `wheel-blur`, `wheel-shortcut` and
 `wallpaper-pause-shortcut` in `~/.config/omarchy/`, and your picks in
 `~/.local/state/omarchy/wheel-uses.json`, so a reinstall starts where you left off.
+So do `[wheely] panels` and `[menu] scrim-alpha` in `~/.config/omarchy/shell.toml`;
+Omarchy's own menus keep using `scrim-alpha`, so delete that line to get the theme's back.
 
 ## Why sudo
 
