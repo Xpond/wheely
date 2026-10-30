@@ -324,18 +324,21 @@ Item {
     exclusionMode: ExclusionMode.Ignore
 
     // Share the bar scrim across panel handoffs.
-    onVisibleChanged: {
-      var bar = root.shell && root.shell.bar
-      if (bar && typeof bar.panelSurfaceVisible === "function") bar.panelSurfaceVisible(visible)
-    }
-    Component.onDestruction: {
-      var bar = root.shell && root.shell.bar
-      if (visible && bar && typeof bar.panelSurfaceVisible === "function") bar.panelSurfaceVisible(false)
-    }
+    readonly property var scrimBar: root.shell && root.shell.bar
+      && typeof root.shell.bar.panelSurfaceVisible === "function" ? root.shell.bar : null
+    onVisibleChanged: if (scrimBar) scrimBar.panelSurfaceVisible(visible)
+    Component.onDestruction: if (visible && scrimBar) scrimBar.panelSurfaceVisible(false)
 
     MouseArea {
       anchors.fill: parent
       onClicked: root.close()
+    }
+
+    // A bar plugin in place of Omarchy's has no scrim to share; dim here as stock does.
+    Rectangle {
+      anchors.fill: parent
+      visible: !panel.scrimBar
+      color: root.scrim
     }
 
     BorderSurface {
