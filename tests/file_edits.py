@@ -107,14 +107,15 @@ def check(source, base, run, block):
     assert target.read_bytes() == b"saved edit\n", "pending newer edits must not replace the saved file"
 
     # A file grown past the limit since it was listed is not read; a save past it still verifies.
-    grown = base / "grown.log"
+    grown, small = base / "grown.log", base / "small.txt"
     grown.write_bytes(b"x" * 99 + b"\n")
+    small.write_bytes(b"small\n")
     run("grown-file-not-read", common + '''
   Component.onCompleted: root.previewPath = ''' + json.dumps(str(grown)) + '''
   Timer { interval: 200; running: true; onTriggered: {
     try {
       root.check(root.fullText === "" && !root.utf8, "a file past the limit was read")
-      root.previewPath = ''' + json.dumps(str(target)) + '''
+      root.previewPath = ''' + json.dumps(str(small)) + '''
     } catch (error) { console.error(String(error)); Qt.exit(1) }
   } }
   Timer { interval: 400; running: true; onTriggered: {
@@ -130,8 +131,7 @@ def check(source, base, run, block):
     } catch (error) { console.error(String(error)); Qt.exit(1) }
   } }
 ''')
-    assert target.read_bytes() == b"y" * 99 + b"\n"
-    target.write_bytes(b"saved edit\n")
+    assert small.read_bytes() == b"y" * 99 + b"\n"
 
     # The preview moving to another file mid-edit must not carry the edit there.
     other = base / "other.txt"

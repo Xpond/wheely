@@ -105,12 +105,11 @@ console.log("ok: every panel the bar can open is searchable, on the ring or not"
 
 }
 
-// The extension file reads as Omarchy reads it: under "items" or not, a null or a string keeps the
-// default instead of crashing the conditions, and a link opens its target's ring.
+// The extension file reads as Omarchy reads it: a null, a string or a list keeps the default instead
+// of crashing the conditions, and a link opens its target's ring.
 {
-  const user = M.menuOf(`{ "items": { "s.full": null, "s.tool": "x", "s.go": { "label": "Go", "target": "s.full" } } }`)
+  const user = M.menuOf(`{ "s.full": null, "s.tool": "x", "s.bad": [1], "s.go": { "label": "Go", "target": "s.full" } }`)
   assert.deepEqual(Object.keys(user), ["s.go"])
-  assert.deepEqual(Object.keys(M.menuOf(`{ "s.go": { "label": "Go" }, "s.bad": [1] }`)), ["s.go"])
   const items = M.merge({ s: { label: "Setup" }, "s.full": { label: "Full" }, "s.full.y": { label: "Y", action: "y" } }, user)
   M.conditionScript(items)
   const cond = M.parseConditions("", items)

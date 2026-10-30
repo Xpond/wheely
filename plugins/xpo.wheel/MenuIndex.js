@@ -11,12 +11,10 @@ function parse(raw) {
   }
 }
 
-// A menu file as Omarchy reads it: entries under "items" or at the top, and only objects, so a
-// null or a string never replaces a default.
+// Only objects are entries, as Omarchy reads a menu file: a null or a string never replaces a default.
 function menuOf(raw) {
   var cfg = parse(raw), out = {}
-  var src = cfg.items && typeof cfg.items === "object" && !Array.isArray(cfg.items) ? cfg.items : cfg
-  for (var id in src) if (src[id] && typeof src[id] === "object" && !Array.isArray(src[id])) out[id] = src[id]
+  for (var id in cfg) if (cfg[id] && typeof cfg[id] === "object" && !Array.isArray(cfg[id])) out[id] = cfg[id]
   return out
 }
 
@@ -291,8 +289,8 @@ function shows(id, e, cond) {
   return e.action || e.provider || !cond.ready || cond.full[e.target || id] === true
 }
 
-// Providers hand off to Omarchy; nodes carry the id the ring drills into, a link's target's. Omarchy's own marks
-// sit in a font of their own, at codepoints a Nerd Font fills with other glyphs.
+// Providers hand off to Omarchy; nodes carry the id the ring drills into, a link its target's.
+// Omarchy's own marks sit in a font of their own, at codepoints a Nerd Font fills with other glyphs.
 function entryOf(id, e, cond) {
   var s = { id: id, icon: e.icon || "󰍜", label: (e.label || id) + (cond.checked[id] ? " ✓" : "") }
   if (e.iconFont) s.iconFont = e.iconFont
