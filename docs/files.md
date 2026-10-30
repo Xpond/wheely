@@ -239,7 +239,9 @@ the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
 Laying out is the cost.
 
-Files over **256 KB** are never read. A NUL byte in the first kilobyte is what
+Files over **256 KB** are never read. The size is the listing's, so a file that
+grew past it since, a log say, is read by `FileView` off the UI thread but never
+decoded on it: a 200 MB file blocked the shell for seconds. A NUL byte in the first kilobyte is what
 marks a binary, rather than an extension list to maintain: `.frag` and `.qsb`
 sit either side of any list you would write by hand, and the bytes do not lie.
 

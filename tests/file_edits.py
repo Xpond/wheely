@@ -18,6 +18,7 @@ def check(source, base, run, block):
   property string editedPath: ""
   property string fullText: ""
   property bool utf8: false
+  property int previewLimit: 64
   function showAll() {}
   property var settledSel: ({ size: 0 })
   property bool editing: false
@@ -104,6 +105,33 @@ def check(source, base, run, block):
   } }
 ''')
     assert target.read_bytes() == b"saved edit\n", "pending newer edits must not replace the saved file"
+
+    # A file grown past the limit since it was listed is not read; a save past it still verifies.
+    grown = base / "grown.log"
+    grown.write_bytes(b"x" * 99 + b"\n")
+    run("grown-file-not-read", common + '''
+  Component.onCompleted: root.previewPath = ''' + json.dumps(str(grown)) + '''
+  Timer { interval: 200; running: true; onTriggered: {
+    try {
+      root.check(root.fullText === "" && !root.utf8, "a file past the limit was read")
+      root.previewPath = ''' + json.dumps(str(target)) + '''
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+  Timer { interval: 400; running: true; onTriggered: {
+    try {
+      root.edit(); preview.editorText = "y".repeat(99)
+      root.save()
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+  Timer { interval: 800; running: true; onTriggered: {
+    try {
+      root.check(root.saving === null && !root.saveError, "a save past the limit never verified")
+      console.log("PASS"); Qt.quit()
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+''')
+    assert target.read_bytes() == b"y" * 99 + b"\n"
+    target.write_bytes(b"saved edit\n")
 
     # The preview moving to another file mid-edit must not carry the edit there.
     other = base / "other.txt"

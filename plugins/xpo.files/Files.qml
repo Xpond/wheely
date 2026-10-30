@@ -650,6 +650,9 @@ Item {
     // Preserve the old file if a write stops partway.
     atomicWrites: true
     onLoaded: {
+      // A file grown past the limit since it was listed is not decoded here: 200 MB blocks for seconds.
+      // A save's own read-back still verifies.
+      if (root.saving === null && data().byteLength > root.previewLimit) return
       root.utf8 = FilesIndex.isUtf8(data())
       root.fullText = FilesIndex.looksBinary(text()) ? "" : text()
       // Typing during save verification leaves the editor dirty.
