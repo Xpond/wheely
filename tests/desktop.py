@@ -44,6 +44,7 @@ def check():
     spec.loader.exec_module(module)
     reload_config = module.reload
     module.reload = lambda: []
+    os.environ.setdefault("HYPRLAND_INSTANCE_SIGNATURE", "test")  # reloads are patched, never run
     for answer, errors in (([], []), ([""], []), (["invalid config"], ["invalid config"]), ({}, None)):
         response = subprocess.CompletedProcess([], 0, stdout=json.dumps(answer))
         with patch.object(module.subprocess, "run", return_value=response):
@@ -180,6 +181,14 @@ def check():
             run("revert")
         assert config.read_bytes() == original.encode()
         print("ok: configuration errors the user already had block neither install nor revert")
+
+        # From a TTY there is no Hyprland to reload: revert, the rescue path, still writes the file.
+        run("install")
+        with patch.dict(os.environ, {"HYPRLAND_INSTANCE_SIGNATURE": ""}), \
+             patch.object(module, "reload", side_effect=AssertionError("reloaded without Hyprland")):
+            run("revert")
+        assert config.read_bytes() == original.encode() and not (bindir / "omarchy-wheel-close").exists()
+        print("ok: revert from a TTY removes the block without a running Hyprland")
 
     # The shortcut and blur files are data: a key the row could have written is bound, anything else is
     # the default, and "off" turns the backdrop's blur, and Hyprland's, off. Windows keep the blur they

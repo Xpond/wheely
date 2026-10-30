@@ -15,6 +15,7 @@ def check(source, base, run, block):
                                block(source, r"  FileView {\n    id: previewFile")])
     common = '''
   property string previewPath: ""
+  property string editedPath: ""
   property string fullText: ""
   property bool utf8: false
   function showAll() {}
@@ -101,6 +102,23 @@ def check(source, base, run, block):
   } }
 ''')
     assert target.read_bytes() == b"saved edit\n", "pending newer edits must not replace the saved file"
+
+    # The preview moving to another file mid-edit must not carry the edit there.
+    other = base / "other.txt"
+    other.write_bytes(b"keep me\n")
+    run("save-stays-on-edited-file", common + '''
+  Component.onCompleted: root.previewPath = ''' + json.dumps(str(target)) + '''
+  Timer { interval: 200; running: true; onTriggered: {
+    try {
+      root.edit(); preview.editorText = "edit"
+      root.previewPath = ''' + json.dumps(str(other)) + '''
+      root.save()
+      root.check(root.saving === null && ops.fileNote === "file is gone; not saved", "edit saved into another file")
+      console.log("PASS"); Qt.quit()
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+''')
+    assert other.read_bytes() == b"keep me\n" and target.read_bytes() == b"saved edit\n"
 
     locked = base / "read-only-directory"
     locked.mkdir()

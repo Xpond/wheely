@@ -136,12 +136,6 @@ ShellRoot { Lock.Service {} }
         # Every worker so far retired cleanly, which logs nothing.
         qslog.check("\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")))
 
-        entry = worker / "shell.qml"
-        original = entry.read_text()
-        entry.write_text("invalid qml\n")
-        assert ipc("lock") == "ok"
-        until(lambda: not status().get("requested") and not child_pid(), "failed launch stayed pending")
-        entry.write_text(original)
         requested_at = time.time() * 1000
         assert ipc("lock") == "ok"
         until(lambda: status().get("secure"), "lock never became secure")
@@ -170,7 +164,23 @@ ShellRoot { Lock.Service {} }
         until(lambda: not status().get("locked"), "authenticated unlock did not release")
         until(lambda: not child_pid(), "unlock retained its worker")
         until(lambda: not list(home.glob("wake.*")), "worker exited before its wake command finished", timeout=3)
-        print("ok: failed launch retries, shell restart/crash reconnects, worker crash recovers, unlock/wake retires", flush=True)
+        print("ok: shell restart/crash reconnects, worker crash recovers, unlock/wake retires", flush=True)
+
+        # A worker that cannot start, then a missing bridge: the shell locks in-process instead.
+        entry = worker / "shell.qml"
+        entry.write_text("invalid qml\n")
+        assert ipc("lock") == "ok"
+        until(lambda: status().get("secure"), "failed worker did not fall back to an in-process lock")
+        assert not child_pid(), "fallback lock started a worker"
+        parent.terminate()
+        parent.wait(timeout=3)
+        (worker / "Bridge.qml").unlink()
+        parent = start()
+        until(lambda: status().get("passwordPam"), "missing bridge left no lock service")
+        assert ipc("lock") == "ok"
+        until(lambda: status().get("secure"), "missing bridge did not lock in-process")
+        assert not child_pid(), "missing bridge started a worker"
+        print("ok: a failed worker or missing bridge locks in-process", flush=True)
     finally:
         # Stop the bridge first so killing an active test worker cannot respawn it.
         if parent is not None:

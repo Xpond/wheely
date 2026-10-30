@@ -51,7 +51,7 @@ Each design documents itself in its folder:
 |---|---|
 | `patches/shell/plugins/lock/LockView.qml` | Host: password field, wake handling, loads the chosen design |
 | `patches/shell/plugins/lock/Service.qml` | PAM flow, unlock delay, display blanking, wake state and the preview |
-| `lock-session/Bridge.qml` | Keeps the shell's lock IPC available and starts/reconnects the worker |
+| `lock-session/Bridge.qml` | Keeps the shell's lock IPC available and starts/reconnects the worker; if it is missing or its worker cannot start, Service.qml locks in-process |
 | `lock-session/shell.qml` | Runs the installed authentication service and exits after unlock/wake or preview closure |
 | `patches/orig/plugins/lock/` | Stock copies used by the verified install/revert workflow |
 | `bin/omarchy-lock-design` | Lists the designs, names the chosen one, or sets the one the next lock shows |

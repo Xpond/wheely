@@ -16,6 +16,13 @@ alert() {
   command -v notify-send >/dev/null && notify-send -u critical "wheely" "$1"
 }
 
+# patches/orig is this Omarchy release's; merged backwards, the patches would break an older shell.
+BASE=4.0.6
+VERSION=${PACKAGE_DB##*/omarchy-}
+if [[ -n $PACKAGE_DB ]] && (( $(vercmp "$VERSION" "$BASE") < 0 )); then
+  alert "wheely needs Omarchy $BASE or newer; this is $VERSION"; exit 1
+fi
+
 # Link the lock-screen designs before any QML can load them.
 data=~/.local/share/wheely
 mkdir -p "$data" && ln -sfn "$REPO/lock" "$data/lock" || { alert "Could not link the lock-screen designs"; exit 1; }
@@ -69,9 +76,15 @@ rebased=()   # patch re-based onto a new upstream version first
 conflicts=() # merge failed; installed file left untouched
 foreign=()   # neither stock nor ours; installed file left untouched
 held=()      # lock file whose partner was left untouched; left untouched too
+untested=()  # lock file upstream changed since our patch; Omarchy's own lock stays
 failed=()    # recording or installation failed
 ready=()     # patch due to be copied in
 declare -A from=()  # the patch each ready file gets
+
+# The lock is never merged: a clean merge can still leave it unable to lock. Once upstream changes
+# either file, the pair stays Omarchy's own until patches/orig catches up.
+lock_untested=0
+for f in plugins/lock/{LockView,Service}.qml; do is_stock "$f" "$REPO/patches/orig/$f" || lock_untested=1; done
 
 for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
@@ -80,6 +93,7 @@ for f in "${FILES[@]}"; do
   stock="$STATE/rebased/orig/$f"
   merged="$STATE/rebased/shell/$f"
 
+  if [[ $f == plugins/lock/* ]] && (( lock_untested )); then untested+=("$f"); continue; fi
   # A patch made for another Omarchy version is rebased onto the installed one in the state, never in
   # the checkout, so git pull keeps working. Stock is kept there for reruns once the patch covers it.
   if is_stock "$f" "$base"; then
@@ -154,7 +168,11 @@ fi
 
 (( ${#rebased[@]} )) && printf 'rebased onto new upstream: %s\n' "${rebased[*]}"
 (( ${#applied[@]} )) && printf 'installed: %s\n' "${applied[*]}"
-(( ${#applied[@]} + ${#conflicts[@]} + ${#foreign[@]} + ${#failed[@]} )) || echo "already up to date"
+(( ${#applied[@]} + ${#conflicts[@]} + ${#foreign[@]} + ${#failed[@]} + ${#untested[@]} )) || echo "already up to date"
+if (( ${#untested[@]} )); then
+  echo "Lock screen left as Omarchy's: wheely is not yet updated for Omarchy $VERSION. Later: git pull && ./install.sh"
+  command -v notify-send >/dev/null && notify-send "wheely" "Lock screen left as Omarchy's until wheely supports Omarchy $VERSION"
+fi
 
 broken=("${conflicts[@]}" "${foreign[@]}" "${held[@]}" "${failed[@]}")
 if (( ${#broken[@]} )); then

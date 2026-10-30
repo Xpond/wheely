@@ -60,6 +60,7 @@ local wheel_key = saved_key("wheel-shortcut", "SUPER + A")
 hl.unbind(wheel_key)
 o.bind(wheel_key, "Wheel", hl.dsp.global("xpo.wheel:toggle"))
 
--- SUPER+W normally closes a window; the helper retains that fallback.
+-- SUPER+W normally closes a window; the helper retains that fallback, and so does a missing helper.
 hl.unbind("SUPER + W")
-o.bind("SUPER + W", "Close wheel or window", "omarchy-wheel-close")
+o.bind("SUPER + W", "Close wheel or window",
+  "command -v omarchy-wheel-close >/dev/null && exec omarchy-wheel-close; hyprctl dispatch 'hl.dsp.window.close()'")
