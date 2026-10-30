@@ -47,10 +47,7 @@ end
 local theme_file = io.open(os.getenv("HOME") .. "/.local/state/omarchy/current/theme.name")
 local theme = theme_file and theme_file:read("*l") or ""
 if theme_file then theme_file:close() end
-local controller = (theme == "wheelie" or theme == "tidal")
-  and io.open(os.getenv("HOME") .. "/.config/omarchy/themes/" .. theme .. "/" .. theme)
-if controller then
-  controller:close()
+if theme == "wheelie" or theme == "tidal" then
   local pause_key = saved_key("wallpaper-pause-shortcut", "CTRL + SPACE")
   hl.unbind(pause_key)
   o.bind(pause_key, "Pause/resume wallpaper", "omarchy-wallpaper-toggle")

@@ -343,8 +343,7 @@ behaviour.
 `~/.config/omarchy/extensions/omarchy-menu.jsonc` — strips JSONC comments and
 trailing commas, and merges the user's over the defaults by id, as Omarchy does:
 anything not an object is skipped, and an entry with a `target` opens that
-menu's ring. Ids are dotted
-(`trigger.capture.qr`), so an entry's breadcrumb is just its ancestors' labels.
+menu's ring. Ids are dotted (`trigger.capture.qr`), so an entry's breadcrumb is just its ancestors' labels.
 Both files are watched, as Omarchy's own menu watches them: an edit shows when
 it is saved, and an entry taken out of the user's file is gone rather than
 merged over.

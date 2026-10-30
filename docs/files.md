@@ -239,9 +239,9 @@ the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
 Laying out is the cost.
 
-Files over **256 KB** are never read. The size is the listing's, so a file that
-grew past it since, a log say, is read by `FileView` off the UI thread but never
-decoded on it: a 200 MB file blocked the shell for seconds. A NUL byte in the first kilobyte is what
+Files over **256 KB** are never read. A file that grew past that since it was
+listed is loaded off the UI thread but never decoded on it: 200 MB blocked the
+shell for seconds. A NUL byte in the first kilobyte is what
 marks a binary, rather than an extension list to maintain: `.frag` and `.qsb`
 sit either side of any list you would write by hand, and the bytes do not lie.
 
@@ -429,7 +429,8 @@ the file as it is on disk — and the editor takes all of it, never the preview'
 lines, so a file of any length edits. A file over 256 KB, binary, or not valid
 UTF-8 is not editable -- the bytes are what get checked, so a file that
 genuinely contains U+FFFD still edits. Nor is one holding CR line endings or
-no-break spaces: Qt's editor turns them into LF and spaces. Writes go out `atomicWrites`.
+no-break spaces, which Qt's editor turns into LF and spaces, or a BOM, which
+`FileView` drops. Writes go out `atomicWrites`.
 A save is then confirmed by reading the file back, because `FileView` will not
 tell you (see [Traps](#traps)), and `endLine()` adds the trailing newline `vim`
 would, since a file saved without one is a file `git` calls damaged.

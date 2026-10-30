@@ -75,7 +75,7 @@ Item {
                                                     MenuIndex.lines(root.fontText), root.currentFont)
   readonly property var bindRows: MenuIndex.bindRows(root.bindText)
   property string shortcut: MenuIndex.SHORTCUT
-  // The pause key is a setting while either animated theme is installed, matching the Hyprland block.
+  // The pause key is a setting while either animated theme is installed; Hyprland binds it while one is active.
   property string pauseKey: MenuIndex.PAUSE_KEY
   readonly property bool animatedThemeInstalled: MenuIndex.lines(root.themeText).some(name => name === "Wheelie" || name === "Tidal")
   // The backdrop in percent as the shell draws it; while changed, the value the shell reads back next.

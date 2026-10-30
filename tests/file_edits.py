@@ -18,6 +18,7 @@ def check(source, base, run, block):
   property string editedPath: ""
   property string fullText: ""
   property bool utf8: false
+  property bool rewrites: false
   property int previewLimit: 64
   function showAll() {}
   property var settledSel: ({ size: 0 })
@@ -44,8 +45,9 @@ def check(source, base, run, block):
 ''' + production
 
     for name, content, note in [("non-utf8", b"caf\xe9\n", "not UTF-8; preview only"),
-                                ("crlf", b"one\r\ntwo\r\n", "CR or no-break spaces; preview only"),
-                                ("nbsp", "a\u00a0b\n".encode(), "CR or no-break spaces; preview only")]:
+                                ("crlf", b"one\r\ntwo\r\n", "text the editor would change; preview only"),
+                                ("nbsp", "a\u00a0b\n".encode(), "text the editor would change; preview only"),
+                                ("bom", b"\xef\xbb\xbfhello\n", "text the editor would change; preview only")]:
         target = base / (name + ".txt")
         target.write_bytes(content)
         run("edit-refuses-" + name, common + '''

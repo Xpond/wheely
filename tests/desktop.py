@@ -218,20 +218,14 @@ def check():
                 state.mkdir(parents=True, exist_ok=True)
                 (state / "theme.name").write_text(theme + "\n")
             if pause:
-                for theme in ["wheelie", "tidal"]:
-                    (Path(home) / ".config/omarchy/themes" / theme).mkdir(parents=True)
-                    (Path(home) / ".config/omarchy/themes" / theme / theme).touch()
                 activate("wheelie")
             lua(*([pause] if pause else []))
             assert not (Path(home) / "pwned").exists()
             if pause:
                 activate("tidal")
                 lua(pause)
-                # Installed but not active: the key stays the app's, for an IME or autocomplete.
+                # Any other theme: the key stays the app's, for an IME or autocomplete.
                 activate("tokyo-night")
-                lua()
-                (Path(home) / ".config/omarchy/themes/tidal/tidal").unlink()
-                activate("tidal")
                 lua()
     print("ok: shipped Lua binds the direct shortcut and pause key as saved, render environment and shared blur")
 
