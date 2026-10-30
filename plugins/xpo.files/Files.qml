@@ -469,9 +469,12 @@ Item {
   readonly property bool editable: root.utf8 && !!root.previewPath
                                    && (!!root.fullText || root.settledSel.size === 0)
 
+  // Saves go only to the file the edit began on.
+  property string editedPath: ""
   function edit() {
     if (root.previewPath && !root.utf8) { ops.note("not UTF-8; preview only"); return }
     if (!root.editable || root.editing) return
+    root.editedPath = root.previewPath
     ops.fileNote = ""
     preview.editorText = root.fullText
     root.dirty = false
@@ -486,6 +489,7 @@ Item {
   property var saving: null
   function save() {
     if (!root.editing || root.saving !== null) return
+    if (root.previewPath !== root.editedPath) { ops.note("file is gone; not saved"); return }
     root.saveError = false
     ops.fileNote = ""
     root.saving = FilesIndex.endLine(preview.editorText)
@@ -653,7 +657,11 @@ Item {
   }
 
   onRowsChanged: {
-    if (root.index >= root.rows.length) root.index = 0
+    // A folder change shifts the rows; an open edit or rename stays on its file.
+    var held = (root.editing || root.naming === "rename") && root.settledSel
+      ? root.rows.findIndex(e => e.path === root.settledSel.path) : -1
+    if (held >= 0) root.index = held
+    else if (root.index >= root.rows.length) root.index = 0
     root.claimPending()
   }
 

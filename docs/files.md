@@ -539,6 +539,12 @@ folders first *and* the filter's best match first *and* then alphabetical.
 drifting over the list moved the selection while you typed a rename, and `Return`
 renamed whichever file it had drifted to.
 
+**The selection is a row number, so an edit or rename holds its file.** A save
+re-sorts the folder by date or size, and a download lands above you in any order;
+the same index then names another file. While editing or renaming,
+`onRowsChanged` moves the index back onto the file, and `save()` writes only to
+the path `edit()` began on, refusing if the preview has moved anyway.
+
 **A landing scrolls the list only once the list holds the new rows.**
 `onRowsChanged` can run before the `ListView` takes the new model, and scrolling
 then moves the old rows: the selection landed far down a folder while the list
