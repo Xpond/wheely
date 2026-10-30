@@ -16,6 +16,13 @@ alert() {
   command -v notify-send >/dev/null && notify-send -u critical "wheely" "$1"
 }
 
+# Checked before anything changes, so a missing one never leaves a half-made install.
+missing=()
+for cmd in jq python3 git hyprctl sudo fd wl-copy gio xdg-open xdg-mime setsid; do
+  command -v "$cmd" >/dev/null || missing+=("$cmd")
+done
+(( ${#missing[@]} )) && { alert "wheely needs ${missing[*]}"; exit 1; }
+
 # patches/orig is this Omarchy release's; merged backwards, the patches would break an older shell.
 BASE=4.0.6
 VERSION=${PACKAGE_DB##*/omarchy-}
@@ -34,9 +41,6 @@ mkdir -p "$data/lock-session" &&
 
 # ------------------------------------------------------------------ plugins
 # Link plugins for live editing and register them idempotently via a temp file.
-command -v jq >/dev/null || { alert "jq is required to register plugins"; exit 1; }
-command -v python3 >/dev/null || { alert "python3 is required to manage user configuration"; exit 1; }
-command -v hyprctl >/dev/null || { alert "hyprctl is required to validate user configuration"; exit 1; }
 python3 "$REPO/scripts/user-config.py" install ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin ||
   { alert "Could not update the Hyprland configuration"; exit 1; }
 mkdir -p ~/.config/omarchy/plugins ~/.local/bin || exit 1

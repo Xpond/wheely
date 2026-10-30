@@ -29,7 +29,15 @@ case "${1:-help}" in
       exit 1
     fi
     if [[ -e "$destination" ]]; then mv -T "$destination" "$stage/previous"; fi
-    mv -T "$new" "$destination"
+    if ! mv -T "$new" "$destination"; then
+      if [[ -e "$stage/previous" || -L "$stage/previous" ]]; then
+        mv -T "$stage/previous" "$destination" || {
+          trap - EXIT
+          printf 'Could not restore Wheelie; backup: %s\n' "$stage/previous" >&2
+        }
+      fi
+      exit 1
+    fi
     omarchy hook install theme-set "$destination/hooks/wheelie-wallpaper"
     omarchy hook install post-boot "$destination/hooks/wheelie-wallpaper"
     "$destination/wheelie" watch

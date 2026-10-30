@@ -50,6 +50,23 @@ def check(repo, base, run, block):
   }
 ''')
 
+    # Without Omarchy's bar there is no shared scrim: the clipboard opens and closes without one, and
+    # its own dim shows.
+    run("clipboard-without-bar", '''
+  property var shell: root
+  property var bar: null
+  QtObject {
+    id: panel
+    property bool visible: false
+''' + clipboard + '''
+  }
+  Timer { interval: 1; running: true; onTriggered: {
+    panel.visible = true; panel.visible = false
+    if (panel.scrimBar !== null) throw new Error("FAIL a missing bar was taken for a scrim")
+    console.log("PASS"); Qt.quit()
+  } }
+''')
+
     shutil.copyfile(repo / "patches/shell/services/PluginShellApi.qml",
                     base / "PluginShellApi.qml")
     run("plugin-shell-facade", '''
