@@ -33,7 +33,14 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
 
     config = {"plugins": expected + [{"id": "other", "enabled": False}], "idle": {"lock": 30}}
     conf.write_text(json.dumps(config))
-    assert fixture.run().returncode == 0
+    fixture.env["HYPR_BINDS"] = json.dumps([{"modmask": 64, "key": "S", "description": "Other", "arg": "o"},
+                                            {"modmask": 64, "key": "A", "description": "", "arg": "chat"}])
+    result = fixture.run()
+    assert result.returncode == 0 and 'SUPER + A was "chat"' in result.stdout, result.stdout
+    fixture.env["HYPR_BINDS"] = json.dumps([{"modmask": 64, "key": "A", "description": "Wheel", "arg": "257"}])
+    result = fixture.run()
+    assert result.returncode == 0 and "SUPER + A was" not in result.stdout and "type help" in result.stdout, result.stdout
+    print("ok: a key the wheel takes over is named, and a rerun names nothing")
     assert json.loads(conf.read_text()) == config
     assert [p.name for p in hook.parent.iterdir()] == ["wheely"]
     # Execute the generated trampoline too, so quoting is checked by bash itself.

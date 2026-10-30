@@ -12,9 +12,9 @@ case ${1:-} in
     done
     ;;
   current)
-    # The lock screen shows rally until a design is chosen.
+    # The lock screen shows wallpaper until a design is chosen.
     read -r name 2>/dev/null < "$choice"
-    printf '%s\n' "${name:-rally}"
+    printf '%s\n' "${name:-wallpaper}"
     ;;
   set)
     [[ -f $designs/${2:-}/Scene.qml ]] || { echo "No lock-screen design named '${2:-}'" >&2; exit 1; }
