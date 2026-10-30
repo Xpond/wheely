@@ -6,6 +6,7 @@
 function snapshot(model, dir, limit) {
   var out = []
   var count = limit === undefined ? model.count : Math.min(model.count, limit)
+  dir = String(dir).replace(/(.)\/$/, "$1") // a typed path keeps its trailing slash
   for (var i = 0; i < count; i++) {
     var path = String(model.get(i, "filePath"))
     if (i === 0 && parentOf(path) !== dir) return []

@@ -56,6 +56,10 @@ assert.deepEqual(F.snapshot(model, "/tmp", 1), [
 ])
 // A model that listed another folder, or the working directory for a gone one, yields no rows.
 assert.deepEqual(F.snapshot(model, "/tmp/#archive"), [])
+// A typed path lists its folder with a trailing slash; root has nothing to strip.
+assert.equal(F.snapshot(model, "/tmp/").length, 2)
+const rooted = { count: 1, get: (i, field) => ({ fileName: "etc", filePath: "/etc", fileIsDir: true })[field] }
+assert.equal(F.snapshot(rooted, "/").length, 1)
 
 // At 80 characters two 38-character columns fit, filled down before across.
 const preview = [
