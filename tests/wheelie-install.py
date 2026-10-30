@@ -36,7 +36,7 @@ name, args = Path(sys.argv[0]).name, sys.argv[1:]
 failure = os.environ["WHEELIE_FAIL"]
 with open(os.environ["WHEELIE_LOG"], "a") as log:
     log.write(name + " " + " ".join(args) + "\\n")
-if name == "cp" and args[0] == "-a" and args[-2].endswith("/scene") and failure != "none":
+if name == "cp" and args[0] == "-a" and args[-2].endswith("/scene") and failure in ("copy", "interrupt"):
     Path(args[-1]).mkdir(exist_ok=True)
     (Path(args[-1]) / "partial").touch()
     if failure == "interrupt": os.kill(os.getppid(), signal.SIGTERM)
@@ -45,13 +45,17 @@ if name == "quickshell" and "--daemonize" in args:
     assert Path(args[-1]).is_file()
 if name == "cp":
     sys.exit(subprocess.call(["/usr/bin/cp", *args]))
+if name == "mv" and failure == "swap" and ".wheelie-install-" in args[-2] and args[-2].endswith("/wheelie"):
+    sys.exit(1)
+if name == "mv":
+    sys.exit(subprocess.call(["/usr/bin/mv", *args]))
 """
-    for name in ("cp", "omarchy", "quickshell"):
+    for name in ("cp", "mv", "omarchy", "quickshell"):
         command = commands / name
         command.write_text(stub)
         command.chmod(0o755)
 
-    for failure in ("copy", "interrupt", "none"):
+    for failure in ("copy", "interrupt", "swap", "none"):
         config = root / failure
         destination = config / "omarchy/themes/wheelie"
         (destination / "animated").mkdir(parents=True)
@@ -82,10 +86,11 @@ if name == "cp":
             assert destination.stat().st_mtime > 0
             assert "--daemonize" in calls and "post-boot" in calls and "theme-set" in calls
         else:
-            # A failed copy leaves the installed theme and its running scene untouched.
+            # A failed copy leaves the installed theme and its running scene untouched; a failed swap
+            # puts the theme back.
             assert result.returncode != 0, failure
             assert snapshot(destination) == original, (failure, result.stderr, calls)
-            assert "quickshell kill" not in calls, (failure, calls)
+            assert ("quickshell kill" in calls) == (failure == "swap"), (failure, calls)
         assert not list(destination.parent.parent.glob(".wheelie-install-*")), failure
         print(f"ok: Wheelie install {failure}")
 

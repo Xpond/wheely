@@ -1,6 +1,7 @@
 """Actual file editing, file-operation process completion, and clicks in a folder's preview."""
 import json
 import os
+import re
 from file_edits import check as check_file_edits
 
 
@@ -131,24 +132,27 @@ def check(files, ops, base, run, block):
         assert captured.read_text() == selected
 
     # Qt's FolderListModel lists the parent for "#archive", and a fresh one the working directory
-    # for "q?x" or a gone folder; the panel shows none of those rows.
+    # for "q?x" or a gone folder; the panel shows none of those rows. An unreadable folder lists as
+    # empty, so it, and the gone one, say they can't be listed.
     for name in ["#archive", "q?x", "plain"]:
         (base / "listing" / name).mkdir(parents=True)
         (base / "listing" / name / "inside").touch()
+    (base / "listing/locked").mkdir(mode=0)
     listing = '''
   property bool showHidden: false
   property string listedDir: ""
   property var entries: []
-  property var dirs: ''' + json.dumps([str(base / "listing" / n) for n in ["#archive", "q?x", "gone", "plain"]]) + '''
+  property var dirs: ''' + json.dumps([str(base / "listing" / n) for n in ["#archive", "q?x", "gone", "plain", "locked"]]) + '''
   property var seen: []
-''' + block(files, r"  FolderListModel \{\n    id: listedFolder") + block(files, r"  property bool unlisted:.*?\n  function relist\(") + '''
+''' + block(files, r"  FolderListModel \{\n    id: listedFolder") + re.search(r"  readonly property bool unlisted:.*?  FilesProcess \{ id: access.*?\n", files, re.S).group() + '''
   Timer { interval: 300; running: true; repeat: true; onTriggered: {
     if (root.listedDir) root.seen.push(JSON.stringify([root.entries.map(e => e.path), root.unlisted]))
     if (root.seen.length < root.dirs.length) { root.listedDir = root.dirs[root.seen.length]; return }
     // A reused model reports nothing for ? and a gone folder; "#archive" lists its parent, caught.
-    var want = [[[], true], [[], false], [[], false], [[root.dirs[3] + "/inside"], false]].map(s => JSON.stringify(s))
+    var want = [[[], true], [[], false], [[], true], [[root.dirs[3] + "/inside"], false], [[], true]].map(s => JSON.stringify(s))
     if (JSON.stringify(root.seen) !== JSON.stringify(want)) { console.error("FAIL", JSON.stringify(root.seen)); Qt.exit(1) }
     else { console.log("PASS"); Qt.quit() }
   } }
 '''
-    run("files-lists-only-its-folder", listing, expected=(r"QFileSystemWatcher::removePath: path is empty$",))
+    run("files-lists-only-its-folder", listing, expected=(r"QFileSystemWatcher::removePath: path is empty$",
+                                                          r"inotify_add_watch\(.*/locked\) failed: \(Permission denied\)$"))
