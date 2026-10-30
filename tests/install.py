@@ -218,3 +218,15 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert result.returncode == 1 and "needs Omarchy 4.0.6 or newer" in result.stderr, result.stderr
     assert fixture.all_stock() and not asset_dir.exists() and not hook.exists()
     print("ok: an older Omarchy is refused before anything changes")
+
+    # A missing command is named before anything changes.
+    fixture.publish(fixture.stock)
+    bare = fixture.base / "bin-without-fd"
+    bare.mkdir()
+    for tool in Path("/usr/bin").iterdir():
+        if tool.name != "fd": (bare / tool.name).symlink_to(tool)
+    fixture.env["PATH"] = str(fixture.stubs) + ":" + str(bare)
+    result = fixture.run()
+    assert result.returncode == 1 and "wheely needs fd" in result.stderr, result.stderr
+    assert fixture.all_stock() and not asset_dir.exists() and not hook.exists()
+    print("ok: a missing command is named before anything changes")
