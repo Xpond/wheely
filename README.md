@@ -32,7 +32,7 @@ A radial control center, a file browser and centered shell panels for
   caustics in the shallow water; unlocking brings the tide in.
   `meadow`: wildflowers grow into “omarchy” above a low meadow, under a starlit sunset sky
   with drifting fireflies. The flowers sway gently and fade on unlock.
-  `wallpaper`: Omarchy's own blurred wallpaper. Try one without locking:
+  `wallpaper`, the default: Omarchy's own blurred wallpaper. Try one without locking:
   `omarchy-shell lock preview`. Work in progress; see
   [`docs/lockscreen.md`](docs/lockscreen.md).
 
@@ -61,7 +61,7 @@ cd wheely
 
 It links `plugins/` into `~/.config/omarchy/plugins/` and registers them in
 `~/.config/omarchy/shell.json`, appends a marked block (keybinds, layer rules,
-blur, render loop) to `~/.config/hypr/hyprland.lua`, links four helpers into
+blur) to `~/.config/hypr/hyprland.lua`, links four helpers into
 `~/.local/bin`, links the lock-screen designs in `lock/` into
 `~/.local/share/wheely/`, patches eight shell files, installs a post-update
 hook, and restarts the shell. Rerunning is safe, and `git pull && ./install.sh`
@@ -104,6 +104,16 @@ leaves the shipped file as it is and is reported, on the desktop too when
 `notify-send` is available. The lock screen's two files are never merged: when an
 update changes either, both stay Omarchy's own until wheely is updated for it
 (`git pull && ./install.sh`).
+
+## Reporting a bug
+
+Open an [issue](https://github.com/Xpond/wheely/issues) with what you did, what
+happened, your GPU, and the output of:
+
+```bash
+omarchy-version
+quickshell log -p "$OMARCHY_PATH/shell" -t 50
+```
 
 ## License
 

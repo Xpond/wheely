@@ -694,8 +694,9 @@ function termOf(query) {
   return modeOf(q) ? q.slice(1) : q
 }
 
-// What `/` has always skipped, until the list is changed: a name skips that folder anywhere.
-var SKIPPED = [".cache", ".git", "node_modules"]
+// What `/` skips until the list is changed: a name skips that folder anywhere. Keys and passwords
+// have no business in a search that shows paths on screen.
+var SKIPPED = [".cache", ".git", "node_modules", ".ssh", ".gnupg", ".password-store"]
 
 // The scan `/` has always run over home, and a second over the folders added outside it. fd anchors
 // a path only to the first folder it is given, so a skip with a slash goes to home's scan alone.

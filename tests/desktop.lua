@@ -1,4 +1,4 @@
-local binds, layers, env, blur, windows = {}, {}, {}, false, {}
+local binds, layers, blur, windows = {}, {}, false, {}
 -- The key and blur the files under $HOME should produce, and the pause key for an animated theme.
 -- A blur of "user" is the backdrop's blur under a user config that already blurs windows.
 local key, blurred, pause = arg[2] or "SUPER + A", arg[3] ~= "off", arg[4]
@@ -6,7 +6,6 @@ local user_blur = arg[3] == "user"
 hl = {
   dsp = { global = function(id) return { global = id } end },
   unbind = function(key) binds[key] = {} end,
-  env = function(key, value) env[key] = value end,
   config = function(cfg) blur = cfg.decoration.blur.enabled end,
   get_config = function() return user_blur end,
   layer_rule = function(rule) layers[rule.match.namespace] = rule end,
@@ -18,8 +17,6 @@ end }
 
 dofile(arg[1])
 
-assert(env.QSG_RENDER_LOOP == "threaded")
-assert(env.QT_FFMPEG_DECODING_HW_DEVICE_TYPES == ",")
 assert(#binds[key] == 1 and binds[key][1].command.global == "xpo.wheel:toggle",
   "wheel shortcut must deliver press/release directly without a subprocess")
 assert(key == "SUPER + A" or binds["SUPER + A"] == nil, "SUPER + A was taken as well as " .. key)

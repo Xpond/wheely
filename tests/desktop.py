@@ -20,6 +20,7 @@ def prepare(source, repo, user, stubs):
     hyprctl.write_text('''#!/bin/bash
 case "$*" in
   reload) exit 0 ;;
+  "binds -j") echo "${HYPR_BINDS:-[]}" ;;
   "-j configerrors") echo '[""]' ;;
   *) exit 1 ;;
 esac
@@ -227,7 +228,13 @@ def check():
                 # Any other theme: the key stays the app's, for an IME or autocomplete.
                 activate("tokyo-night")
                 lua()
-    print("ok: shipped Lua binds the direct shortcut and pause key as saved, render environment and shared blur")
+    print("ok: shipped Lua binds the direct shortcut and pause key as saved, and shared blur")
+
+    # The render loop stays out of the session: each process wheely runs sets its own.
+    assert "hl.env" not in (source / "config/hyprland.lua").read_text()
+    for root in ("patches/shell/shell.qml", "lock-session/shell.qml", "themes/tidal/animated/shell.qml", "themes/wheelie/scene/wallpaper.qml"):
+        assert "//@ pragma Env QSG_RENDER_LOOP=threaded\n" in (source / root).read_text(), root
+    print("ok: every Quickshell root sets its own render loop")
 
 
 if __name__ == "__main__":
