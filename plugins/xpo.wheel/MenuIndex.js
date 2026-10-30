@@ -605,13 +605,13 @@ function bindingAt(raw, combo) {
   return ""
 }
 
-// Menu terms start words; app and window text also accepts substrings.
-// Windows rank as direct hits unless a term only matched inside a word; squashed text keeps
-// "wifi" matching "Wi-Fi".
 // Letters of any script are word characters; V4 has no \p{L}, so punctuation and symbols are the
 // ASCII ones, U+2000-U+303F, and what sits between.
 var NON_WORD = /[^a-z0-9\u00c0-\u1fff\u3040-\uffff]+/g
 
+// Menu terms start words; app and window text also accepts substrings.
+// Windows rank as direct hits unless a term only matched inside a word; squashed text keeps
+// "wifi" matching "Wi-Fi".
 function words(text) {
   var low = String(text || "").toLowerCase()
   return " " + low.replace(NON_WORD, " ").trim()
