@@ -376,6 +376,11 @@ function endLine(t) {
   return t && !/\n$/.test(t) ? t + "\n" : t
 }
 
+// Characters the editor rewrites: CR, CRLF and U+2028/9 become LF, a no-break space a space.
+function rewritten(text) {
+  return /[\r\u00a0\u2028\u2029\ufdd0\ufdd1]/.test(String(text || ""))
+}
+
 function looksBinary(text) {
   return String(text || "").slice(0, 1024).indexOf("\u0000") !== -1
 }

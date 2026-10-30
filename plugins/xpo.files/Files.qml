@@ -465,14 +465,15 @@ Item {
   property bool editing: false
   property bool dirty: false
   property bool saveError: false
-  // Never edit non-UTF-8 text; saving it would lose data.
-  readonly property bool editable: root.utf8 && !!root.previewPath
+  // Never edit text a save would change: non-UTF-8, or characters the editor rewrites.
+  readonly property bool editable: root.utf8 && !!root.previewPath && !FilesIndex.rewritten(root.fullText)
                                    && (!!root.fullText || root.settledSel.size === 0)
 
   // Saves go only to the file the edit began on.
   property string editedPath: ""
   function edit() {
     if (root.previewPath && !root.utf8) { ops.note("not UTF-8; preview only"); return }
+    if (FilesIndex.rewritten(root.fullText)) { ops.note("CR or no-break spaces; preview only"); return }
     if (!root.editable || root.editing) return
     root.editedPath = root.previewPath
     ops.fileNote = ""

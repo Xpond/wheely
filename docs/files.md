@@ -426,7 +426,8 @@ bytes rather than at a picture of them. The heading says `editing`, `unsaved`,
 the file as it is on disk — and the editor takes all of it, never the preview's
 lines, so a file of any length edits. A file over 256 KB, binary, or not valid
 UTF-8 is not editable -- the bytes are what get checked, so a file that
-genuinely contains U+FFFD still edits. Writes go out `atomicWrites`.
+genuinely contains U+FFFD still edits. Nor is one holding CR line endings or
+no-break spaces: Qt's editor turns them into LF and spaces. Writes go out `atomicWrites`.
 A save is then confirmed by reading the file back, because `FileView` will not
 tell you (see [Traps](#traps)), and `endLine()` adds the trailing newline `vim`
 would, since a file saved without one is a file `git` calls damaged.

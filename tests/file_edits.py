@@ -42,7 +42,9 @@ def check(source, base, run, block):
   function check(ok, message) { if (!ok) throw new Error("FAIL " + message) }
 ''' + production
 
-    for name, content, note in [("non-utf8", b"caf\xe9\n", "not UTF-8; preview only")]:
+    for name, content, note in [("non-utf8", b"caf\xe9\n", "not UTF-8; preview only"),
+                                ("crlf", b"one\r\ntwo\r\n", "CR or no-break spaces; preview only"),
+                                ("nbsp", "a\u00a0b\n".encode(), "CR or no-break spaces; preview only")]:
         target = base / (name + ".txt")
         target.write_bytes(content)
         run("edit-refuses-" + name, common + '''
