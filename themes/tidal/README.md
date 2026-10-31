@@ -52,9 +52,11 @@ Smaller washes lap along the sand independently over 12 seconds.
 Adapted from Wheely's original Shore shader, with colorful and muted palettes and
 water light moving at 25% of Shore's speed.
 
-Quickshell renders one input-transparent surface per display, above the shell's
-static background and below application windows. It takes no keyboard focus or
-screen space. A 32 ms timer targets about 30 animation updates per second.
+Quickshell renders input-transparent surfaces above the shell's static background
+and below application windows. At integer display scales, the bottom 18% of dry sand
+uses a stationary surface; only the upper surface redraws during animation. Fractional
+scales use one full-screen surface to keep device pixels aligned. The wallpaper takes
+no keyboard focus or screen space. A 32 ms timer targets about 30 animation updates per second.
 The detailed foam, caustics, and ripples render directly at the display's resolution,
 including 4K, with no low-resolution texture cap or upscaling. No video player
 is needed.
@@ -62,6 +64,12 @@ is needed.
 Foam uses a seamless bubble texture. Wave geometry and old tide marks are cached at
 the display's pixel width and refreshed only when its size or scale changes; motion
 and fine detail still render at full resolution on every update.
+Repeating noise uses a 64 KiB cache per surface of its original lattice values, preserving the
+same interpolation and slopes without recalculating hashes for each pixel.
+The noise cache matched the procedural shader pixel-for-pixel in the reference checks.
+Splitting surfaces introduces sparse viewport-rounding differences: most changed channels
+differed by 1/255, with a maximum of 20/255 at isolated pixels in the tested frames.
+The stationary strip and fractional-scale fallback matched their references exactly.
 
 ```bash
 ~/.config/omarchy/themes/tidal/tidal pause
@@ -97,12 +105,14 @@ Code and assets are distributed under the repository's [MIT license](../../LICEN
 
 ## Development
 
-Rebuild both shaders after editing `animated/*.frag`:
+Rebuild the shaders after editing `animated/*.frag`:
 
 ```bash
 scripts/build-shaders.sh themes/tidal/animated/*.frag
 python3 tests/tidal.py
 python3 tests/tidal-geometry.py
+python3 tests/tidal-noise.py
+python3 tests/tidal-surfaces.py
 ```
 
 The bundled bubble texture is reproducible with `python3 animated/bake-bubbles.py`

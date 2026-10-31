@@ -32,7 +32,12 @@ directories. Additional checks and their dependencies are documented with the fe
   `tidal-lifecycle.py` for colorful/muted/static switching, exiting for another theme,
   lock/DPMS/fullscreen pausing, manual pause/resume/toggle, theme re-apply, CLI selection, and
   installing only the runtime files;
-  `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
+  `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale;
+  `python3 tests/tidal-noise.py` compares the noise cache with the original procedural shader
+  pixel-for-pixel across both palettes, 4K, portrait, ultrawide, the time wrap, and fractional scale.
+  `python3 tests/tidal-surfaces.py` checks split-surface alignment and sparse pixel differences,
+  fractional-scale fallback, animation cadence, stationary sand, pause/resume, and surface recreation
+  on the first connected Hyprland display at 1×, 1.5×, and 2× Qt scale factors.
 - [Wheelie theme](../themes/wheelie/README.md):
   `python3 tests/wheelie-lifecycle.py` checks pause/resume/toggle, lock/DPMS/fullscreen
   gating, static-background round trips, re-applying the theme, and exiting for another theme.
@@ -45,6 +50,6 @@ directories. Additional checks and their dependencies are documented with the fe
 - `python3 tests/wallpaper-toggle.py` checks that the shared pause shortcut routes
   to the active Tidal or Wheelie CLI and leaves other or missing themes alone.
 
-`lock-render.py`, `tidal.py`, and `tidal-geometry.py` use native Wayland windows;
-the other rendering suites default to offscreen fixtures. `lock-process.py` simulates
-the compositor and authentication.
+`lock-render.py`, `tidal.py`, `tidal-geometry.py`, `tidal-noise.py`, and `tidal-surfaces.py`
+use native Wayland windows; `tidal-surfaces.py` also requires Hyprland. The other rendering
+suites default to offscreen fixtures. `lock-process.py` simulates the compositor and authentication.

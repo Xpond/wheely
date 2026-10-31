@@ -13,6 +13,7 @@ layout(std140, binding = 0) uniform buf {
 };
 layout(binding = 2) uniform sampler2D surgeData;
 layout(binding = 1) uniform sampler2D bubbles;
+layout(binding = 3) uniform sampler2D noiseData;
 
 // Screen heights from centre: surge origin and permanent waterline.
 const float origin = -0.6;
@@ -31,8 +32,8 @@ float noise(vec2 p) {
 // The noise and its slope, repeating every 64 units.
 vec3 sloped(vec2 p) {
     vec2 i = floor(p), f = fract(p), s = f * f * (3.0 - 2.0 * f), ds = 6.0 * f * (1.0 - f);
-    float a = hash(mod(i, 64.0)), b = hash(mod(i + vec2(1, 0), 64.0));
-    float c = hash(mod(i + vec2(0, 1), 64.0)), d = hash(mod(i + vec2(1, 1), 64.0));
+    vec4 corners = texture(noiseData, (mod(i, 64.0) + 0.5) / 64.0);
+    float a = corners.x, b = corners.y, c = corners.z, d = corners.w;
     return vec3(a + (b - a) * s.x + (c - a) * s.y + (a - b - c + d) * s.x * s.y,
                 ds * (vec2(b - a, c - a) + (a - b - c + d) * s.yx));
 }

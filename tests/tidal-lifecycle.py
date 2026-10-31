@@ -31,9 +31,11 @@ shell = config / "shell.qml"
 source = qslog.patch(shell.read_text(), 'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
 # One windowless surface stands for the displays, and the compositor's monitor state comes from a file.
 source = qslog.patch(source, "model: root.animated ? Quickshell.screens : []", "model: root.animated ? [0] : []")
-source = qslog.patch(source, "PanelWindow {", "Item {")
+source = qslog.patch(source, "PanelWindow {", "Item {", 1)
 source, removed = re.subn(r"^      (screen:|anchors \{|color:|exclusionMode:|mask:|WlrLayershell\.).*\n", "", source, flags=re.M)
 assert removed == 8, removed
+source = qslog.patch(source, "dpr: contentItem.Screen.devicePixelRatio", "dpr: 1")
+source = qslog.patch(source, "fullHeight: screen ? screen.height : 0", "fullHeight: 0")
 source = qslog.patch(source, "monitor: Hyprland.monitorFor(screen)", "monitor: null")
 source = qslog.patch(source, "monitorState: monitor ? monitor.lastIpcObject : ({})", "monitorState: root.activity")
 source = qslog.patch(source, "onTriggered: Hyprland.refreshMonitors()", "onTriggered: {}")
@@ -164,8 +166,8 @@ print("ok: animate defaults to colorful, accepts muted, and rejects unknown pale
 source = output / "source"
 shutil.rmtree(source, ignore_errors=True)
 runtime = ["colors.toml", "shell.toml", "icons.theme", "preview.png", "preview.qml", "hooks/tidal-wallpaper",
-           "backgrounds/01-shoreline.jpg", "animated/shell.qml", "animated/tidal.frag.qsb"]
-for name in runtime + ["README.md", "animated/tidal.frag", "animated/bake-bubbles.py"]:
+           "backgrounds/01-shoreline.jpg", "animated/shell.qml", "animated/tidal.frag.qsb", "animated/noise.frag.qsb"]
+for name in runtime + ["README.md", "animated/tidal.frag", "animated/noise.frag", "animated/bake-bubbles.py"]:
     (source / name).parent.mkdir(parents=True, exist_ok=True)
     (source / name).write_text(name)
 shutil.copy2(repo / "themes/tidal/tidal", source / "tidal")

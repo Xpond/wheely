@@ -12,7 +12,7 @@ for test in install desktop open-path wheelie-install wallpaper-toggle runtime f
   python3 "tests/$test.py"
 done
 
-for test in mycelium-render meadow-render lock-render tidal tidal-geometry; do
+for test in mycelium-render meadow-render lock-render tidal tidal-geometry tidal-noise tidal-surfaces; do
   printf '\nRunning %s\n' "$test"
   python3 "tests/$test.py" "$output/$test"
 done
