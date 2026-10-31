@@ -11,22 +11,26 @@ Item {
   property real seconds
   property real stormSeconds
   property double previous: Date.now()
+  property double nextStorm: Date.now() + 500
   readonly property real wheelTurn: (seconds * 1000 / revolution) % 1
   property var layout: ({ size: [1, 1], wheels: {} })
   readonly property real dpr: Screen.devicePixelRatio || 1
 
-  // One clock at 60 updates a second: an animation would redraw at the display's own rate.
-  onRunningChanged: previous = Date.now()
+  // One 16 ms clock: an animation would redraw at the display's own rate.
+  onRunningChanged: { previous = Date.now(); nextStorm = previous + 500 }
   Timer {
     interval: 16; repeat: true; running: root.running
     onTriggered: {
       const now = Date.now()
       root.seconds += Math.min(0.2, (now - root.previous) / 1000)
       root.previous = now
+      // Regrade the slowly moving storm on this tick, avoiding a separate presentation.
+      if (now >= root.nextStorm) {
+        root.stormSeconds = root.seconds
+        root.nextStorm = now + 500
+      }
     }
   }
-  // The storm moves less than a pixel between updates; each one regrades the cached scene.
-  Timer { interval: 500; repeat: true; running: root.running; onTriggered: root.stormSeconds = root.seconds }
 
   FileView {
     path: decodeURIComponent(Qt.resolvedUrl("layout.json").toString().slice(7))
@@ -40,9 +44,13 @@ Item {
     anchors.fill: parent
     active: root.width > 0 && root.height > 0 && !!root.layout.cutout
     sourceComponent: Item {
-     // The still scene and its grade, in a screen-sized texture that reaches the display pixel for
-     // pixel. What moves is drawn over it and grades itself: a layer over moving parts would
-     // present every update twice.
+     // Cache the finished grade too: layer.effect otherwise runs on every moving frame.
+     // Keep both textures at native pixels, and leave wheels and dust outside the cache.
+     Item {
+      id: background
+      anchors.fill: parent
+      layer.enabled: true
+      layer.textureSize: Qt.size(Math.max(1, Math.ceil(width * root.dpr)), Math.max(1, Math.ceil(height * root.dpr)))
      Item {
       id: view
       anchors.fill: parent
@@ -101,6 +109,7 @@ Item {
           sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
         }
       }
+     }
      }
      Item {
         width: scene.width; height: scene.height

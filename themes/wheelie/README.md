@@ -79,13 +79,15 @@ behind the bar. Pausing holds every particle in place.
 - `HorizonStorm.qml` times the storm; `storm-wall.frag` scales and gently distorts
   `storm.png`, which holds only the dust and is 6336 pixels wide, so it never enlarges
   over the native scene.
-- `Surface.qml` runs one clock at 60 updates a second. A Qt animation or `ParticleSystem`
-  would redraw at the display's own rate, so the scene uses neither; on a 144 Hz display
-  that alone cost 2.4 times the frames.
-- Only what moves is redrawn. `view` holds the still scene, storm included, in one graded
-  texture that changes twice a second. Wheels, chain, covers, shadow and dust draw over it
-  and grade themselves with `scene-light.glsl`: a layer over moving parts would present
-  every update twice.
+- `Surface.qml` runs one 16 ms clock, about 62.5 animation updates a second. Storm changes
+  join that tick every half-second to reduce redundant presentations. A Qt animation or
+  `ParticleSystem` would redraw at the display's own rate, so the scene uses neither;
+  at 144 Hz that would mean about 2.3 times as many updates.
+- The still scene, storm included, and its finished lighting are cached in native-resolution
+  textures that change twice a second. Caching the finished grade saves a full-screen lighting
+  pass on ordinary animation frames, using another 8 MiB at 1080p or 32 MiB at 4K per display.
+  Wheels, chain, covers, shadow and dust draw over it and grade themselves with
+  `scene-light.glsl`: a layer over moving parts would present every update twice.
 - `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities,
   and the rear wheel's spray, which is two more layers with gravity, drag and a landing row;
   `ambient-dust.vert` moves fixed meshes on the GPU, so thousands of particles need no
@@ -105,6 +107,13 @@ scripts/build-shaders.sh themes/wheelie/scene/*.{frag,vert}
 ```
 
 `scene-light.glsl` is included by four shaders, so rebuild all of them after changing it.
+
+`python3 tests/wheelie-cache.py` compares the finished cache against uncached lighting
+through storm changes, resizing, dust-clock wrap, and Qt scales 1×, 1.5×, and 2× on Wayland.
+The tested frames differ only in sparse color channels by at most 1/255; the extra texture
+pass is not guaranteed to be bit-identical.
+`python3 tests/wheelie-clock.py` checks the shared clock's cadence, paused frames,
+and storm timing after resume.
 
 ## Asset provenance
 

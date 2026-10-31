@@ -7,12 +7,13 @@ trap 'rm -rf "$output"' EXIT
 
 node tests/check.js
 for test in install desktop open-path wheelie-install wallpaper-toggle runtime files-preview \
-            lock-process wheelie-lifecycle wheelie-dust; do
+            lock-process wheelie-lifecycle wheelie-dust wheelie-clock; do
   printf '\nRunning %s\n' "$test"
   python3 "tests/$test.py"
 done
 
-for test in mycelium-render meadow-render lock-render tidal tidal-geometry tidal-noise tidal-surfaces; do
+for test in mycelium-render meadow-render lock-render tidal tidal-geometry tidal-noise \
+            tidal-surfaces wheelie-cache; do
   printf '\nRunning %s\n' "$test"
   python3 "tests/$test.py" "$output/$test"
 done
