@@ -91,7 +91,10 @@ behind the bar. Pausing holds every particle in place.
 - `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities,
   and the rear wheel's spray, which is two more layers with gravity, drag and a landing row;
   `ambient-dust.vert` moves fixed meshes on the GPU, so thousands of particles need no
-  geometry uploads each frame. Its clock wraps every 2376 seconds, a common multiple of
+  geometry uploads each frame. Horizontal strips use one collapsed connector column
+  between particles, preserving their triangles and particle order with fewer duplicate
+  vertices: 100,822 instead of 134,420 across the seven layers, and 100,836 instead of
+  403,218 indices. The dust clock wraps every 2376 seconds, a common multiple of
   the particle-slot periods, and a generation counter continues the random sequence
   across the wrap.
 - The storm shade is baked; `scene-light.frag` darkens the foreground toward the bottom
@@ -114,6 +117,8 @@ The tested frames differ only in sparse color channels by at most 1/255; the ext
 pass is not guaranteed to be bit-identical.
 `python3 tests/wheelie-clock.py` checks the shared clock's cadence, paused frames,
 and storm timing after resume.
+`python3 tests/wheelie-mesh.py` requires pixel-identical output against the original
+dust grid across seeds, clock epochs, resizing, and native/fractional/2× Qt scales.
 
 ## Asset provenance
 

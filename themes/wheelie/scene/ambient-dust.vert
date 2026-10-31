@@ -39,12 +39,15 @@ vec2 random2(inout float state) {
 }
 
 void main() {
-    float row = floor(qt_MultiTexCoord0.y * float(4 * count - 3) + 0.5);
-    float slot = floor((row + 1.0) / 4.0);
-    float edge = mod(row, 4.0);
-    uv = edge == 0.0 ? vec2(qt_MultiTexCoord0.x, 0.0)
-       : edge == 1.0 ? vec2(qt_MultiTexCoord0.x, 1.0)
-       : edge == 2.0 ? vec2(1.0) : vec2(0.0);
+    float column = floor(qt_MultiTexCoord0.x * float(3 * count - 2) + 0.5);
+    float slot = floor(column / 3.0);
+    float edge = mod(column, 3.0);
+    uv = vec2(qt_MultiTexCoord0.y, edge);
+    if (edge == 2.0) {
+        // Qt's strip joins this bottom-left to the next top-right without drawing between them.
+        slot += 1.0 - qt_MultiTexCoord0.y;
+        uv = vec2(1.0 - qt_MultiTexCoord0.y, qt_MultiTexCoord0.y);
+    }
 
     // Stagger births at the original emission rate; reuse slots after their maximum life.
     float elapsed = clock + period - slot / rate;

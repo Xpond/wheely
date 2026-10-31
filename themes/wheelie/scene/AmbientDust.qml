@@ -74,8 +74,8 @@ Item {
       property vector4d tint: modelData.tint
       property vector4d force: modelData.force || Qt.vector4d(0, 0, 0, 0)
       property var source: index === 2 || modelData.wisp ? wisp : grain
-      // One quad per slot; collapsed rows connect quads without drawing between them.
-      mesh: Qt.size(1, 4 * count - 3)
+      // Two columns form each quad; one connector column collapses the triangles between slots.
+      mesh: Qt.size(3 * count - 2, 1)
       vertexShader: Qt.resolvedUrl("ambient-dust.vert.qsb")
       fragmentShader: Qt.resolvedUrl("ambient-dust.frag.qsb")
     }

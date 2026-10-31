@@ -13,7 +13,7 @@ for test in install desktop open-path wheelie-install wallpaper-toggle runtime f
 done
 
 for test in mycelium-render meadow-render lock-render tidal tidal-geometry tidal-noise \
-            tidal-surfaces wheelie-cache; do
+            tidal-surfaces wheelie-cache wheelie-mesh; do
   printf '\nRunning %s\n' "$test"
   python3 "tests/$test.py" "$output/$test"
 done
