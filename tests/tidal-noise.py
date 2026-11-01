@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the cached noise with the original procedural shader at native pixel sizes."""
+"""Compare the cached noise and skipped work with the full procedural shader at native pixel sizes."""
 import json
 import os
 from pathlib import Path
@@ -22,11 +22,26 @@ original = '''vec3 sloped(vec2 p) {
     return vec3(a + (b - a) * s.x + (c - a) * s.y + (a - b - c + d) * s.x * s.y,
                 ds * (vec2(b - a, c - a) + (a - b - c + d) * s.yx));
 }'''
+# Everything the shader caches or skips, calculated again on every pixel.
+procedural = [
+    ("texture(sandData, p * resolution.y / resolution + 0.5)",
+     "vec4(noise(p * 3.0 + 9.0), 0.02 * noise(p * 5.0) + 0.015 * noise(p * 11.0 + 3.0), "
+     "noise(p * vec2(1.5, 3.0)), noise(p * 2.5 + 3.0))"),
+    ("if (wet >= 1.0) return colour;", ""),
+    ("if (fraying > 0.0)", "if (true)"),
+    ("if (tear > 0.0)", "if (true)"),
+    ("if (lumpy < 2.65 * rope)", "if (true)"),
+    ("water < 1.0 && gloss > 0.0 ?", "true ?"),
+]
 source = (animated / "tidal.frag").read_text()
 start = source.index("vec3 sloped(")
 end = source.index("\n}", start) + 2
+source = source[:start] + original + source[end:]
+for cached, full in procedural:
+    assert source.count(cached) == 1, cached
+    source = source.replace(cached, full)
 reference = animated / "reference.frag"
-reference.write_text(source[:start] + original + source[end:])
+reference.write_text(source)
 subprocess.run(["/usr/lib/qt6/bin/qsb", "--qt6", "-o", str(reference) + ".qsb",
                 str(reference)], check=True)
 
@@ -90,5 +105,8 @@ for scale in ["1", "1.5"]:
         pixels = [subprocess.check_output(["magick", str(captures / f"{kind}-{step}.png"),
                                           "-depth", "8", "RGBA:-"])
                   for kind in ["cached", "reference"]]
-        assert pixels[0] == pixels[1], (scale, selected[step], "cached noise changed pixels")
-    print(f"ok: cached noise matches procedural coast in {len(selected)} frames at {scale}x", flush=True)
+        differences = [abs(a - b) for a, b in zip(*pixels) if a != b]
+        maximum = max(differences, default=0)
+        print(f"{scale}x {selected[step]}: max={maximum}/255, changed={len(differences)} channels", flush=True)
+        assert maximum <= 1 and len(differences) / len(pixels[0]) < 0.001, (scale, selected[step], maximum, len(differences))
+    print(f"ok: cached coast stays within 1/255 of the procedural one in {len(selected)} frames at {scale}x", flush=True)

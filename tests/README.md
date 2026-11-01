@@ -33,8 +33,8 @@ directories. Additional checks and their dependencies are documented with the fe
   lock/DPMS/fullscreen pausing, manual pause/resume/toggle, theme re-apply, CLI selection, and
   installing only the runtime files;
   `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale;
-  `python3 tests/tidal-noise.py` compares the noise cache with the original procedural shader
-  pixel-for-pixel across both palettes, 4K, portrait, ultrawide, the time wrap, and fractional scale.
+  `python3 tests/tidal-noise.py` compares the cached noise and skipped work with the full procedural
+  shader, to within 1/255, across both palettes, 4K, portrait, ultrawide, the time wrap, and fractional scale.
   `python3 tests/tidal-surfaces.py` checks split-surface alignment and sparse pixel differences,
   fractional-scale fallback, animation cadence, stationary sand, pause/resume, and surface recreation
   on the first connected Hyprland display at 1×, 1.5×, and 2× Qt scale factors.

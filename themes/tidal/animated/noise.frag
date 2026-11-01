@@ -6,7 +6,8 @@ layout(std140, binding = 0) uniform buf {
     float qt_Opacity;
 };
 
-float hash(vec2 p) { vec3 q = fract(p.xyx * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+#extension GL_GOOGLE_include_directive : enable
+#include "noise.glsl"
 
 // The same 64-periodic corner values used by sloped(), evaluated once per lattice cell.
 void main() {

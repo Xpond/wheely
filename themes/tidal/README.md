@@ -66,7 +66,12 @@ the display's pixel width and refreshed only when its size or scale changes; mot
 and fine detail still render at full resolution on every update.
 Repeating noise uses a 64 KiB cache per surface of its original lattice values, preserving the
 same interpolation and slopes without recalculating hashes for each pixel.
-The noise cache matched the procedural shader pixel-for-pixel in the reference checks.
+The sand's five broadest noise layers, too smooth to show their sampling, sit in a 2 MiB
+270-row texture; its grain and specks stay procedural. The shader also skips noise whose
+weight is exactly zero, which the held tide makes common.
+Against the full procedural shader these stayed within 1/255 per channel, changing about
+0.06% of channels, in the reference checks.
+`noise.glsl` is included by three shaders, so rebuild all of them after changing it.
 Splitting surfaces introduces sparse viewport-rounding differences: most changed channels
 differed by 1/255, with a maximum of 20/255 at isolated pixels in the tested frames.
 The stationary strip and fractional-scale fallback matched their references exactly.

@@ -166,8 +166,10 @@ print("ok: animate defaults to colorful, accepts muted, and rejects unknown pale
 source = output / "source"
 shutil.rmtree(source, ignore_errors=True)
 runtime = ["colors.toml", "shell.toml", "icons.theme", "preview.png", "preview.qml", "hooks/tidal-wallpaper",
-           "backgrounds/01-shoreline.jpg", "animated/shell.qml", "animated/tidal.frag.qsb", "animated/noise.frag.qsb"]
-for name in runtime + ["README.md", "animated/tidal.frag", "animated/noise.frag", "animated/bake-bubbles.py"]:
+           "backgrounds/01-shoreline.jpg", "animated/shell.qml", "animated/tidal.frag.qsb", "animated/noise.frag.qsb",
+           "animated/sand.frag.qsb"]
+for name in runtime + ["README.md", "animated/tidal.frag", "animated/noise.frag", "animated/sand.frag",
+                       "animated/noise.glsl", "animated/bake-bubbles.py"]:
     (source / name).parent.mkdir(parents=True, exist_ok=True)
     (source / name).write_text(name)
 shutil.copy2(repo / "themes/tidal/tidal", source / "tidal")
