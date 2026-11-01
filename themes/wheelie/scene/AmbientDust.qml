@@ -37,7 +37,8 @@ Item {
   Image { id: wisp; source: "dust.svg"; visible: false }
 
   Repeater {
-    model: [
+    // The spray goes first, so the haze and drifting sand pass in front of it.
+    model: root.spray.concat([
       { rate: 224, life: 26, variation: 7, area: Qt.vector4d(-0.15, 0.10, 1.15, 0.66),
         velocity: Qt.vector4d(24, -5, 18, 10), sizes: Qt.vector3d(4, 4, 2),
         shape: Qt.vector4d(1, 1, 180, 22), tint: root.tint(0.72, 0.57, 0.39, 0.48) },
@@ -46,20 +47,20 @@ Item {
         shape: Qt.vector4d(0.7, 0.7, 180, 16), tint: root.tint(0.86, 0.76, 0.60, 0.48) },
       { rate: 1, life: 22, variation: 5, area: Qt.vector4d(-0.25, 0.68, 1.25, 0.27),
         velocity: Qt.vector4d(65, -8, 25, 8), sizes: Qt.vector3d(440, 700, 160),
-        shape: Qt.vector4d(2.8, 0.3, 8, 0), tint: root.tint(0.72, 0.67, 0.58, 0.10) },
+        shape: Qt.vector4d(2.8, 0.3, 8, 0), tint: root.tint(0.72, 0.67, 0.58, 0.10), wisp: true },
       { rate: 112, life: 26, variation: 7, area: Qt.vector4d(-0.15, 0.10, 1.15, 0.66),
         velocity: Qt.vector4d(24, -5, 18, 10), sizes: Qt.vector3d(4, 4, 2),
         shape: Qt.vector4d(1, 1, 180, 0), tint: Qt.vector4d(1, 1, 1, 1) },
       { rate: 78, life: 18, variation: 6, area: Qt.vector4d(-0.20, 0.42, 1.20, 0.58),
         velocity: Qt.vector4d(85, -15, 40, 22), sizes: Qt.vector3d(12, 12, 7),
         shape: Qt.vector4d(1, 1, 180, 0), tint: Qt.vector4d(1, 1, 1, 1) }
-    ].concat(root.spray)
+    ])
     ShaderEffect {
       required property var modelData
       required property int index
       width: root.width; height: root.height
       property real clock: root.clock
-      property real epochOffset: (root.epoch * 2376 * rate) % 8388592
+      property real epochOffset: (root.epoch * Math.round(2376 / period) * count) % 8388592
       property real seed: (root.seed + index * 1234567) % 8388592 + 1
       property vector2d extent: Qt.vector2d(width, height)
       property real period: modelData.life + modelData.variation
@@ -73,7 +74,7 @@ Item {
       property vector4d shape: modelData.shape
       property vector4d tint: modelData.tint
       property vector4d force: modelData.force || Qt.vector4d(0, 0, 0, 0)
-      property var source: index === 2 || modelData.wisp ? wisp : grain
+      property var source: modelData.wisp ? wisp : grain
       // Two columns form each quad; one connector column collapses the triangles between slots.
       mesh: Qt.size(3 * count - 2, 1)
       vertexShader: Qt.resolvedUrl("ambient-dust.vert.qsb")

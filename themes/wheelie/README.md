@@ -81,23 +81,19 @@ behind the bar. Pausing holds every particle in place.
   over the native scene.
 - `Surface.qml` runs one 16 ms clock, about 62.5 animation updates a second. Storm changes
   join that tick every half-second to reduce redundant presentations. A Qt animation or
-  `ParticleSystem` would redraw at the display's own rate, so the scene uses neither;
-  at 144 Hz that would mean about 2.3 times as many updates.
-- The still scene, storm included, and its finished lighting are cached in native-resolution
-  textures that change twice a second. Caching the finished grade saves a full-screen lighting
-  pass on ordinary animation frames, using another 8 MiB at 1080p or 32 MiB at 4K per display.
-  Wheels, chain, covers, shadow and dust draw over it and grade themselves with
-  `scene-light.glsl`: a layer over moving parts would present every update twice.
+  `ParticleSystem` would redraw at the display's own rate, so the scene uses neither.
+- The still scene, storm included, is cached in a native-resolution texture that changes
+  twice a second. Wheels, chain, covers, shadow and dust draw over it and grade themselves
+  with `scene-light.glsl`: a layer over moving parts would present every update twice.
 - `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities,
   and the rear wheel's spray, which is two more layers with gravity, drag and a landing row;
   `ambient-dust.vert` moves fixed meshes on the GPU, so thousands of particles need no
   geometry uploads each frame. Horizontal strips use one collapsed connector column
   between particles, preserving their triangles and particle order with fewer duplicate
-  vertices: 100,822 instead of 134,420 across the seven layers, and 100,836 instead of
-  403,218 indices. The dust clock wraps every 2376 seconds, a common multiple of
-  the particle-slot periods, and a generation counter continues the random sequence
+  vertices. The dust clock wraps every 2376 seconds, a common multiple of the
+  particle-slot periods, and a generation counter continues the random sequence
   across the wrap.
-- The storm shade is baked; `scene-light.frag` darkens the foreground toward the bottom
+- The storm shade is baked; `scene-light.glsl` darkens the foreground toward the bottom
   edge and its corners in linear light, keeping 25% of the light behind the bar.
 
 ## Editing
@@ -108,17 +104,6 @@ After editing a shader in `scene/`, recompile it:
 ```sh
 scripts/build-shaders.sh themes/wheelie/scene/*.{frag,vert}
 ```
-
-`scene-light.glsl` is included by four shaders, so rebuild all of them after changing it.
-
-`python3 tests/wheelie-cache.py` compares the finished cache against uncached lighting
-through storm changes, resizing, dust-clock wrap, and Qt scales 1×, 1.5×, and 2× on Wayland.
-The tested frames differ only in sparse color channels by at most 1/255; the extra texture
-pass is not guaranteed to be bit-identical.
-`python3 tests/wheelie-clock.py` checks the shared clock's cadence, paused frames,
-and storm timing after resume.
-`python3 tests/wheelie-mesh.py` requires pixel-identical output against the original
-dust grid across seeds, clock epochs, resizing, and native/fractional/2× Qt scales.
 
 ## Asset provenance
 

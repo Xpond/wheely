@@ -28,7 +28,5 @@ layout(binding = 1) uniform sampler2D source;
 #include "scene-light.glsl"
 
 void main() {
-    vec4 dust = texture(source, uv) * tint;
-    vec3 color = dust.rgb / max(dust.a, 0.0001);
-    fragColor = vec4(sceneLight(color, place) * dust.a, dust.a) * (fade * qt_Opacity);
+    fragColor = sceneLight(texture(source, uv) * tint, place) * (fade * qt_Opacity);
 }

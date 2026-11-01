@@ -1,5 +1,6 @@
-// The scene's grade, for a straight colour at uv in scene coordinates.
-vec3 sceneLight(vec3 color, vec2 uv) {
+// The scene's grade, for a premultiplied colour at uv in scene coordinates.
+vec4 sceneLight(vec4 premultiplied, vec2 uv) {
+    vec3 color = premultiplied.rgb / max(premultiplied.a, 0.0001);
     float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
     // Retain the blue sky while warming sunlit sand, paint, cloth, and metal.
     float sky = (1.0 - smoothstep(0.55, 0.70, uv.y))
@@ -26,5 +27,5 @@ vec3 sceneLight(vec3 color, vec2 uv) {
     // A vignette deepens the bottom edge, where the bar sits.
     float low = smoothstep(0.74, 1.0, uv.y);
     color *= pow(1.0 - low * (0.75 + 0.15 * side * side), 1.0 / 2.2);
-    return clamp(color, 0.0, 1.0);
+    return vec4(clamp(color, 0.0, 1.0) * premultiplied.a, premultiplied.a);
 }

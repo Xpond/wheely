@@ -1,8 +1,8 @@
 # Tests
 
-Run `./tests/all.sh` before release from an Omarchy Wayland desktop. It runs all
-existing checks, stops on the first failure, and removes its temporary render
-outputs. It needs Node.js, Python 3 with Pygments, Quickshell, Qt's `qsb`, ImageMagick, and the
+Run `./tests/all.sh` before release from an Omarchy Wayland desktop. It rebuilds every
+shader and fails if a compiled file changes, runs all existing checks, stops on the
+first failure, and removes its temporary render outputs. It needs Node.js, Python 3 with Pygments, Quickshell, Qt's `qsb`, ImageMagick, and the
 normal Omarchy tools. GPU checks open temporary preview windows.
 
 For focused checks, run these entry points from the repository root:
@@ -32,32 +32,22 @@ directories. Additional checks and their dependencies are documented with the fe
   `tidal-lifecycle.py` for colorful/muted/static switching, exiting for another theme,
   lock/DPMS/fullscreen pausing, manual pause/resume/toggle, theme re-apply, CLI selection, and
   installing only the runtime files;
-  `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale;
-  `python3 tests/tidal-noise.py` compares the cached noise and skipped work with the full procedural
-  shader, to within 1/255, across both palettes, 4K, portrait, ultrawide, the time wrap, and fractional scale.
-  `python3 tests/tidal-surfaces.py` checks split-surface alignment and sparse pixel differences,
-  fractional-scale fallback, animation cadence, stationary sand, pause/resume, and surface recreation
-  on the first connected Hyprland display at 1×, 1.5×, and 2× Qt scale factors.
+  `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 - [Wheelie theme](../themes/wheelie/README.md):
-  `python3 tests/wheelie-cache.py` compares cached and uncached lighting through storm changes,
-  resizing, portrait/ultrawide layouts, dust-clock wrap, and native/fractional/2× Qt scales.
-  `python3 tests/wheelie-clock.py` checks animation cadence, synchronized storm updates,
-  no frames while paused, and the storm's half-second delay after resuming.
-  `python3 tests/wheelie-mesh.py` compares the compact dust mesh pixel-for-pixel with the
-  original grid across seeds, clock epochs, resizing, and native/fractional/2× Qt scales.
+  `python3 tests/wheelie-clock.py` checks animation cadence, half-second storm steps,
+  no frames while paused, and that a backward system clock cannot rewind the scene.
   `python3 tests/wheelie-lifecycle.py` checks pause/resume/toggle, lock/DPMS/fullscreen
   gating, static-background round trips, re-applying the theme, and exiting for another theme.
   `python3 tests/wheelie-dust.py` checks visible GPU dust, paused pixels, continuous
-  resume, and clock rollover; `QSG_RHI_BACKEND=vulkan` uses a temporary Wayland
-  background window because Qt's offscreen platform cannot initialize Vulkan.
+  resume, clock rollover with the spray, and the spray's order under the ambient dust;
+  `QSG_RHI_BACKEND=vulkan` uses a temporary Wayland background window because Qt's
+  offscreen platform cannot initialize Vulkan.
   `python3 tests/wheelie-install.py` checks staged installation and that failed copies
   leave the installed theme untouched, with temporary paths and command stubs; it needs
   no graphics session.
 - `python3 tests/wallpaper-toggle.py` checks that the shared pause shortcut routes
   to the active Tidal or Wheelie CLI and leaves other or missing themes alone.
 
-`lock-render.py`, `tidal.py`, `tidal-geometry.py`, `tidal-noise.py`, `tidal-surfaces.py`,
-`wheelie-cache.py`, and `wheelie-mesh.py` use native Wayland windows;
-`tidal-surfaces.py` also requires Hyprland.
-The other rendering suites default to offscreen fixtures. `lock-process.py` simulates
+`lock-render.py`, `tidal.py`, and `tidal-geometry.py` use native Wayland windows;
+the other rendering suites default to offscreen fixtures. `lock-process.py` simulates
 the compositor and authentication.

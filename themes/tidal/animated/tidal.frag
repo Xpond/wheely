@@ -121,15 +121,12 @@ void main() {
         // Ignore surges beyond their frayed reach.
         if (s < 1.0 && origin + run - v > -0.017) {
             // The tide holds each surge in one phase, where these weights often stay exactly zero.
-            float fraying = 1.0 - smoothstep(0.35, 0.6, s), fray = 0.0;
-            if (fraying > 0.0)
-                fray = (0.012 * (noise(vec2(u * 6.0, since * 0.7) + k) - 0.5)
-                      + 0.005 * (noise(vec2(u * 18.0, since * 1.5) + k) - 0.5)) * fraying;
+            float fray = s >= 0.6 ? 0.0
+                       : (0.012 * (noise(vec2(u * 6.0, since * 0.7) + k) - 0.5)
+                        + 0.005 * (noise(vec2(u * 18.0, since * 1.5) + k) - 0.5)) * (1.0 - smoothstep(0.35, 0.6, s));
             float d = origin + run + fray - v;
             // Draining back, the thinning film tears into patches behind its edge.
-            float tear = smoothstep(peak, 0.75, s) * 0.035, film = d;
-            if (tear > 0.0)
-                film -= tear * noise(vec2(u, v) * vec2(25.0, 45.0) + 3.0 * k);
+            float film = s <= peak ? d : d - smoothstep(peak, 0.75, s) * 0.035 * noise(vec2(u, v) * vec2(25.0, 45.0) + 3.0 * k);
             // Foaming bore thins to an edge rope before draining.
             float rope = 0.008 * (0.8 + 0.5 * data.z) * (1.0 + 2.0 * (1.0 - smoothstep(0.0, 0.3, s)));
             float arrival = smoothstep(0.0, 0.06, s);
@@ -147,10 +144,8 @@ void main() {
                     // Bore has ragged foam; the thinning edge rope closes up.
                     float dense = 0.4 * smoothstep(0.3, 0.7, noise(waveFlow * vec2(3.0, 5.0))) * (1.0 - 0.6 * s) * smoothstep(0.0, 0.03, d);
                     // Past 2.65 ropes the bore stays under foamAt's cutoff.
-                    if (lumpy < 2.65 * rope) {
-                        float churned = 0.78 + 0.30 * noise(waveFlow * vec2(24.0, 38.0));
-                        dense = max(churned * exp(-pow(lumpy / rope, 2.0)) * fading, dense);
-                    }
+                    if (lumpy < 2.65 * rope)
+                        dense = max((0.78 + 0.30 * noise(waveFlow * vec2(24.0, 38.0))) * exp(-pow(lumpy / rope, 2.0)) * fading, dense);
                     foam += foamAt(waveFlow, dense, since) * cover;
                     covered += cover;
                 }

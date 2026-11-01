@@ -52,11 +52,9 @@ Smaller washes lap along the sand independently over 12 seconds.
 Adapted from Wheely's original Shore shader, with colorful and muted palettes and
 water light moving at 25% of Shore's speed.
 
-Quickshell renders input-transparent surfaces above the shell's static background
-and below application windows. At integer display scales, the bottom 18% of dry sand
-uses a stationary surface; only the upper surface redraws during animation. Fractional
-scales use one full-screen surface to keep device pixels aligned. The wallpaper takes
-no keyboard focus or screen space. A 32 ms timer targets about 30 animation updates per second.
+Quickshell renders one input-transparent surface per display, above the shell's
+static background and below application windows. It takes no keyboard focus or
+screen space. A 32 ms timer targets about 30 animation updates per second.
 The detailed foam, caustics, and ripples render directly at the display's resolution,
 including 4K, with no low-resolution texture cap or upscaling. No video player
 is needed.
@@ -69,12 +67,6 @@ same interpolation and slopes without recalculating hashes for each pixel.
 The sand's five broadest noise layers, too smooth to show their sampling, sit in a 2 MiB
 270-row texture; its grain and specks stay procedural. The shader also skips noise whose
 weight is exactly zero, which the held tide makes common.
-Against the full procedural shader these stayed within 1/255 per channel, changing about
-0.06% of channels, in the reference checks.
-`noise.glsl` is included by three shaders, so rebuild all of them after changing it.
-Splitting surfaces introduces sparse viewport-rounding differences: most changed channels
-differed by 1/255, with a maximum of 20/255 at isolated pixels in the tested frames.
-The stationary strip and fractional-scale fallback matched their references exactly.
 
 ```bash
 ~/.config/omarchy/themes/tidal/tidal pause
@@ -116,8 +108,6 @@ Rebuild the shaders after editing `animated/*.frag`:
 scripts/build-shaders.sh themes/tidal/animated/*.frag
 python3 tests/tidal.py
 python3 tests/tidal-geometry.py
-python3 tests/tidal-noise.py
-python3 tests/tidal-surfaces.py
 ```
 
 The bundled bubble texture is reproducible with `python3 animated/bake-bubbles.py`

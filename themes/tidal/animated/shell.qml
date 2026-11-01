@@ -84,19 +84,13 @@ Scope {
       id: wallpaper
       required property var modelData
       screen: modelData
-      readonly property real dpr: contentItem.Screen.devicePixelRatio
-      readonly property int fullHeight: screen ? screen.height : 0
-      // Keep fractional-scale outputs whole: separate logical windows can straddle device pixels.
-      readonly property int movingHeight: dpr === Math.round(dpr) ? Math.ceil(fullHeight * 0.82) : fullHeight
-      readonly property bool split: movingHeight < fullHeight
       readonly property var monitor: Hyprland.monitorFor(screen)
       readonly property var monitorState: monitor ? monitor.lastIpcObject : ({})
       readonly property bool suspended: monitorState.dpmsStatus === false
           || (monitorState.solitaryBlockedBy || []).indexOf("LOCK") >= 0
           // A solitary client is the only window Hyprland draws on this monitor.
           || (!!monitorState.solitary && monitorState.solitary !== "0")
-      anchors { top: true; bottom: !wallpaper.split; left: true; right: true }
-      implicitHeight: movingHeight
+      anchors { top: true; bottom: true; left: true; right: true }
       color: "#ECECE8"
       exclusionMode: ExclusionMode.Ignore
       mask: Region {}
@@ -106,35 +100,9 @@ Scope {
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
       Surface {
-        width: parent.width; height: wallpaper.fullHeight
+        anchors.fill: parent
         muted: root.muted ? 1 : 0
         running: !root.paused && !wallpaper.suspended
-      }
-
-      // Below screen.y = 0.32, the shader's sand never meets the moving water, foam or shadow.
-      // Draw it once in a separate surface so animation does not damage that part of the desktop.
-      Variants {
-        model: wallpaper.split ? [wallpaper.screen] : []
-        PanelWindow {
-          required property var modelData
-          screen: modelData
-          anchors { top: true; left: true; right: true }
-          margins.top: wallpaper.movingHeight
-          implicitHeight: wallpaper.fullHeight - wallpaper.movingHeight
-          color: "#ECECE8"
-          exclusionMode: ExclusionMode.Ignore
-          mask: Region {}
-          WlrLayershell.namespace: "tidal-wallpaper"
-          WlrLayershell.layer: WlrLayer.Bottom
-          WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-          Surface {
-            width: parent.width; height: wallpaper.fullHeight
-            y: -wallpaper.movingHeight
-            muted: root.muted ? 1 : 0
-            running: false
-          }
-        }
       }
     }
   }

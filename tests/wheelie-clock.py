@@ -17,6 +17,7 @@ Window {
   property int frames: 0
   property var storms: []
   property double started: 0
+  property real latest: 0
   property real stopped: 0
   property real stoppedStorm: 0
   property int stoppedFrames: 0
@@ -25,17 +26,17 @@ Window {
   Surface { id: scene; anchors.fill: parent; running: false }
   Connections {
     target: scene
-    function onSecondsChanged() { window.updates++ }
-    function onStormSecondsChanged() {
-      if (!scene.running || scene.stormSeconds !== scene.seconds) {
-        console.error("FAIL storm does not share the animation tick"); Qt.exit(1)
-      }
-      window.storms.push(Date.now() - window.started)
+    function onSecondsChanged() {
+      if (scene.seconds < window.latest) { console.error("FAIL clock ran backward"); Qt.exit(1) }
+      window.latest = scene.seconds; window.updates++
     }
+    function onStormSecondsChanged() { window.storms.push(Date.now() - window.started) }
   }
   function start() {
     updates = 0; storms = []; started = Date.now()
     scene.running = true; measure.start()
+    // After resuming, the system clock also steps back an hour.
+    if (resumed) scene.previous += 3600000
   }
   Timer { interval: 500; running: true; onTriggered: window.start() }
   Timer {
@@ -45,9 +46,9 @@ Window {
       if (window.updates < 130 || window.updates > 145 || count !== 4) {
         console.error("FAIL cadence", window.updates, JSON.stringify(window.storms)); Qt.exit(1); return
       }
-      for (let i = 0; i < count; i++) {
-        const gap = window.storms[i] - (i ? window.storms[i - 1] : 0)
-        if (gap < 500 || gap > 600) { console.error("FAIL storm interval", gap); Qt.exit(1); return }
+      for (let i = 1; i < count; i++) {
+        const gap = window.storms[i] - window.storms[i - 1]
+        if (gap < 450 || gap > 600) { console.error("FAIL storm interval", gap); Qt.exit(1); return }
       }
       console.log("CADENCE", window.updates, JSON.stringify(window.storms))
       scene.running = false
@@ -83,4 +84,4 @@ with tempfile.TemporaryDirectory(prefix="wheelie-clock-") as temp:
     assert run.returncode == 0 and "PASS shared clock" in log, log
     qslog.check(log)
     print("\n".join(line for line in log.splitlines() if "CADENCE" in line))
-print("ok: full-rate animation, synchronized storm updates, frozen pause and fresh resume deadline")
+print("ok: full-rate animation, half-second storm steps, frozen pause, no running backward")

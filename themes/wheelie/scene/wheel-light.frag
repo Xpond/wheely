@@ -27,6 +27,6 @@ void main() {
     float shade = smoothstep(0.1, 1.0, -facing) * smoothstep(0.25, 0.8, radius);
     vec3 gain = vec3(0.93, 0.96, 1.0) + key * vec3(0.54, 0.32, 0.10)
                 - shade * vec3(0.25, 0.24, 0.22);
-    vec3 color = min(tex.rgb * gain * exposure, vec3(tex.a)) / max(tex.a, 0.0001);
-    fragColor = vec4(sceneLight(color, rect.xy + qt_TexCoord0 * rect.zw) * tex.a, tex.a) * qt_Opacity;
+    tex.rgb = min(tex.rgb * gain * exposure, vec3(tex.a));
+    fragColor = sceneLight(tex, rect.xy + qt_TexCoord0 * rect.zw) * qt_Opacity;
 }
