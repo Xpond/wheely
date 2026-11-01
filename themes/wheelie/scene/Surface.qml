@@ -15,6 +15,7 @@ Item {
   readonly property real wheelTurn: (seconds * 1000 / revolution) % 1
   property var layout: ({ size: [1, 1], wheels: {} })
   readonly property real dpr: Screen.devicePixelRatio || 1
+  readonly property size nativeSize: Qt.size(Math.max(1, Math.ceil(width * dpr)), Math.max(1, Math.ceil(height * dpr)))
 
   // One 16 ms clock: an animation would redraw at the display's own rate.
   onRunningChanged: { previous = Date.now(); nextStorm = previous + 500 }
@@ -44,74 +45,74 @@ Item {
     anchors.fill: parent
     active: root.width > 0 && root.height > 0 && !!root.layout.cutout
     sourceComponent: Item {
-     // Cache the finished grade too: layer.effect otherwise runs on every moving frame.
-     // Keep both textures at native pixels, and leave wheels and dust outside the cache.
-     Item {
-      id: background
-      anchors.fill: parent
-      layer.enabled: true
-      layer.textureSize: Qt.size(Math.max(1, Math.ceil(width * root.dpr)), Math.max(1, Math.ceil(height * root.dpr)))
-     Item {
-      id: view
-      anchors.fill: parent
-      layer.enabled: true
-      layer.smooth: true
-      layer.textureSize: Qt.size(Math.max(1, Math.ceil(width * root.dpr)), Math.max(1, Math.ceil(height * root.dpr)))
-      layer.effect: ShaderEffect {
-        // The scene's rectangle within the view, so the lighting keeps to scene coordinates.
-        property vector4d sceneRect: Qt.vector4d(scene.x / view.width, scene.y / view.height,
-                                                 scene.width * scene.scale / view.width,
-                                                 scene.height * scene.scale / view.height)
-        fragmentShader: Qt.resolvedUrl("scene-light.frag.qsb")
-      }
-
+      // Cache the finished grade too: layer.effect otherwise runs on every moving frame.
+      // Keep both textures at native pixels, and leave wheels and dust outside the cache.
       Item {
-        id: scene
-        width: root.layout.size[0]
-        height: root.layout.size[1]
-        transformOrigin: Item.TopLeft
-        scale: Math.max(root.width / width, root.height / height)
-        // Images decode at twice their on-screen pixels, at most native: closest to the native scene.
-        readonly property real decode: Math.min(1, 2 * scale * root.dpr)
-        // Centered on whole device pixels, so the crop never shifts texels by half a pixel.
-        x: Math.round((root.width - width * scale) / 2 * root.dpr) / root.dpr
-        y: Math.round((root.height - height * scale) / 2 * root.dpr) / root.dpr
-
-        Image {
-          source: "base.png"; smooth: true
-          width: parent.width; height: parent.height
-          sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
-        }
-        // Sized by bindings, not anchors: anchors apply only after the storm image starts loading.
-        HorizonStorm {
-          width: parent.width; height: parent.height; horizon: root.layout.horizon || 0
-          decode: scene.decode; seconds: root.stormSeconds
-        }
-        // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
+        id: background
+        anchors.fill: parent
+        layer.enabled: true
+        layer.textureSize: root.nativeSize
         Item {
-          width: parent.width; height: root.layout.horizon || 0
-          clip: true
-          Repeater {
-            model: root.layout.prints || []
-            Rectangle {
-              required property int modelData
-              y: modelData - root.layout.printBorder
-              width: parent.width; height: 2 * root.layout.printBorder
-              color: "white"
+          id: view
+          anchors.fill: parent
+          layer.enabled: true
+          layer.smooth: true
+          layer.textureSize: root.nativeSize
+          layer.effect: ShaderEffect {
+            // The scene's rectangle within the view, so the lighting keeps to scene coordinates.
+            property vector4d sceneRect: Qt.vector4d(scene.x / view.width, scene.y / view.height,
+                                                     scene.width * scene.scale / view.width,
+                                                     scene.height * scene.scale / view.height)
+            fragmentShader: Qt.resolvedUrl("scene-light.frag.qsb")
+          }
+
+          Item {
+            id: scene
+            width: root.layout.size[0]
+            height: root.layout.size[1]
+            transformOrigin: Item.TopLeft
+            scale: Math.max(root.width / width, root.height / height)
+            // Images decode at twice their on-screen pixels, at most native: closest to the native scene.
+            readonly property real decode: Math.min(1, 2 * scale * root.dpr)
+            // Centered on whole device pixels, so the crop never shifts texels by half a pixel.
+            x: Math.round((root.width - width * scale) / 2 * root.dpr) / root.dpr
+            y: Math.round((root.height - height * scale) / 2 * root.dpr) / root.dpr
+
+            Image {
+              source: "base.png"; smooth: true
+              width: parent.width; height: parent.height
+              sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
+            }
+            // Sized by bindings, not anchors: anchors apply only after the storm image starts loading.
+            HorizonStorm {
+              width: parent.width; height: parent.height; horizon: root.layout.horizon || 0
+              decode: scene.decode; seconds: root.stormSeconds
+            }
+            // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
+            Item {
+              width: parent.width; height: root.layout.horizon || 0
+              clip: true
+              Repeater {
+                model: root.layout.prints || []
+                Rectangle {
+                  required property int modelData
+                  y: modelData - root.layout.printBorder
+                  width: parent.width; height: 2 * root.layout.printBorder
+                  color: "white"
+                }
+              }
+            }
+            // Everything but the sky, redrawn over the storm.
+            Image {
+              source: "cutout.png"
+              x: root.layout.cutout[0]; y: root.layout.cutout[1]
+              width: root.layout.cutout[2]; height: root.layout.cutout[3]
+              sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
             }
           }
         }
-        // Everything but the sky, redrawn over the storm.
-        Image {
-          source: "cutout.png"
-          x: root.layout.cutout[0]; y: root.layout.cutout[1]
-          width: root.layout.cutout[2]; height: root.layout.cutout[3]
-          sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
-        }
       }
-     }
-     }
-     Item {
+      Item {
         width: scene.width; height: scene.height
         transformOrigin: Item.TopLeft
         x: scene.x; y: scene.y; scale: scene.scale
@@ -184,7 +185,7 @@ Item {
           rear: root.layout.wheels.rear
           sand: Qt.lighter(root.layout.dust, 1.08)
         }
-     }
+      }
     }
   }
 }

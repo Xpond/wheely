@@ -14,7 +14,7 @@ output = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/wheelie-cache").resolv
 scene = output / "scene"
 shutil.copytree(repo / "themes/wheelie/scene", scene, dirs_exist_ok=True)
 source = (scene / "Surface.qml").read_text()
-marker = "id: background\n      anchors.fill: parent\n      layer.enabled: true"
+marker = "id: background\n        anchors.fill: parent\n        layer.enabled: true"
 (scene / "Reference.qml").write_text(qslog.patch(source, marker, marker.replace("true", "false")))
 dust = scene / "AmbientDust.qml"
 dust.write_text(qslog.patch(dust.read_text(), "Math.floor(Math.random() * 8388591) + 1", "314159"))
