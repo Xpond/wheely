@@ -7,7 +7,7 @@ def check(repo, base, run, block):
     # Keep the production count handlers, including destruction. Only the compositor's
     # visibility inputs are replaced; QML creates and destroys the objects itself.
     keyboard = (repo / "patches/shell/Ui/KeyboardPanel.qml").read_text()
-    keyboard = keyboard.split("  // Count mapped panel surfaces for the shared bar scrim.\n", 1)[1]
+    keyboard = keyboard.split("  // Counted by the shared bar scrim while mapped.\n", 1)[1]
     keyboard = keyboard.split("  function beginFocusPrime()", 1)[0]
     clipboard = (repo / "patches/shell/plugins/clipboard/Clipboard.qml").read_text()
     clipboard = clipboard.split("    // Share the bar scrim across panel handoffs.\n", 1)[1]
@@ -17,7 +17,6 @@ def check(repo, base, run, block):
       property bool centered: true
       property bool backingWindowVisible: true
       property var bar: root.bar
-      onOpenChanged: syncSurfaceCount()
 ''' + keyboard), ("clipboard", "visible", "property bool visible: false\n" + clipboard)]:
         for close_first in (False, True):
             run(f"{name}-destroy-{'closed' if close_first else 'open'}", '''
@@ -98,7 +97,8 @@ def check(repo, base, run, block):
     methods = ["manifestHasKind", "pluginHasVisualCapabilities", "pluginHasBarCapabilities",
                "pluginShellCapabilityProfile", "createScopedPluginShell", "pluginShellFor",
                "publicPluginManifest", "setPluginSurfaceVisible", "barHasPluginPopouts",
-               "isBarWidgetPanelPlugin", "menuPluginMayControl", "summonablePanels"]
+               "isBarWidgetPanelPlugin", "menuPluginMayControl", "summonablePanels",
+               "syncPanelEntries", "computePanelEntries"]
     production = "\n".join(block(source, "  function " + name + r"\(") for name in methods)
     production += "\n" + block(source, r"  Instantiator {")
     manifests = {name: json.loads((repo / "plugins" / name / "manifest.json").read_text())
@@ -124,11 +124,10 @@ Item {
   property var _pluginShellApis: ({})
   property var _pluginShellApiDescriptors: ({})
   property var _pluginSurfaceStates: ({})
-  property var openPanelIds: ({})
   property var panelLoaders: ({})
-  property var panelEntries: ["xpo.wheel", "xpo.files", "third.radar"].map(function(id) {
-    return {id: id, manifest: pluginRegistry.installedPlugins[id], kind: "overlay", keepLoaded: true}
-  })
+  property var openPanelIds: ({"xpo.wheel": true, "xpo.files": true, "third.radar": true})
+  ListModel { id: panelEntryModel }
+  Component.onCompleted: syncPanelEntries()
   property var pluginRegistry: QtObject {
     property var installedPlugins: ''' + json.dumps(manifests) + '''
     function entryPointUrl(manifest, kind) { return Qt.resolvedUrl("Panel.qml") }
@@ -148,7 +147,6 @@ Item {
     function findPanelWidget(id) { return id === "omarchy.dropbox" ? null : ({}) }
   }
   Component { id: pluginShellApiComponent; PluginShellApi {} }
-  function pluginIsIndicatorsClone(manifest) { return false }
   function pluginAppLibraryFor(cacheKey, key) { return {detached: true} }
   function pluginBarStateFor(cacheKey, key) { return null }
   function publicBarConfig() { return ({}) }

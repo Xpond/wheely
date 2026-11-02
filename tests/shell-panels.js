@@ -46,7 +46,7 @@ const sticky = closeBarePeers("xpo.wheel")
 assert.ok(sticky.acted && !sticky.clear, "a bar panel that stays open keeps the wheel hidden")
 
 // Third-party panels join search; Omarchy's own are already in its menu.
-const hostPanels = method(shellSource, "summonablePanels", { shell: { bar: null, panelEntries: [
+const hostPanels = method(shellSource, "summonablePanels", { shell: { bar: null, computePanelEntries: () => [
   { id: "third.radar", manifest: { name: "Radar" } },
   { id: "omarchy.clipboard", manifest: { name: "Clipboard", __isFirstParty: true } }] } })
 assert.equal(String(hostPanels().map(p => p.id)), "third.radar", "Omarchy's own panels were listed")
