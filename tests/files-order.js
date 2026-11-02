@@ -1,4 +1,4 @@
-// Ranking and preview equivalence. Run: node tests/files-performance.js
+// Ranking and preview equivalence against a reference. Run: node tests/files-order.js
 const assert = require("node:assert/strict")
 const { library } = require("./qml.js")
 const F = library("plugins/xpo.files/FilesIndex.js")
