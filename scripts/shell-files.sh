@@ -2,7 +2,8 @@
 # Pacman's checksums say what stock is; this checkout's patch history says what is ours.
 PACKAGE_LOCAL=/var/lib/pacman/local
 PACKAGE_CACHE=/var/cache/pacman/pkg
-PACKAGE_DB=$(ls -d "$PACKAGE_LOCAL"/omarchy-[0-9]* 2>/dev/null | tail -n 1) || true
+# Edge installs omarchy-dev in omarchy's place; the two conflict, so one is present.
+PACKAGE_DB=$(ls -d "$PACKAGE_LOCAL"/omarchy{,-dev}-[0-9]* 2>/dev/null | tail -n 1) || true
 FILES=(Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml
        plugins/clipboard/Clipboard.qml plugins/lock/LockView.qml plugins/lock/Service.qml
        services/PluginShellApi.qml shell.qml)
