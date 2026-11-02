@@ -14,7 +14,6 @@ layout(std140, binding = 0) uniform buf {
 layout(binding = 2) uniform sampler2D surgeData;
 layout(binding = 1) uniform sampler2D bubbles;
 layout(binding = 3) uniform sampler2D noiseData;
-layout(binding = 4) uniform sampler2D sandData;
 
 // Screen heights from centre: surge origin and permanent waterline.
 const float origin = -0.6;
@@ -72,19 +71,17 @@ float caustic(vec2 p, float hour) {
 // Dry sand has ripples and grain; wet sand is darker and smoother.
 vec3 sandAt(vec2 p, float wet) {
     float grain = 0.6 * noise(p * 900.0) + 0.4 * noise(p * 1800.0 + 7.0), speck = hash(floor(p * 650.0));
-    // The broad noise varies far too slowly for its small texture to show.
-    vec4 broad = texture(sandData, p * resolution.y / resolution + 0.5);
     vec3 colour = mix(vec3(0.98, 0.96, 0.90), vec3(0.82, 0.87, 0.81), wet)
-                * mix(vec3(1.0), vec3(1.01, 0.99, 0.97), broad.x)
-                * (0.97 + 0.04 * grain) * (0.98 + broad.y);
+                * mix(vec3(1.0), vec3(1.01, 0.99, 0.97), noise(p * 3.0 + 9.0))
+                * (0.97 + 0.04 * grain) * (0.98 + 0.02 * noise(p * 5.0) + 0.015 * noise(p * 11.0 + 3.0));
     colour *= 1.0 - 0.12 * step(0.994, speck);
     colour += 0.08 * step(0.997, hash(floor(p * 650.0) + 0.5)) * (1.0 - wet);
     // Soaked sand has no relief.
     if (wet >= 1.0) return colour;
     vec2 across = normalize(vec2(0.35, 1.0));
-    float phase = dot(p, across) * 190.0 + 6.0 * broad.z;
+    float phase = dot(p, across) * 190.0 + 6.0 * noise(p * vec2(1.5, 3.0));
     vec3 bump = sloped(p * 110.0 + 5.0);
-    vec2 slope = (1.0 - wet) * (0.00025 * 190.0 * cos(phase) * across * smoothstep(0.35, 0.75, broad.w)
+    vec2 slope = (1.0 - wet) * (0.00025 * 190.0 * cos(phase) * across * smoothstep(0.35, 0.75, noise(p * 2.5 + 3.0))
                               + 0.0003 * 110.0 * bump.yz);
     return colour * (1.0 - 0.9 * dot(slope, normalize(vec2(-0.5, -0.85))));
 }

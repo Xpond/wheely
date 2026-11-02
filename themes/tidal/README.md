@@ -64,9 +64,7 @@ the display's pixel width and refreshed only when its size or scale changes; mot
 and fine detail still render at full resolution on every update.
 Repeating noise uses a 64 KiB cache per surface of its original lattice values, preserving the
 same interpolation and slopes without recalculating hashes for each pixel.
-The sand's five broadest noise layers, too smooth to show their sampling, sit in a 2 MiB
-270-row texture; its grain and specks stay procedural. The shader also skips noise whose
-weight is exactly zero, which the held tide makes common.
+The shader also skips noise whose weight is exactly zero, which the held tide makes common.
 
 ```bash
 ~/.config/omarchy/themes/tidal/tidal pause

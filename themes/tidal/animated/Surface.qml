@@ -46,20 +46,6 @@ ShaderEffect {
     smooth: false
     wrapMode: ShaderEffectSource.Repeat
   }
-  // The sand's broad noise is measured in screen heights, so 270 rows suit any resolution.
-  property var sandData: ShaderEffectSource {
-    sourceItem: ShaderEffect {
-      width: Math.ceil(270 * root.width / Math.max(1, root.height))
-      height: 270
-      readonly property vector2d resolution: root.resolution
-      blending: false
-      fragmentShader: Qt.resolvedUrl("sand.frag.qsb")
-    }
-    textureSize: Qt.size(sourceItem.width, sourceItem.height)
-    format: ShaderEffectSource.RGBA32F
-    hideSource: true
-    smooth: true
-  }
 
   onRunningChanged: previous = Date.now()
   Timer {
