@@ -215,6 +215,13 @@ assert.deepEqual([climber.dir, climber.pending], ["/mnt", "share"])
 climb()
 assert.deepEqual([climber.dir, climber.pending], ["/home/test", "/mnt"], "above another root lies home, on its row")
 assert.equal(F.within("/mnt2", ["/home/test", "/mnt"]), "/home/test", "a root matched a sibling")
+// Dot segments are collapsed before the jail, so a typed .. cannot climb past the floor.
+assert.equal(F.within("/home/test/../", ["/home/test", "/mnt"]), "/home/test", "a typed .. climbed past home")
+assert.equal(F.within("/home/test/a/../b/./", ["/home/test"]), "/home/test/b/", "a typed path lost its trailing slash")
+assert.equal(F.within("/mnt/../etc", ["/home/test", "/mnt"]), "/home/test", "a typed .. left a root")
+assert.equal(F.within("/home/test//docs", ["/home/test"]), "/home/test/docs", "doubled slashes survived")
+assert.deepEqual([F.display("/home/test", "/home/test"), F.display("/home/test/docs", "/home/test"),
+  F.display("/home/test2/x", "/home/test")], ["~", "~/docs", "/home/test2/x"], "a sibling of home wore the tilde")
 // Home lists the roots outside it, by full path, and only home does.
 const listed = dir => F.withRoots([{ name: "a" }], dir, "/home/test", ["/mnt", "/home/test/inside"]).map(e => e.name)
 assert.deepEqual([listed("/home/test"), listed("/home/test/"), listed("/mnt")], [["a", "/mnt"], ["a", "/mnt"], ["a"]],
