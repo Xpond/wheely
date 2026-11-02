@@ -4,8 +4,10 @@ Makes Omarchy's bar panels (Display, Audio, Network, Power…) open centered on
 screen over a blurred desktop, instead of tucked against the bar edge beside
 their widget. The wheel's **Centered panels** setting turns this off.
 
-**Working:** centering, blur, Ctrl+Left/Right panel switching, the
-panel-to-panel handoff, and the open/close animation.
+**Working:** centering, blur, Ctrl+Left/Right panel switching, and the
+shared backdrop across handoffs. The motion is Omarchy's own since 4.5: a
+centred card grows from its centre, and one switching within a bar section
+morphs into the next.
 
 ---
 
@@ -79,9 +81,9 @@ Eight package-owned QML files plus Hyprland config.
 
 | File | Change |
 |---|---|
-| `Ui/KeyboardPanel.qml` | centred placement in `cardOrigin`, unless `[wheely] panels` is `native`; `slideX`/`originScale` transform; entry/exit animations; reports surface visibility to the bar |
+| `Ui/KeyboardPanel.qml` | centred placement in `cardOrigin` and a centred `growOrigin`, unless `[wheely] panels` is `native`; reports surface visibility to the bar |
 | `Ui/PanelKeyCatcher.qml` | Ctrl+Left/Right → `tabRequested`; Backspace asks `xpo.wheel back` |
-| `plugins/bar/Bar.qml` | `PanelScrim` — the shared blurred backdrop; `lastSwitchDirection`; `visiblePanelSurfaces` counter; carries Wheely's return across panel switches |
+| `plugins/bar/Bar.qml` | `PanelScrim` — the shared blurred backdrop; `visiblePanelSurfaces` counter; carries Wheely's return across panel switches |
 | `plugins/clipboard/Clipboard.qml` | Backspace past an empty filter asks `xpo.wheel back` — it rolls its own key handler instead of using `PanelKeyCatcher`; drops its own scrim for the shared one, keeping it only with a bar that has none to share; bare Backspace cancels the clear-history confirmation |
 | `plugins/lock/LockView.qml` | hosts the chosen lock-screen design from `lock/` behind a frosted password field; not panel-related, but patched through the same machinery. See [`lockscreen.md`](lockscreen.md) |
 | `plugins/lock/Service.qml` | runs in its own worker process, started by `lock-session/Bridge.qml`; on successful authentication the design plays its exit before a timer releases the lock; tracks `blanked` for the wake flow |
@@ -285,23 +287,12 @@ deferring that work until after the entry animation, in another package-owned fi
 
 ## 6. Tunables
 
-`patches/shell/Ui/KeyboardPanel.qml`:
-
-| Knob | Value | Effect |
-|---|---|---|
-| `openMotionDuration` | `260` | entry length |
-| `closeMotionDuration` | `150` | exit length |
-| `fadeDuration` | `180` | open fade |
-| `closeFadeDuration` | `130` | close fade |
-| `emergeScale` | `0.96` | start scale — below ~0.9 glyph stretching becomes visible |
-| `maxTravel` | `Style.space(56)` | the handoff slide distance |
-
 `patches/shell/plugins/bar/Bar.qml`:
 
 | Knob | Value | Effect |
 |---|---|---|
 | `panelScrimColor` | `Commons.Color.menu.scrim` | the one backdrop, behind panels, wheel, browser and clipboard alike |
-| `panelScrimHoldMs` | `150` | **must stay >= `closeFadeDuration`** or the backdrop drops out early |
+| `panelScrimHoldMs` | `150` | **must stay >= `KeyboardPanel`'s close fade** (120 ms) or the backdrop drops out early |
 
 Installed blur strength comes from `config/hyprland.lua` (`size 4, passes 2`);
 the wheel's **Backdrop** setting turns it off at 0% (`docs/wheel.md`, Settings).
@@ -309,5 +300,5 @@ Put personal overrides after the managed block in your main Hyprland config.
 `passes` has the most effect; `passes 1` for a lighter frost.
 
 > Two cross-file couplings, both easy to break: `panelScrimHoldMs` >=
-> `closeFadeDuration`, and `bar.lastSwitchDirection` / `bar.panelSurfaceVisible()`
-> are a contract `KeyboardPanel` depends on.
+> `KeyboardPanel`'s close fade, and `bar.panelSurfaceVisible()` is a contract
+> `KeyboardPanel` depends on.

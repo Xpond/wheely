@@ -39,7 +39,7 @@ Item {
   property int cardWidth: Math.min(Style.space(875), panel.width - Style.gapsOut * 2)
   property int cardHeight: Math.min(Style.space(600), panel.height - Style.gapsOut * 2)
   property int rowHeight: Math.max(Style.space(50), Style.font.body + Style.font.caption + Style.spacing.rowPaddingX * 2)
-  property int historyLimit: 300
+  property int historyLimit: 500
 
   function open(payloadJson) {
     root.opened = true
@@ -133,7 +133,7 @@ Item {
   }
 
   function rebuildDisplay() {
-    var rows = ClipboardHistory.displayRows(root.history, root.filterText, 50)
+    var rows = ClipboardHistory.displayRows(root.history, root.filterText, 50, Commons.I18n.t, Commons.I18n.tn, Commons.I18n.formatNumber)
 
     displayModel.clear()
     for (var i = 0; i < rows.length; i++) {
@@ -156,6 +156,13 @@ Item {
     Qt.callLater(function() {
       if (displayModel.count > 0) resultList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
     })
+  }
+
+  // Preview text is composed imperatively, so rebuild it when the
+  // language (and with it the string catalog) changes under an open panel.
+  Connections {
+    target: Commons.I18n
+    function onStringsChanged() { if (root.opened) root.rebuildDisplay() }
   }
 
   function select(delta) {
@@ -313,15 +320,10 @@ Item {
     }
   }
 
-  PanelWindow {
+  OverlayWindow {
     id: panel
-    visible: root.opened
-    anchors { top: true; bottom: true; left: true; right: true }
-    color: "transparent"
+    shown: root.opened
     WlrLayershell.namespace: "omarchy-clipboard"
-    WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    exclusionMode: ExclusionMode.Ignore
 
     // A bar plugin in place of Omarchy's has no scrim to share; dim here as stock does.
     Rectangle {
@@ -419,8 +421,8 @@ Item {
           anchors.fill: parent
           opened: root.clearConfirmOpen
           z: 10
-          message: "Delete entire clipboard history?"
-          confirmText: "Delete"
+          message: Commons.I18n.t("clipboard.deleteHistory")
+          confirmText: Commons.I18n.t("common.delete")
           background: root.background
           foreground: root.foreground
           scrim: root.scrim
@@ -452,7 +454,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: root.filterText || "Search clipboard…"
+            text: root.filterText || Commons.I18n.t("clipboard.search")
             color: root.foreground
             opacity: root.filterText ? 1 : 0.58
             font.family: root.fontFamily
@@ -506,12 +508,11 @@ Item {
                     anchors.bottomMargin: Style.space(8)
                     spacing: Style.space(10)
 
-                    Image {
+                    SizedImage {
                       visible: parent.parent.previewImage.length > 0
                       width: visible ? parent.height : 0
                       height: parent.height
-                      source: parent.parent.previewImage
-                      fillMode: Image.PreserveAspectFit
+                      url: parent.parent.previewImage
                       asynchronous: true
                       smooth: true
                     }
@@ -580,15 +581,14 @@ Item {
                 verticalAlignment: Text.AlignTop
               }
 
-              Image {
+              SizedImage {
                 visible: parent.activeRow && parent.activeRow.previewImage
                 anchors.fill: parent
                 anchors.leftMargin: root.contentMargin
                 anchors.rightMargin: 0
                 anchors.topMargin: 0
                 anchors.bottomMargin: 0
-                source: parent.activeRow ? parent.activeRow.previewImage : ""
-                fillMode: Image.PreserveAspectFit
+                url: parent.activeRow ? parent.activeRow.previewImage : ""
                 verticalAlignment: Image.AlignTop
                 asynchronous: true
                 smooth: true
@@ -613,7 +613,7 @@ Item {
 
             Text {
               textFormat: Text.PlainText
-              text: root.history.length === 0 ? "Clipboard is empty" : "No matches for “" + root.filterText + "”"
+              text: root.history.length === 0 ? Commons.I18n.t("clipboard.empty") : Commons.I18n.t("common.noMatchesFor").arg(root.filterText)
               color: root.foreground
               opacity: 0.7
               font.family: root.fontFamily
