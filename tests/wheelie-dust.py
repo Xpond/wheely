@@ -5,6 +5,7 @@ Usage: python3 tests/wheelie-dust.py [bake-directory]
 Requires the graphics session, Quickshell and ImageMagick.
 QSG_RHI_BACKEND=vulkan uses a temporary Wayland background-layer window.
 """
+import json
 import os
 from pathlib import Path
 import shutil
@@ -33,23 +34,24 @@ Window {
   id: window
   width: 640; height: 360; visible: true
   property string saved: ""
+  Timer { id: tick; interval: 16; repeat: true; running: true; onTriggered: dust.seconds += 0.016 }
   Rectangle {
     id: canvas; anchors.fill: parent; color: "black"
     Item {
       anchors.centerIn: parent; width: 5504; height: 3072
       scale: Math.max(canvas.width / width, canvas.height / height)
-      AmbientDust { id: dust; anchors.fill: parent; seed: 314159 }
+      AmbientDust { id: dust; anchors.fill: parent; seed: 314159; rear: REAR; sand: "white" }
     }
   }
   IpcHandler {
     target: "dust"
     function status(): string {
-      return JSON.stringify({clock: dust.clock, epoch: dust.epoch, saved: window.saved})
+      return JSON.stringify({clock: dust.clock, epoch: dust.epoch, saved: window.saved, bottom: dust.children[2].rate})
     }
-    function pause(): void { dust.running = false }
-    function resume(): void { dust.running = true }
+    function pause(): void { tick.running = false }
+    function resume(): void { tick.running = true }
     function freeze(t: real, e: int): void {
-      dust.running = false; dust.epoch = e; dust.clock = t
+      tick.running = false; dust.epoch = e; dust.clock = t
     }
     function capture(path: string): void {
       window.saved = ""
@@ -69,7 +71,7 @@ Window {
   WlrLayershell.layer: WlrLayer.Bottom
   WlrLayershell.namespace: "wheelie-dust-test"
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.None""")
-    shell.write_text(qml)
+    shell.write_text(qml.replace("REAR", json.dumps(json.loads((scene / "layout.json").read_text())["wheels"]["rear"])))
     log_path = output / "run.log"
     with log_path.open("w") as log:
         process = subprocess.Popen(["quickshell", "--no-color", "-p", str(shell)],
@@ -104,13 +106,15 @@ Window {
             ipc("freeze", 0, 1)
             wrapped = capture("wrap-start")
             difference = [abs(a - b) for a, b in zip(last, wrapped)]
-            assert max(difference) <= 4 and sum(difference) / len(difference) < 0.01, (
+            # A grain drifting by a rounding error stays near 6; a reshuffled layer reaches 28.
+            assert max(difference) <= 8 and sum(difference) / len(difference) < 0.01, (
                 max(difference), sum(difference) / len(difference))
             ipc("freeze", 0, 10000)
             assert capture("later-epoch") != wrapped, "Dust repeats on every clock rollover"
+            assert ipc("status")["bottom"] == 32, "The spray must draw under the ambient dust"
             qslog.check(log_path.read_text())
         finally:
             if process.poll() is None:
                 process.terminate()
                 process.wait(timeout=5)
-print("ok: visible GPU dust, frozen pause, continuous resume, clock rollover, changing generations")
+print("ok: visible GPU dust, frozen pause, continuous resume, clock rollover, changing generations, spray order")

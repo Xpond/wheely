@@ -32,6 +32,20 @@ ShaderEffect {
     mipmap: true
     wrapMode: ShaderEffectSource.Repeat
   }
+  // Four corner hashes per cell; keep full precision for the original noise and slopes.
+  property var noiseData: ShaderEffectSource {
+    sourceItem: ShaderEffect {
+      width: 64
+      height: 64
+      blending: false
+      fragmentShader: Qt.resolvedUrl("noise.frag.qsb")
+    }
+    textureSize: Qt.size(64, 64)
+    format: ShaderEffectSource.RGBA32F
+    hideSource: true
+    smooth: false
+    wrapMode: ShaderEffectSource.Repeat
+  }
 
   onRunningChanged: previous = Date.now()
   Timer {

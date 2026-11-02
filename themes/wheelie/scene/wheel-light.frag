@@ -7,8 +7,12 @@ layout(std140, binding = 0) uniform buf {
     float turn;
     float tireRadius;
     float exposure;
+    vec4 rect; // The wheel's left, top, width, and height in the scene.
 };
 layout(binding = 1) uniform sampler2D source;
+
+#extension GL_GOOGLE_include_directive : enable
+#include "scene-light.glsl"
 
 void main() {
     vec2 p = qt_TexCoord0 - 0.5;
@@ -23,5 +27,6 @@ void main() {
     float shade = smoothstep(0.1, 1.0, -facing) * smoothstep(0.25, 0.8, radius);
     vec3 gain = vec3(0.93, 0.96, 1.0) + key * vec3(0.54, 0.32, 0.10)
                 - shade * vec3(0.25, 0.24, 0.22);
-    fragColor = vec4(min(tex.rgb * gain * exposure, vec3(tex.a)), tex.a) * qt_Opacity;
+    tex.rgb = min(tex.rgb * gain * exposure, vec3(tex.a));
+    fragColor = sceneLight(tex, rect.xy + qt_TexCoord0 * rect.zw) * qt_Opacity;
 }

@@ -79,12 +79,21 @@ behind the bar. Pausing holds every particle in place.
 - `HorizonStorm.qml` times the storm; `storm-wall.frag` scales and gently distorts
   `storm.png`, which holds only the dust and is 6336 pixels wide, so it never enlarges
   over the native scene.
-- `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities;
+- `Surface.qml` runs one 16 ms clock, about 62.5 animation updates a second. Storm changes
+  join that tick every half-second to reduce redundant presentations. A Qt animation or
+  `ParticleSystem` would redraw at the display's own rate, so the scene uses neither.
+- The still scene, storm included, is cached in a native-resolution texture that changes
+  twice a second. Wheels, chain, covers, shadow and dust draw over it and grade themselves
+  with `scene-light.glsl`: a layer over moving parts would present every update twice.
+- `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities,
+  and the rear wheel's spray, which is two more layers with gravity, drag and a landing row;
   `ambient-dust.vert` moves fixed meshes on the GPU, so thousands of particles need no
-  geometry uploads each frame. Its clock wraps every 2376 seconds, a common multiple of
-  the particle-slot periods, and a generation counter continues the random sequence
+  geometry uploads each frame. Horizontal strips use one collapsed connector column
+  between particles, preserving their triangles and particle order with fewer duplicate
+  vertices. The dust clock wraps every 2376 seconds, a common multiple of the
+  particle-slot periods, and a generation counter continues the random sequence
   across the wrap.
-- The storm shade is baked; `scene-light.frag` darkens the foreground toward the bottom
+- The storm shade is baked; `scene-light.glsl` darkens the foreground toward the bottom
   edge and its corners in linear light, keeping 25% of the light behind the bar.
 
 ## Editing

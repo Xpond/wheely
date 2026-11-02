@@ -3,6 +3,7 @@ layout(location = 0) in vec4 qt_Vertex;
 layout(location = 1) in vec2 qt_MultiTexCoord0;
 layout(location = 0) out vec2 uv;
 layout(location = 1) out float fade;
+layout(location = 2) out vec2 place;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
@@ -20,6 +21,7 @@ layout(std140, binding = 0) uniform buf {
     vec3 sizes;
     vec4 shape;
     vec4 tint;
+    vec4 force; // Acceleration, drag, and the row a falling grain lands on; 0 for none.
 };
 
 // A full-period generator with intermediates that remain exact in 32-bit floats.
@@ -37,12 +39,11 @@ vec2 random2(inout float state) {
 }
 
 void main() {
-    float row = floor(qt_MultiTexCoord0.y * float(4 * count - 3) + 0.5);
-    float slot = floor((row + 1.0) / 4.0);
-    float edge = mod(row, 4.0);
-    uv = edge == 0.0 ? vec2(qt_MultiTexCoord0.x, 0.0)
-       : edge == 1.0 ? vec2(qt_MultiTexCoord0.x, 1.0)
-       : edge == 2.0 ? vec2(1.0) : vec2(0.0);
+    float column = floor(qt_MultiTexCoord0.x * float(3 * count - 2) + 0.5), y = qt_MultiTexCoord0.y;
+    float edge = mod(column, 3.0);
+    // Qt's strip joins each connector's bottom-left to the next top-right without drawing between them.
+    float slot = floor((column + 1.0 - y) / 3.0);
+    uv = edge == 2.0 ? vec2(1.0 - y, y) : vec2(y, edge);
 
     // Stagger births at the original emission rate; reuse slots after their maximum life.
     float elapsed = clock + period - slot / rate;
@@ -60,9 +61,13 @@ void main() {
     float t = age / life;
     float size = max(3.0, mix(max(0.0, sizes.x + offset), max(0.0, sizes.y + offset), t * t));
     fade = clamp(t * 10.0, 0.0, 1.0) * clamp((1.0 - t) * 4.0, 0.0, 1.0);
-    if (age > life) size = 0.0;
+    float drag = force.z;
+    vec2 centre = origin + (drag > 0.0 ? speed * (1.0 - exp(-drag * age)) / drag : age * speed)
+                + 0.5 * force.xy * age * age;
+    if (age > life || (force.w > 0.0 && centre.y > force.w)) size = 0.0;
     vec2 corner = (uv - 0.5) * size * shape.xy;
     float c = cos(angle), s = sin(angle);
-    vec2 position = origin + age * speed + mat2(c, s, -s, c) * corner;
+    vec2 position = centre + mat2(c, s, -s, c) * corner;
+    place = position / extent;
     gl_Position = qt_Matrix * vec4(position, 0.0, 1.0);
 }

@@ -1,8 +1,8 @@
 # Tests
 
-Run `./tests/all.sh` before release from an Omarchy Wayland desktop. It runs all
-existing checks, stops on the first failure, and removes its temporary render
-outputs. It needs Node.js, Python 3 with Pygments, Quickshell, Qt's `qsb`, ImageMagick, and the
+Run `./tests/all.sh` before release from an Omarchy Wayland desktop. It rebuilds every
+shader and fails if a compiled file changes, runs all existing checks, stops on the
+first failure, and removes its temporary render outputs. It needs Node.js, Python 3 with Pygments, Quickshell, Qt's `qsb`, ImageMagick, and the
 normal Omarchy tools. GPU checks open temporary preview windows.
 
 For focused checks, run these entry points from the repository root:
@@ -34,11 +34,14 @@ directories. Additional checks and their dependencies are documented with the fe
   installing only the runtime files;
   `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 - [Wheelie theme](../themes/wheelie/README.md):
+  `python3 tests/wheelie-clock.py` checks animation cadence, half-second storm steps,
+  no frames while paused, and that a backward system clock cannot rewind the scene.
   `python3 tests/wheelie-lifecycle.py` checks pause/resume/toggle, lock/DPMS/fullscreen
   gating, static-background round trips, re-applying the theme, and exiting for another theme.
   `python3 tests/wheelie-dust.py` checks visible GPU dust, paused pixels, continuous
-  resume, and clock rollover; `QSG_RHI_BACKEND=vulkan` uses a temporary Wayland
-  background window because Qt's offscreen platform cannot initialize Vulkan.
+  resume, clock rollover with the spray, and the spray's order under the ambient dust;
+  `QSG_RHI_BACKEND=vulkan` uses a temporary Wayland background window because Qt's
+  offscreen platform cannot initialize Vulkan.
   `python3 tests/wheelie-install.py` checks staged installation and that failed copies
   leave the installed theme untouched, with temporary paths and command stubs; it needs
   no graphics session.
