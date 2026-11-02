@@ -43,7 +43,7 @@ Each design documents itself in its folder:
 - [`mycelium`](../lock/mycelium/README.md): a colony of fine hyphae grows from the centre and draws back on unlock.
 - [`shore`](../lock/shore/README.md): the wash meeting the sand from high above; unlocking brings the tide in.
 - [`meadow`](../lock/meadow/README.md): wildflowers grow into “omarchy” under a starlit sunset sky.
-- `wallpaper`: Omarchy's own blurred wallpaper, fading out on unlock.
+- `wallpaper`: Omarchy's own blurred wallpaper (a video wallpaper's still poster), fading out on unlock.
 
 ## Files and installation
 
@@ -79,7 +79,8 @@ Its normal startup also runs the existing stranded-lock recovery check before re
 The service blanks the display after five seconds of inactivity, starting on lock and
 restarting on input. After waking a blank display, a ten-second minimum allows the physical
 monitor to recover: this display was measured taking about 4.2 seconds to show a picture after
-DPMS returned. Input never shortens that allowance; afterward it gets the normal five seconds.
+DPMS returned. Input never shortens that allowance; afterward it gets the normal five seconds. A display lit by a
+resume with no input is blanked again after five seconds.
 These rules apply to every current and future design, regardless of animation progress.
 One wake starts the animation automatically. The countdown pauses while the wake command runs,
 so it cannot expire while that command is restoring the display. An in-flight blank command
