@@ -220,9 +220,9 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.run("revert.sh").returncode == 0 and "BEGIN wheely" not in lua.read_text()
     print("ok: an edited Hyprland block does not stop revert restoring the shell")
 
-    fixture.publish(fixture.stock, "4.0.5-1")
+    fixture.publish(fixture.stock, "4.0.6-1")
     result = fixture.run()
-    assert result.returncode == 1 and "needs Omarchy 4.0.6 or newer" in result.stderr, result.stderr
+    assert result.returncode == 1 and "needs Omarchy 4.5.0rc3 or newer" in result.stderr, result.stderr
     assert fixture.all_stock() and not asset_dir.exists() and not hook.exists()
     print("ok: an older Omarchy is refused before anything changes")
 
