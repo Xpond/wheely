@@ -26,7 +26,8 @@ done
 # patches/orig is this Omarchy release's; merged backwards, the patches would break an older shell.
 BASE=4.5.0rc3
 VERSION=${PACKAGE_DB##*/omarchy-}
-if [[ -n $PACKAGE_DB ]] && (( $(vercmp "$VERSION" "$BASE") < 0 )); then
+# omarchy-dev counts from the 4.0.0 tag but tracks main, ahead of every release.
+if [[ -n $PACKAGE_DB && $VERSION != dev-* ]] && (( $(vercmp "$VERSION" "$BASE") < 0 )); then
   alert "wheely needs Omarchy $BASE or newer; this is $VERSION"; exit 1
 fi
 

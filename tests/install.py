@@ -226,6 +226,14 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.all_stock() and not asset_dir.exists() and not hook.exists()
     print("ok: an older Omarchy is refused before anything changes")
 
+    # Edge's omarchy-dev is versioned from the 4.0.0 tag, yet ahead of every release.
+    fixture.publish(fixture.stock, "4.0.0.r7561.ga69b19f-1", "omarchy-dev")
+    result = fixture.run()
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert all(fixture.installed(relative) == fixture.patched(relative) for relative in fixture.files)
+    assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: edge's omarchy-dev is patched and reverted like a release")
+
     # A missing command is named before anything changes.
     fixture.publish(fixture.stock)
     bare = fixture.base / "bin-without-fd"
