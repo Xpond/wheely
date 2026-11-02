@@ -68,8 +68,9 @@ Item {
       event.accepted = true
       return
     }
-    // Preserve bare arrows for panel controls; Ctrl+arrows switch panels.
-    if ((event.modifiers & Qt.ControlModifier)
+    // Preserve bare arrows for panel controls; Ctrl+arrows switch panels, except
+    // where the panel moves its item sideways with them (from 4.5 after rc3).
+    if (!root.reorderableSideways && (event.modifiers & Qt.ControlModifier)
         && (event.key === Qt.Key_Right || event.key === Qt.Key_Left)) {
       tabRequested(event.key === Qt.Key_Right ? 1 : -1)
       event.accepted = true
