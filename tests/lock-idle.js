@@ -11,6 +11,7 @@ const blankExit = source.match(/id: blankProcess[^]*?onExited: (.+)/)[1]
 let now = 100000, blankAt = 0, hidden = false, plays = 0
 const scope = { Date: { now: () => now }, lockRequested: true, waking: false, unlocking: false,
   authenticatingPassword: false, lastInput: 0, wakeUntil: 0, logEvent() {},
+  pauseFingerprint() {}, resumeFingerprint() {}, nudgeFingerprint() {},
   wakeProcess: { running: false }, blankProcess: { running: false },
   unlockTimer: { starts: 0, restart() { this.starts++ } },
   idleBlankTimer: { restart() { blankAt = now + this.interval }, stop() { blankAt = 0 } } }
@@ -61,6 +62,8 @@ now = blankAt
 vm.runInContext(trigger, scope)
 assert.equal(scope.blanked, true, "idle did not blank")
 exit(scope.blankProcess, blankExit)
+scope.armBlankTimer()
+assert.equal(blankAt - now, 5000, "a display lit by resume was never blanked again")
 scope.blanked = false
 scope.armBlankTimer()
 now = blankAt + 10000

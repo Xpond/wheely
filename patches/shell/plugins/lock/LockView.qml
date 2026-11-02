@@ -9,8 +9,10 @@ Item {
   id: root
 
   property string backgroundPath: ""
+  property string videoPosterPath: ""
   property int backgroundVersion: 0
   property bool fingerprintConfigured: false
+  property bool fingerprintUnavailable: false
   property bool authenticatingPassword: false
   property string failureMessage: ""
   property int failedAttempts: 0
@@ -25,7 +27,7 @@ Item {
   property string designs: Quickshell.env("HOME") + "/.local/share/wheely/lock/"
   property string design: chosen.text().trim() || "wallpaper"
 
-  readonly property string placeholderText: "Enter Password"
+  readonly property string placeholderText: Commons.I18n.t("lock.enterPassword")
   readonly property int fieldWidth: 380
   readonly property int fieldHeight: 56
   readonly property int fieldInset: 28
@@ -46,6 +48,9 @@ Item {
   property real fieldOpacity: driving ? 0 : 1
   Behavior on fieldOpacity { NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
 
+  // A video wallpaper shows its still poster: nothing plays behind the lock.
+  readonly property bool video: Util.isVideoPath(root.backgroundPath)
+
   signal submitPassword(string password)
   signal passwordTextEdited(string password)
   signal clearFailureRequested()
@@ -57,6 +62,14 @@ Item {
 
   function clearPassword() {
     passwordTextEdited("")
+  }
+
+  // Waking a DPMS-blanked display can stall the compositor for seconds while
+  // the monitor modesets, so the wake key's release arrives late and client-side
+  // key repeat floods the field with that character. A held key has no business
+  // typing a password; only holding Backspace/Delete to clear stays useful.
+  function dropsAutoRepeat(key) {
+    return key !== Qt.Key_Backspace && key !== Qt.Key_Delete
   }
 
   function syncPasswordText() {
@@ -231,6 +244,10 @@ Item {
 
         Keys.onPressed: function(event) {
           root.wakeRequested()
+          if (event.isAutoRepeat && root.dropsAutoRepeat(event.key)) {
+            event.accepted = true
+            return
+          }
           if (event.key === Qt.Key_Escape || (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_U)) {
             root.passwordTextEdited("")
             event.accepted = true
@@ -241,7 +258,7 @@ Item {
       Text {
         textFormat: Text.PlainText
         anchors.fill: passwordInput
-        text: root.authenticatingPassword || root.driving ? "Checking…" : (root.failureMessage.length > 0 ? root.failureMessage : root.placeholderText)
+        text: root.authenticatingPassword || root.driving ? Commons.I18n.t("lock.checking") : (root.failureMessage.length > 0 ? root.failureMessage : root.placeholderText)
         visible: passwordInput.text.length === 0
         color: root.authenticatingPassword || root.driving ? "white" : (root.failureMessage.length > 0 ? Commons.Color.lock.textError : Qt.rgba(1, 1, 1, 0.62))
         font.family: Style.font.family
@@ -254,17 +271,36 @@ Item {
       Text {
         id: fingerprintIcon
         objectName: "fingerprintIndicator"
+        textFormat: Text.PlainText
         anchors.right: parent.right
         anchors.rightMargin: 22
         anchors.verticalCenter: parent.verticalCenter
         visible: root.fingerprintConfigured
-        text: "󰈷"
-        color: Qt.rgba(1, 1, 1, 0.62)
+        text: root.fingerprintUnavailable ? "󰺱" : "󰈷"
+        color: root.fingerprintUnavailable ? Commons.Color.lock.textError : Qt.rgba(1, 1, 1, 0.62)
         font.family: Style.font.family
         font.pixelSize: Math.round(root.fieldFontSize * 1.1)
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
       }
+    }
+
+    // The crossed-out icon has no meaning to a user who has never seen it — it
+    // is not intuitive that it signals a broken reader — so the words carry the
+    // explanation and the icon only reinforces it.
+    Text {
+      objectName: "fingerprintUnavailableNotice"
+      textFormat: Text.PlainText
+      anchors.top: inputField.bottom
+      anchors.topMargin: 18
+      anchors.horizontalCenter: inputField.horizontalCenter
+      visible: root.fingerprintConfigured && root.fingerprintUnavailable
+      text: Commons.I18n.t("lock.fingerprintUnavailable")
+      color: Commons.Color.lock.textError
+      font.family: Style.font.family
+      font.pixelSize: Style.font.heading
+      font.italic: true
+      horizontalAlignment: Text.AlignHCenter
     }
   }
 }

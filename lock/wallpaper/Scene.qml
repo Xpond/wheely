@@ -17,13 +17,16 @@ Item {
   Image {
     id: wallpaper
     anchors.fill: parent
+    // A video wallpaper shows its still poster.
+    property string path: root.host.video ? root.host.videoPosterPath : root.host.backgroundPath
     // Each path segment encoded; the version reloads a wallpaper changed while locked.
-    source: root.host.loadBackground && root.host.backgroundPath
-      ? "file://" + root.host.backgroundPath.split("/").map(encodeURIComponent).join("/") + "?v=" + root.host.backgroundVersion
+    source: root.host.loadBackground && path
+      ? "file://" + path.split("/").map(encodeURIComponent).join("/") + "?v=" + root.host.backgroundVersion
       : ""
     fillMode: Image.PreserveAspectCrop
     asynchronous: true
-    cache: false
+    // The same URL and size the lock service decodes ahead of time, so this reuses it.
+    cache: true
     sourceSize.width: width
     sourceSize.height: height
   }

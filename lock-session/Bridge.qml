@@ -116,7 +116,8 @@ Item {
     target: "lock"
     function lock(): string {
       if (!root.passwordPamConfigured) return "missing-pam"
-      if (!root.locked || (!root.peer && !root.pending)) root.request("lock")
+      // Locked, the worker still hears it: a suspend asks again, and the reader resumes after.
+      if (!root.locked || root.peer || !root.pending) root.request("lock")
       return "ok"
     }
     function isLocked(): string { return root.locked ? "true" : "false" }

@@ -22,6 +22,8 @@ colors = {"background": "#080a0f", "lock.borderError": "#ff4444", "lock.text": "
           "lock.selection": "#445577", "lock.textError": "#ff4444"}
 def standalone(source):
     source = re.sub(r"import qs\.Commons.*", "", source).replace("Commons.Color.", "Color.")
+    source = re.sub(r"Commons\.I18n\.t\(([^)]*)\)", r"\1", source)
+    source = re.sub(r"Util\.isVideoPath\([^)]*\)", "false", source)
     source = source.replace("Style.font.heading", "16").replace("Style.font.family", '"monospace"')
     return re.sub(r"Color\.(?:lock\.)?\w+", lambda m: json.dumps(colors[m[0][6:]]), source)
 shutil.rmtree(output / "lock", ignore_errors=True)

@@ -30,7 +30,9 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
         (worker / name).symlink_to(sources / name)
     shutil.copytree(repo / "lock", data / "lock")
     lock = out / "installed"
-    shutil.copytree(repo / "patches/shell/plugins/lock", lock)
+    # As installed: Omarchy's lock plugin (FingerprintModel.js, poster.sh) with our two files over it.
+    shutil.copytree("/usr/share/omarchy/shell/plugins/lock", lock)
+    shutil.copytree(repo / "patches/shell/plugins/lock", lock, dirs_exist_ok=True)
     (worker / "Lock").symlink_to(lock)
     (out / "Lock").symlink_to(lock)
     shutil.copytree("/usr/share/omarchy/shell/Commons", out / "installed-commons")
