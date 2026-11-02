@@ -32,9 +32,7 @@ for design in (output / "lock").glob("*/*.qml"):
     design.write_text(standalone(design.read_text()))
 (output / "LockView.qml").write_text(standalone((repo / "patches/shell/plugins/lock/LockView.qml").read_text()))
 def patch(name, old, new):
-    source = (output / name).read_text()
-    assert source.count(old) == 1, old
-    (output / name).write_text(source.replace(old, new))
+    (output / name).write_text(qslog.patch((output / name).read_text(), old, new, exactly=True))
 patch("LockView.qml", "  id: root", "  id: root\n  property alias testScene: scene.item")
 patch("lock/rally/Scene.qml", "  property var host", "  property var host\n  property alias testCar: car")
 patch("lock/rally/Car.qml", "  id: car", "  id: car\n  readonly property bool testDriving: go.running")
@@ -64,7 +62,7 @@ Window {
       waitingForColony = s.design === "mycelium"
       preparationStarted = Date.now()
       lock.design = s.design; lock.showDesign()
-      lock.backgroundPath = OUTPUT + "/lock/rally/neon-city.png"
+      lock.backgroundPath = OUTPUT + "/lock/rally/neon-city.jpg"
       lock.loadBackground = true
       // The wallpaper loads asynchronously.
       capture.interval = waitingForColony ? 20 : s.design === "meadow" ? 4000 : 1500

@@ -10,7 +10,9 @@ the session unlocks after the 1.1-second drive-off.
 The scene uses a painted neon-city plate behind the live car, a contact shadow,
 and a subdued wet-floor reflection. The grille
 and wheel wells have solid dark backing so the bright pavement cannot show through.
-The accepted artwork is **1672×941**, generated with the built-in imagegen tool.
+The plate is **1672×941**, generated with OpenAI's gpt-image (ChatGPT image generation) and
+stored as a quality-90 JPEG, which the blur and mipmaps make indistinguishable from the original.
+It is distributed under the repository's [MIT license](../../LICENSE).
 
 The car is framed at 89% scale about screen centre, then lowered by 4% of screen
 height. The shadow and floor reflection share these transforms through the drive-off.
@@ -205,7 +207,7 @@ scripts/build-shaders.sh lock/rally/*.frag
 | `lock/rally/livery.js` | Stripes, decals, lettering and the side intake |
 | `lock/rally/car-paint.frag` / `.qsb` | Analytical surface normals and city reflections, source and compiled |
 | `lock/rally/car-focus.frag` / `.qsb` | Final camera focus pass, source and compiled |
-| `lock/rally/neon-city.png` | Illustrated background and paint reflection source |
+| `lock/rally/neon-city.jpg` | Illustrated background and paint reflection source |
 | `tests/lock.js` | Finite tracing and drive-off frames, paint sweep, glass clipping and flat-pose bounds |
 
 ## Verification
@@ -215,23 +217,7 @@ car behind a lit edge, inside outlines are clipped to the glass, and the body's 
 pose keeps within half a pixel of the exact shake and 5px on average of the squat.
 The tests check behaviour, not looks: inspect whole captures for visual changes.
 
-## S1 E2 history
-
-Rejected along the way; don't retry these without a new direction from the user:
-
-- **Bonnet vents:** triangular S1 openings, aligned louvres, black-backed pockets with
-  woven floors and tapered outboard cutouts all read as grilles laid on the hood, with
-  pixelated edges and stripes cut between slots. The bonnet is continuous; a new attempt
-  must solve the flatness, the edges and the stripe clash.
-- **Side intake:** side-facing recesses read as pasted on and flat, even with deeper
-  shading. The mouth now faces forward on the flare's front face.
-- **Mirrors:** pointed cones; now rounded, flattened housings.
-- **Wing:** a 46–60 unit chord on grey block supports with end plates read as bigger than
-  the car, and its far side drew over the roof. The Quattro's deck lip poked out beside
-  it; the deck now runs flat to the tail, without the lip or its black rubber strip.
-- **Mud flaps:** flat colour bands; now continuously shaded rubber.
-
-## Remaining work
+## Known gaps
 
 - The S1 E2's aero parts remain subject to visual review.
 - Thin gaps along the roof and belt show during pitch.
