@@ -36,7 +36,7 @@ A radial control center, a file browser and centered shell panels for
   `omarchy-shell lock preview`. Work in progress; see
   [`docs/lockscreen.md`](docs/lockscreen.md).
 
-Tested only on Omarchy 4.0.6 with Quickshell 0.3.2, and refuses older releases. It patches the packaged
+Tested only on Omarchy 4.5.0rc3 with Quickshell 0.3.2.r7, and refuses older releases. It patches the packaged
 shell, so it is not a plugin `omarchy plugin add` can install.
 
 [Tidal](themes/tidal/README.md) is our independent light Omarchy theme: an

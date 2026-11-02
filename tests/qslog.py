@@ -5,8 +5,9 @@ import subprocess
 import time
 
 LEVEL = re.compile(r"^(?:[\d-]+ [\d:.]+)?\s*(?:WARN|ERROR|FATAL)\b")
-# An offscreen run inside a Wayland session gets a notice over three lines.
-NOISE = ["QT_QPA_PLATFORM", "--- WARNING ---"]
+# An offscreen run inside a Wayland session gets a notice over three lines, and from Quickshell
+# 0.3.2.r7 one for the Hyprland socket its private runtime dir lacks.
+NOISE = ["QT_QPA_PLATFORM", "--- WARNING ---", "Unable to find hyprland socket"]
 
 
 def check(log, *expected):

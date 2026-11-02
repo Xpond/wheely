@@ -24,7 +24,7 @@ done
 (( ${#missing[@]} )) && { alert "wheely needs ${missing[*]}"; exit 1; }
 
 # patches/orig is this Omarchy release's; merged backwards, the patches would break an older shell.
-BASE=4.0.6
+BASE=4.5.0rc3
 VERSION=${PACKAGE_DB##*/omarchy-}
 if [[ -n $PACKAGE_DB ]] && (( $(vercmp "$VERSION" "$BASE") < 0 )); then
   alert "wheely needs Omarchy $BASE or newer; this is $VERSION"; exit 1

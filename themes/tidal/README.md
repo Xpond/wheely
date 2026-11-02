@@ -111,4 +111,4 @@ python3 tests/tidal-geometry.py
 The bundled bubble texture is reproducible with `python3 animated/bake-bubbles.py`
 from this theme directory (requires NumPy and ImageMagick). What the checks cover is in
 [`tests/README.md`](../../tests/README.md).
-Tested on Omarchy 4.0.6 and Quickshell 0.3.2.
+Tested on Omarchy 4.5.0rc3 and Quickshell 0.3.2.r7.
