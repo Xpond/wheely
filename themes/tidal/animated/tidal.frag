@@ -13,6 +13,7 @@ layout(std140, binding = 0) uniform buf {
 };
 layout(binding = 2) uniform sampler2D surgeData;
 layout(binding = 1) uniform sampler2D bubbles;
+layout(binding = 3) uniform sampler2D noiseData;
 
 // Screen heights from centre: surge origin and permanent waterline.
 const float origin = -0.6;
@@ -21,18 +22,15 @@ const float shallows = -0.32;
 const float drain = 0.6;
 
 float hash(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
-float hash(vec2 p) { vec3 q = fract(p.xyx * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
 
-float noise(vec2 p) {
-    vec2 i = floor(p), f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
-}
+#extension GL_GOOGLE_include_directive : enable
+#include "noise.glsl"
+
 // The noise and its slope, repeating every 64 units.
 vec3 sloped(vec2 p) {
     vec2 i = floor(p), f = fract(p), s = f * f * (3.0 - 2.0 * f), ds = 6.0 * f * (1.0 - f);
-    float a = hash(mod(i, 64.0)), b = hash(mod(i + vec2(1, 0), 64.0));
-    float c = hash(mod(i + vec2(0, 1), 64.0)), d = hash(mod(i + vec2(1, 1), 64.0));
+    vec4 corners = texture(noiseData, (i + 0.5) / 64.0);
+    float a = corners.x, b = corners.y, c = corners.z, d = corners.w;
     return vec3(a + (b - a) * s.x + (c - a) * s.y + (a - b - c + d) * s.x * s.y,
                 ds * (vec2(b - a, c - a) + (a - b - c + d) * s.yx));
 }
@@ -78,6 +76,8 @@ vec3 sandAt(vec2 p, float wet) {
                 * (0.97 + 0.04 * grain) * (0.98 + 0.02 * noise(p * 5.0) + 0.015 * noise(p * 11.0 + 3.0));
     colour *= 1.0 - 0.12 * step(0.994, speck);
     colour += 0.08 * step(0.997, hash(floor(p * 650.0) + 0.5)) * (1.0 - wet);
+    // Soaked sand has no relief.
+    if (wet >= 1.0) return colour;
     vec2 across = normalize(vec2(0.35, 1.0));
     float phase = dot(p, across) * 190.0 + 6.0 * noise(p * vec2(1.5, 3.0));
     vec3 bump = sloped(p * 110.0 + 5.0);
@@ -117,11 +117,13 @@ void main() {
         float p = s * (1.0 + drain * (1.0 - s)), run = 4.0 * p * (1.0 - p) * r;
         // Ignore surges beyond their frayed reach.
         if (s < 1.0 && origin + run - v > -0.017) {
-            float fray = (0.012 * (noise(vec2(u * 6.0, since * 0.7) + k) - 0.5)
+            // The tide holds each surge in one phase, where these weights often stay exactly zero.
+            float fray = s >= 0.6 ? 0.0
+                       : (0.012 * (noise(vec2(u * 6.0, since * 0.7) + k) - 0.5)
                         + 0.005 * (noise(vec2(u * 18.0, since * 1.5) + k) - 0.5)) * (1.0 - smoothstep(0.35, 0.6, s));
             float d = origin + run + fray - v;
             // Draining back, the thinning film tears into patches behind its edge.
-            float film = d - smoothstep(peak, 0.75, s) * 0.035 * noise(vec2(u, v) * vec2(25.0, 45.0) + 3.0 * k);
+            float film = s <= peak ? d : d - smoothstep(peak, 0.75, s) * 0.035 * noise(vec2(u, v) * vec2(25.0, 45.0) + 3.0 * k);
             // Foaming bore thins to an edge rope before draining.
             float rope = 0.008 * (0.8 + 0.5 * data.z) * (1.0 + 2.0 * (1.0 - smoothstep(0.0, 0.3, s)));
             float arrival = smoothstep(0.0, 0.06, s);
@@ -137,9 +139,10 @@ void main() {
                     float cover = (1.0 - covered) * smoothstep(-0.004, 0.006, min(lumpy, film)) * arrival;
                     vec2 waveFlow = vec2(u, v - run * (0.5 + 0.5 * exp(-d / 1.5))) + 3.1 * k;
                     // Bore has ragged foam; the thinning edge rope closes up.
-                    float churned = 0.78 + 0.30 * noise(waveFlow * vec2(24.0, 38.0));
-                    float dense = max(churned * exp(-pow(lumpy / rope, 2.0)) * fading,
-                                      0.4 * smoothstep(0.3, 0.7, noise(waveFlow * vec2(3.0, 5.0))) * (1.0 - 0.6 * s) * smoothstep(0.0, 0.03, d));
+                    float dense = 0.4 * smoothstep(0.3, 0.7, noise(waveFlow * vec2(3.0, 5.0))) * (1.0 - 0.6 * s) * smoothstep(0.0, 0.03, d);
+                    // Past 2.65 ropes the bore stays under foamAt's cutoff.
+                    if (lumpy < 2.65 * rope)
+                        dense = max((0.78 + 0.30 * noise(waveFlow * vec2(24.0, 38.0))) * exp(-pow(lumpy / rope, 2.0)) * fading, dense);
                     foam += foamAt(waveFlow, dense, since) * cover;
                     covered += cover;
                 }
@@ -191,7 +194,8 @@ void main() {
     colour += water * vec3(0.75, 0.87, 1.0) * (0.04 + 0.3 * max(-n.y, 0.0));
     colour += water * (1.0 - foam.x) * 0.18 * pow(max(dot(n, normalize(vec3(0.0, -0.15, 1.0))), 0.0), 900.0);
     // Wet sand shines with the sky, freshly bared sand most, in patches as the film drains.
-    colour += (1.0 - water) * (0.05 * wet + 0.08 * gloss * (0.5 + 0.5 * noise(g * 30.0))) * vec3(0.8, 0.9, 1.0);
+    float patches = water < 1.0 && gloss > 0.0 ? 0.5 + 0.5 * noise(g * 30.0) : 0.0;
+    colour += (1.0 - water) * (0.05 * wet + 0.08 * gloss * patches) * vec3(0.8, 0.9, 1.0);
     vec3 foamColour = vec3(0.97, 0.98, 1.0);
     if (muted > 0.5) {
         // Charcoal water and warm grey shore; thin washes retain the shore's pale colour.

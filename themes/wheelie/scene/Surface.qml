@@ -1,22 +1,30 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Particles
 import Quickshell.Io
 
 // The baked scene, cropped to fill, with each wheel turning over its plate and under its cover.
 Item {
   id: root
   property bool running: true
-  property bool particlesRunning: running
   property int revolution: 1200
-  property real wheelTurn
+  property real seconds
+  // The storm steps twice a second on a clock tick, so regrading it adds no presentation.
+  readonly property real stormSeconds: Math.floor(seconds * 2) / 2
+  property double previous: Date.now()
+  readonly property real wheelTurn: (seconds * 1000 / revolution) % 1
   property var layout: ({ size: [1, 1], wheels: {} })
   readonly property real dpr: Screen.devicePixelRatio || 1
 
-  NumberAnimation on wheelTurn {
-    from: 0; to: 1; duration: root.revolution
-    loops: Animation.Infinite; paused: !root.running
+  // One 16 ms clock: an animation would redraw at the display's own rate.
+  onRunningChanged: previous = Date.now()
+  Timer {
+    interval: 16; repeat: true; running: root.running
+    onTriggered: {
+      const now = Date.now()
+      root.seconds += Math.max(0, Math.min(0.2, (now - root.previous) / 1000))
+      root.previous = now
+    }
   }
 
   FileView {
@@ -30,63 +38,76 @@ Item {
   Loader {
     anchors.fill: parent
     active: root.width > 0 && root.height > 0 && !!root.layout.cutout
-    // Light a screen-sized texture, so it reaches the display pixel for pixel.
     sourceComponent: Item {
-      id: view
-      layer.enabled: true
-      layer.smooth: true
-      layer.textureSize: Qt.size(Math.max(1, Math.ceil(width * root.dpr)), Math.max(1, Math.ceil(height * root.dpr)))
-      layer.effect: ShaderEffect {
-        // The scene's rectangle within the view, so the lighting keeps to scene coordinates.
-        property vector4d sceneRect: Qt.vector4d(scene.x / view.width, scene.y / view.height,
-                                                 scene.width * scene.scale / view.width,
-                                                 scene.height * scene.scale / view.height)
-        fragmentShader: Qt.resolvedUrl("scene-light.frag.qsb")
-      }
-
+      // The still scene and its grade, in a screen-sized texture that reaches the display pixel for
+      // pixel. What moves is drawn over it and grades itself: a layer over moving parts would
+      // present every update twice.
       Item {
-        id: scene
-        width: root.layout.size[0]
-        height: root.layout.size[1]
-        transformOrigin: Item.TopLeft
-        scale: Math.max(root.width / width, root.height / height)
-        // Images decode at twice their on-screen pixels, at most native: closest to the native scene.
-        readonly property real decode: Math.min(1, 2 * scale * root.dpr)
-        // Centered on whole device pixels, so the crop never shifts texels by half a pixel.
-        x: Math.round((root.width - width * scale) / 2 * root.dpr) / root.dpr
-        y: Math.round((root.height - height * scale) / 2 * root.dpr) / root.dpr
+        id: view
+        anchors.fill: parent
+        layer.enabled: true
+        layer.smooth: true
+        layer.textureSize: Qt.size(Math.max(1, Math.ceil(width * root.dpr)), Math.max(1, Math.ceil(height * root.dpr)))
+        layer.effect: ShaderEffect {
+          // The scene's rectangle within the view, so the lighting keeps to scene coordinates.
+          property vector4d sceneRect: Qt.vector4d(scene.x / view.width, scene.y / view.height,
+                                                   scene.width * scene.scale / view.width,
+                                                   scene.height * scene.scale / view.height)
+          property vector4d crop: Qt.vector4d(0, 0, 1, 1)
+          fragmentShader: Qt.resolvedUrl("scene-light.frag.qsb")
+        }
 
-        Image {
-          source: "base.png"; smooth: true
-          width: parent.width; height: parent.height
-          sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
-        }
-        // Sized by bindings, not anchors: anchors apply only after the storm image starts loading.
-        HorizonStorm {
-          width: parent.width; height: parent.height; horizon: root.layout.horizon || 0
-          decode: scene.decode; running: root.particlesRunning
-        }
-        // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
         Item {
-          width: parent.width; height: root.layout.horizon || 0
-          clip: true
-          Repeater {
-            model: root.layout.prints || []
-            Rectangle {
-              required property int modelData
-              y: modelData - root.layout.printBorder
-              width: parent.width; height: 2 * root.layout.printBorder
-              color: "white"
+          id: scene
+          width: root.layout.size[0]
+          height: root.layout.size[1]
+          transformOrigin: Item.TopLeft
+          scale: Math.max(root.width / width, root.height / height)
+          // Images decode at twice their on-screen pixels, at most native: closest to the native scene.
+          readonly property real decode: Math.min(1, 2 * scale * root.dpr)
+          // Centered on whole device pixels, so the crop never shifts texels by half a pixel.
+          x: Math.round((root.width - width * scale) / 2 * root.dpr) / root.dpr
+          y: Math.round((root.height - height * scale) / 2 * root.dpr) / root.dpr
+          // A rectangle as shares of the scene, which is how a moving part finds its lighting.
+          function rect(x, y, w, h) { return Qt.vector4d(x / width, y / height, w / width, h / height) }
+
+          Image {
+            source: "base.png"; smooth: true
+            width: parent.width; height: parent.height
+            sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
+          }
+          // Sized by bindings, not anchors: anchors apply only after the storm image starts loading.
+          HorizonStorm {
+            width: parent.width; height: parent.height; horizon: root.layout.horizon || 0
+            decode: scene.decode; seconds: root.stormSeconds
+          }
+          // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
+          Item {
+            width: parent.width; height: root.layout.horizon || 0
+            clip: true
+            Repeater {
+              model: root.layout.prints || []
+              Rectangle {
+                required property int modelData
+                y: modelData - root.layout.printBorder
+                width: parent.width; height: 2 * root.layout.printBorder
+                color: "white"
+              }
             }
           }
+          // Everything but the sky, redrawn over the storm.
+          Image {
+            source: "cutout.png"
+            x: root.layout.cutout[0]; y: root.layout.cutout[1]
+            width: root.layout.cutout[2]; height: root.layout.cutout[3]
+            sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
+          }
         }
-        // Everything but the sky, redrawn over the storm.
-        Image {
-          source: "cutout.png"
-          x: root.layout.cutout[0]; y: root.layout.cutout[1]
-          width: root.layout.cutout[2]; height: root.layout.cutout[3]
-          sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
-        }
+      }
+      Item {
+        width: scene.width; height: scene.height
+        transformOrigin: Item.TopLeft
+        x: scene.x; y: scene.y; scale: scene.scale
         Repeater {
           model: Object.keys(root.layout.wheels)
           Item {
@@ -102,6 +123,7 @@ Item {
               property real turn: root.wheelTurn
               property real tireRadius: axle.wheel.radius / axle.wheel.size
               property real exposure: axle.modelData === "rear" ? 0.92 : 1.0
+              property vector4d rect: scene.rect(axle.x, axle.y, width, height)
               property var source: Image {
                 source: axle.modelData + ".png"
                 visible: false
@@ -114,86 +136,45 @@ Item {
               active: axle.modelData === "rear" && !!root.layout.chain
               x: root.layout.chain ? root.layout.chain.box[0] - parent.x : 0
               y: root.layout.chain ? root.layout.chain.box[1] - parent.y : 0
-              sourceComponent: AnimatedSprite {
-                source: "chain-motion.png"
-                width: root.layout.chain.box[2]; height: root.layout.chain.box[3]
-                frameWidth: width; frameHeight: height
-                frameCount: root.layout.chain.frames
-                paused: true // The wheel's clock advances the links, one pitch per tooth.
-                interpolate: false
-                currentFrame: Math.floor((root.wheelTurn * root.layout.chain.teeth % 1) * frameCount)
+              sourceComponent: LitImage {
+                readonly property var chain: root.layout.chain
+                readonly property int rows: Math.ceil(chain.frames / chain.columns)
+                // The wheel's clock advances the links, one pitch per tooth.
+                readonly property int frame: Math.floor((root.wheelTurn * chain.teeth % 1) * chain.frames)
+                image: "chain-motion.png"
+                width: chain.box[2]; height: chain.box[3]
+                crop: Qt.vector4d(frame % chain.columns / chain.columns, Math.floor(frame / chain.columns) / rows,
+                                  1 / chain.columns, 1 / rows)
+                rect: scene.rect(chain.box[0], chain.box[1], width, height)
               }
             }
-            Image {
-              source: axle.modelData + "-cover.png"
+            LitImage {
+              image: axle.modelData + "-cover.png"
               x: axle.wheel.box[0] - parent.x; y: axle.wheel.box[1] - parent.y
               width: axle.wheel.box[2]; height: axle.wheel.box[2]
-              sourceSize: Qt.size(axle.decoded, axle.decoded)
+              decoded: Qt.size(axle.decoded, axle.decoded)
+              rect: scene.rect(axle.wheel.box[0], axle.wheel.box[1], width, height)
             }
           }
         }
 
         // Tight contact shadow with a soft falloff, over the sand cover and under the dust.
-        Image {
+        LitImage {
           readonly property var rear: root.layout.wheels.rear
-          source: "contact-shadow.svg"
+          image: "contact-shadow.svg"
           x: rear ? rear.center[0] - 240 : 0
           y: rear ? rear.contactY - 12 : 0
+          width: source.implicitWidth; height: source.implicitHeight
           visible: !!rear
-          smooth: true
+          rect: scene.rect(x, y, width, height)
         }
 
-        // Loose sand lifts briefly, spreads, and settles beside the painted ground trail.
-        // Measured in rear-wheel radii so the dust keeps its size at any resolution.
-        Loader {
-          active: !!root.layout.wheels.rear
-          sourceComponent: Item {
-            id: spray
-            readonly property var rear: root.layout.wheels.rear
-            readonly property real r: rear.radius || rear.size / 2
-            // Particle colors need premultiplication; the SVG texture is premultiplied by Qt.
-            function sand(a) { const c = Qt.lighter(Qt.color(root.layout.dust), 1.08); return Qt.rgba(c.r * a, c.g * a, c.b * a, a) }
-            x: rear.center[0]; y: rear.contactY || rear.center[1] + r
-
-            ParticleSystem { id: dust; paused: !root.particlesRunning }
-            ImageParticle {
-              system: dust; groups: ["grain"]
-              source: "dust.svg"
-              color: parent.sand(0.4)
-              rotationVariation: 180
-            }
-            ImageParticle {
-              system: dust; groups: ["puff"]
-              source: "dust.svg"
-              color: parent.sand(0.32)
-              rotationVariation: 35
-              rotationVelocityVariation: 25
-              xVector: PointDirection { x: 1.35; y: 0 }
-              yVector: PointDirection { x: 0; y: 0.6 }
-            }
-            Emitter {
-              system: dust; group: "grain"
-              x: 0.3 * spray.r; y: -0.14 * spray.r; width: 0.2 * spray.r; height: 0.04 * spray.r
-              emitRate: 32; lifeSpan: 750; lifeSpanVariation: 200
-              size: 0.025 * spray.r; endSize: 0.012 * spray.r; sizeVariation: 0.01 * spray.r
-              velocity: AngleDirection { angle: -30; angleVariation: 12; magnitude: 1.8 * spray.r; magnitudeVariation: 0.45 * spray.r }
-              acceleration: PointDirection { y: 3 * spray.r }
-            }
-            // Grains land: none falls through the sand.
-            Age { system: dust; groups: ["grain"]; x: -spray.r; y: -0.08 * spray.r; width: 6 * spray.r; height: 2 * spray.r; lifeLeft: 0 }
-            Emitter {
-              system: dust; group: "puff"
-              x: 0.35 * spray.r; y: -0.16 * spray.r; width: 0.4 * spray.r; height: 0.06 * spray.r
-              emitRate: 22; lifeSpan: 1600; lifeSpanVariation: 400
-              size: 0.28 * spray.r; endSize: 0.9 * spray.r; sizeVariation: 0.12 * spray.r
-              velocity: PointDirection { x: 1.5 * spray.r; xVariation: 0.6 * spray.r; y: -0.64 * spray.r; yVariation: 0.14 * spray.r }
-              acceleration: PointDirection { y: 0.4 * spray.r }
-            }
-            Friction { system: dust; groups: ["puff"]; factor: 1 }
-          }
+        AmbientDust {
+          anchors.fill: parent
+          seconds: root.seconds
+          rear: root.layout.wheels.rear
+          sand: Qt.lighter(root.layout.dust, 1.08)
         }
-
-        AmbientDust { anchors.fill: parent; running: root.particlesRunning }
       }
     }
   }

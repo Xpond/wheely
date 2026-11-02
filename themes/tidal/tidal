@@ -14,7 +14,7 @@ case "${1:-help}" in
     new="$stage/tidal"
     mkdir "$new"
     cp -a "$theme"/{colors.toml,shell.toml,icons.theme,preview.png,preview.qml,tidal,hooks,backgrounds,animated} "$new/"
-    rm -f "$new"/animated/*.frag "$new"/animated/bake-bubbles.py
+    rm -f "$new"/animated/*.{frag,glsl} "$new"/animated/bake-bubbles.py
     # Stop the controller only for the swap; kill returns before it exits, and until then
     # --no-duplicate refuses to start the new one.
     quickshell kill -p "$destination/animated" >/dev/null 2>&1 || true
