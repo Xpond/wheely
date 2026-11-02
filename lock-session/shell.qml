@@ -30,6 +30,7 @@ ShellRoot {
     if (pending.action === "lock" && !service.passwordPamConfigured) return
     if (pending.action === "lock") {
       if (!service.locked) service.beginLock()
+      else service.noteSleepRequested()
       service.previewVisible = false
     } else if (pending.action === "preview") {
       if (!service.locked) {
