@@ -21,7 +21,7 @@ the lock surface, so an installed plugin cannot draw where the password is typed
 
 Each design documents itself in its folder:
 
-- [`rally`](../lock/rally/README.md): a line-art Sport quattro S1 E2 traced by comets, painted, then driven off on unlock.
+- [`rally`](../lock/rally/README.md): a line-art Group B rally car traced by comets, painted, then driven off on unlock.
 - [`tunnel`](../lock/tunnel/README.md): the wheel's mark stacked into a corridor, flown through.
 - [`mycelium`](../lock/mycelium/README.md): a colony of fine hyphae grows from the centre and draws back on unlock.
 - [`shore`](../lock/shore/README.md): the wash meeting the sand from high above; unlocking brings the tide in.
