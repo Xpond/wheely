@@ -17,9 +17,10 @@ def check(log, *expected):
     assert not lines, "unexpected Quickshell warnings:\n" + "\n".join(lines)
 
 
-def patch(text, old, new, count=-1):
-    """Replace old, which must be present: a stale pattern would leave real code or state in use."""
+def patch(text, old, new, count=-1, exactly=False):
+    """Replace old, which must be present (exactly once with exactly): a stale pattern would leave real code or state in use."""
     assert old in text, old
+    assert not exactly or text.count(old) == 1, old
     return text.replace(old, new, count)
 
 

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Effects
+import qs.Commons
 
 // Wallpaper: the current background, blurred, as on Omarchy's own lock screen.
 Item {
@@ -19,13 +20,14 @@ Item {
     anchors.fill: parent
     // A video wallpaper shows its still poster.
     property string path: root.host.video ? root.host.videoPosterPath : root.host.backgroundPath
-    // Each path segment encoded; the version reloads a wallpaper changed while locked.
+    // The lock service decodes this same URL ahead of the lock (Service.qml's lockWallpaperUrl), so
+    // it is built the same way: the version, when there is one, reloads a wallpaper changed while locked.
     source: root.host.loadBackground && path
-      ? "file://" + path.split("/").map(encodeURIComponent).join("/") + "?v=" + root.host.backgroundVersion
+      ? Util.fileUrl(path) + (root.host.backgroundVersion ? "?v=" + root.host.backgroundVersion : "")
       : ""
     fillMode: Image.PreserveAspectCrop
     asynchronous: true
-    // The same URL and size the lock service decodes ahead of time, so this reuses it.
+    // The same URL and size the service decoded, so this reuses it.
     cache: true
     sourceSize.width: width
     sourceSize.height: height

@@ -3,7 +3,7 @@
 A light Omarchy theme: chalk, sea glass, warm sand, and marine ink.
 Two animated coasts and three original static wallpapers. Independent of Wheely.
 
-![Tidal's two animated coasts and three static wallpapers](preview.png)
+![Tidal's two animated coasts and three static wallpapers](preview.jpg)
 
 ## Preview
 
@@ -92,9 +92,10 @@ display's coast within one second. Waking it preserves the tide and any manual p
 | [Shallows](backgrounds/02-shallows.jpg) | Sunlit caustics over a quiet central sand bank |
 | [Ebb](backgrounds/03-ebb.jpg) | Sculpted sand flats and branching tidal channels |
 
-The JPEGs are unmodified generator outputs: 5504 × 3072 pixels, generated at
-Google Gemini 3 Pro Image's native 4K tier. Both animated coasts render at screen
-resolution; their picker thumbnails are lossless 3840 × 2160 shader captures.
+The JPEGs were generated at Google Gemini 3 Pro Image's native 4K tier (5504 × 3072)
+and are shipped resized to 3870 × 2160 at JPEG quality 90, with no other edits. Both
+animated coasts render at screen resolution; their picker thumbnails are lossless
+3840 × 2160 shader captures.
 Prompts, model, and generation provenance are in [PROMPTS.md](PROMPTS.md).
 Code and assets are distributed under the repository's [MIT license](../../LICENSE).
 

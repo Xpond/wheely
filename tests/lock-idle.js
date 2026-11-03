@@ -3,6 +3,7 @@ const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const path = require("node:path")
 const vm = require("node:vm")
+const { method } = require("./qml.js")
 const read = file => fs.readFileSync(path.join(__dirname, "../patches/shell/plugins/lock", file), "utf8")
 const source = read("Service.qml"), view = read("LockView.qml")
 const trigger = "(function() {" + source.match(/id: idleBlankTimer[^]*?onTriggered: \{([^]*?)^    }/m)[1] + "})()"
@@ -26,9 +27,8 @@ Object.defineProperty(scope, "blanked", { get: () => hidden, set: value => {
 scope.root = scope
 for (const key of ["interval", "armedAt"])
   Object.defineProperty(scope, key, { get: () => scope.idleBlankTimer[key] })
-vm.createContext(scope)
 for (const name of ["armBlankTimer", "runWake", "finishWake", "runBlank", "wakeOnInput", "driveOffThenUnlock"])
-  vm.runInContext(source.match(new RegExp("^  function " + name + "\\([^]*?^  }", "m"))[0], scope)
+  method(source, name, scope)
 function exit(process, handler) { process.running = false; vm.runInContext(handler, scope) }
 
 scope.armBlankTimer()
@@ -91,8 +91,7 @@ Object.assign(scope, {
   sessionLockStabilizeTimer: { running: false, restart() { this.running = true } },
   pendingSessionLockTimer: { running: false, start() { this.running = true }, stop() { this.running = false } }
 })
-for (const name of ["queueSessionLock", "requestSessionLock"])
-  vm.runInContext(source.match(new RegExp("^  function " + name + "\\([^]*?^  }", "m"))[0], scope)
+for (const name of ["queueSessionLock", "requestSessionLock"]) method(source, name, scope)
 scope.queueSessionLock()
 assert.equal(scope.sessionLock.locked, true, "a ready screen still waits before locking")
 assert.equal(scope.sessionLockStabilizeTimer.running, false)

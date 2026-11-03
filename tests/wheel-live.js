@@ -9,10 +9,7 @@ const here = path.join(__dirname, "../plugins/xpo.wheel")
 const omarchy = process.env.OMARCHY_PATH || "/usr/share/omarchy"
 const home = process.env.HOME
 
-// Collect declarations because a QML library cannot be imported by Node.
-const src = fs.readFileSync(path.join(here, "MenuIndex.js"), "utf8").replace(/^\.pragma library/m, "")
-const names = [...src.matchAll(/^(?:function (\w+)|var (\w+) =)/gm)].map(m => m[1] || m[2])
-const M = new Function(src + "\nreturn {" + names.join(",") + "}")()
+const M = require("./qml.js").library("plugins/xpo.wheel/MenuIndex.js")
 
 const read = p => { try { return fs.readFileSync(p, "utf8") } catch { return "" } }
 let failed = 0
@@ -97,25 +94,7 @@ check(M.keyOf({ label: "a window", address: "0x1" }) === "", "windows are not co
 const shadowed = rows.filter(r => M.modeOf(r.label))
 check(shadowed.length === 0, `no menu label starts with a mode sigil (${Object.keys(M.MODES).join(" ")})`,
       shadowed.map(r => r.label).join(", "))
-check(M.termOf("/wheel") === "wheel" && M.termOf("wheel") === "wheel",
-      "a sigil is stripped exactly once, and only when it leads")
-
-// fd uses a trailing slash to distinguish directories.
-const scanned = M.parseFiles(`${home}/Downloads/\n${home}/.config/hypr/hyprland.conf\n`)
-const dir = M.fileRows(scanned, "downloads", 1, home)[0]
-const file = M.fileRows(scanned, "hyprland", 1, home)[0]
-check(!!dir && dir.label === "Downloads" && dir.trail === "~",
-      "a directory row is named without its trailing slash", JSON.stringify(dir))
-check(!!file && file.label === "hyprland.conf" && file.trail === "~/.config/hypr",
-      "a file row carries the directory above it, relative to home", JSON.stringify(file))
-check(!!dir && dir.icon !== file.icon, "files and directories wear different marks")
-
-check(M.pathPayload(`${home}/a/b.txt`) === JSON.stringify({ dir: `${home}/a`, select: "b.txt" }),
-      "a file payload names its directory and itself", M.pathPayload(`${home}/a/b.txt`))
-check(M.pathPayload(`${home}/a/`) === JSON.stringify({ dir: `${home}/a` }),
-      "a directory payload names itself and selects nothing", M.pathPayload(`${home}/a/`))
-
-check(M.keyOf(M.fileRow(`${home}/a.txt`, home)) === `file:${home}/a.txt`, "a file is counted by its path")
+// Sigils, file rows and their payloads need no desktop: tests/wheel-files.js covers them.
 
 // An odd ring is allowed, but worth knowing about: it has no slice at 3 or 9 o'clock.
 for (const [label, cfg] of [["shipped", `${omarchy}/config/omarchy/shell.json`],

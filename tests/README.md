@@ -1,24 +1,31 @@
 # Tests
 
 Run `./tests/all.sh` before release from an Omarchy Wayland desktop. It rebuilds every
-shader and fails if a compiled file changes, runs all existing checks, stops on the
-first failure, and removes its temporary render outputs. It needs Node.js, Python 3 with Pygments, Quickshell, Qt's `qsb`, ImageMagick, and the
-normal Omarchy tools. GPU checks open temporary preview windows.
+shader into a temporary directory and fails if a compiled file differs from the tracked
+one (so another `qsb` cannot dirty the checkout; `QSB_OUT=dir scripts/build-shaders.sh`
+does the same by hand), runs all existing checks, stops on the first failure, and removes
+its temporary render outputs. It needs Node.js, Python 3 with Pygments, Quickshell, Qt's
+`qsb` and `qmltestrunner` (`/usr/lib/qt6/bin`), ImageMagick, `lua`, `bsdtar`, `fd`, `git`,
+and the normal Omarchy tools. GPU checks open temporary preview windows.
 
 For focused checks, run these entry points from the repository root:
 
 | Command | Coverage and layout |
 | --- | --- |
-| `node tests/check.js` | 26 JavaScript logic suites: file operations, wheel menus/search/calculator/bindings/conditions/input/settings, shell panels, lock lifecycle/designs, mycelium, sky and trails. |
+| `node tests/check.js` | 27 JavaScript logic suites: file operations and ordering, wheel menus/search/calculator/bindings/conditions/input/settings/file rows, shell panels, lock lifecycle/designs, mycelium, sky and trails. Every suite runs and each failure is reported. Four need an installed Omarchy: `wheel-settings.js` reads the shell's `Commons`, `wheel-folders.js` runs `fd`, `shell-panels.js` the `omarchy` CLI, and `scene.js` `qsb`. |
 | `node tests/wheel-live.js` | Wheel invariants against this machine's installed Omarchy menu and keybindings; requires a running desktop session. |
 | `python3 tests/runtime.py` | Offscreen QML behavior, after compiling each plugin whole, which needs a Wayland session. Calls `plugin_shell.py`, `wheel_refresh.py`, `wheel_scans.py`, `wheel_menu.py`, `file_runtime.py` (including `file_edits.py`), `files_lifecycle.py`, `files_git_runtime.py`, and `wheel_settings.py`. |
 | `python3 tests/install.py` | Install/revert, package updates and failure recovery using temporary paths. `install_fixture.py` supplies the isolated system and command stubs. |
-| `python3 tests/desktop.py` | Hyprland setup by `scripts/user-config.py`: personal edits survive install/revert, interrupted or rejected installs roll back, and the shipped Lua (run through `desktop.lua`) binds the saved wheel key, and the wallpaper pause key only while an animated theme is active. `install.py` reuses its `prepare` and `verify`. |
+| `python3 tests/files-preview.py` | Offscreen Files previews: plain and highlighted text keep the same layout, with Pygments. |
+| `python3 tests/lock-process.py` | The lock worker against a simulated compositor and authentication: locking, status, designs, wake and fallback. |
+| `python3 tests/mycelium-render.py`, `python3 tests/meadow-render.py` | Offscreen renders of those two designs, checked pixel by pixel; `lock-render.py` renders every design natively. |
+| `python3 tests/desktop.py` | Hyprland setup by `scripts/user-config.py`: personal edits survive install/revert, interrupted or rejected installs roll back, and the shipped Lua (run through `desktop.lua`) binds the saved wheel key, and the wallpaper pause key only while an animated theme is active. `install.py` reuses its `verify`, and `install_fixture.py` its `prepare`. |
 
 Each JavaScript suite can also run alone, for example
 `node tests/wheel-ring.js`. `qml.js` and `wheel-source.js` contain shared
-source-loading helpers; the Python modules listed above are called by their
-entry points, rather than run separately.
+source-loading helpers, and `qslog.py` the Quickshell log gate, source patching
+and IPC polling the Python suites share; the Python modules listed above are called
+by their entry points, rather than run separately.
 
 The release command also runs `open-path.py` and `wheelie-install.py` in temporary
 directories. Additional checks and their dependencies are documented with the features:

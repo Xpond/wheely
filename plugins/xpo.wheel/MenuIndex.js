@@ -494,7 +494,7 @@ var SETTING_ICON = "󱥸"
 
 // Wheel settings are search rows: `wheely settings` lists them, and each is changed in place.
 // Wheely history rides along, answering to `history` rather than `settings`. The wallpaper pause
-// row comes with Wheelie, the theme whose scene it pauses: without its key, the row is left out.
+// row comes with Wheelie and Tidal, the themes whose scenes it pauses: without its key, the row is left out.
 function settingRows(shortcut, customRing, folders, skipped, picks, centered, pauseKey) {
   return [{ icon: SETTING_ICON, label: "Wheely shortcut", trail: shortcut, kind: KIND.slice, setting: "shortcut",
             keywords: "wheely settings preferences shortcut keybinding keybind hotkey key launch open" },

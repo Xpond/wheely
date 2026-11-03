@@ -50,7 +50,7 @@ switcher.
 The static scenes include forest riding, hard enduro, and two night settings.
 Forest trail and hard enduro have a baked black bottom vignette for the bar.
 The smooth fade runs from 72% to 98% of the image height, starting up to 6% earlier
-at the corners. Both are 5456×3072 quality-100 JPEGs.
+at the corners. Every static background ships resized to 4K (at least 3840 × 2160) at JPEG quality 90.
 
 | Background | Scene |
 |---|---|
@@ -113,6 +113,7 @@ scripts/build-shaders.sh themes/wheelie/scene/*.{frag,vert}
 - Wheel sprites, rim finish, and chain material: the built-in imagegen tool.
 - `backgrounds/01-forest-trail.jpg` and `03-hard-enduro.jpg`: 5456×3072 outputs
   from `black-forest-labs/flux-3-image`, 4K, 16:9, with the bottom
-  vignette added.
+  vignette added, then resized like the others.
 
-Contact shadows and lighting are code-defined.
+Contact shadows and lighting are code-defined. All of the images are AI-generated and,
+like the code, distributed under the repository's [MIT license](../../LICENSE).

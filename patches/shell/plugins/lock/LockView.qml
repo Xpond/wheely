@@ -34,9 +34,11 @@ Item {
   readonly property int fieldFontSize: Style.font.heading
   readonly property int passwordDotFontSize: Math.round(Style.font.heading * 1.125)
   readonly property int passwordDotLetterSpacing: Math.round(Style.font.heading * 0.25)
-  // Reserve the fingerprint icon's width on both sides to keep the dots centered.
+  // Space to keep clear on each side of the field for the fingerprint icon
+  // (icon width plus a gap) so the centered dots never run under it.
   readonly property real fingerprintReserve: fingerprintConfigured ? Math.round(fingerprintIcon.implicitWidth + 12) : 0
-  // Shrink long passwords so every keystroke remains visible.
+  // Shrink the dots to fit once the password outgrows the field, so every
+  // keystroke stays visible — otherwise long passwords clip with no feedback.
   readonly property real passwordDotScale: dotMetrics.advanceWidth > 0
     ? Math.min(1, (passwordInput.width - 4) / dotMetrics.advanceWidth)
     : 1
@@ -109,7 +111,8 @@ Item {
     printErrors: false
   }
 
-  // Measure dots at full size before scaling them to fit.
+  // Measures the masked password at full size; passwordDotScale compares this
+  // against the field width to decide how far the dots must shrink to fit.
   TextMetrics {
     id: dotMetrics
     font.family: Style.font.family

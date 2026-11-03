@@ -17,7 +17,7 @@ Item {
   Image {
     id: city
     anchors.fill: parent
-    source: Qt.resolvedUrl("neon-city.png")
+    source: Qt.resolvedUrl("neon-city.jpg")
     fillMode: Image.PreserveAspectCrop
     mipmap: true
   }
