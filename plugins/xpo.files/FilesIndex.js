@@ -82,15 +82,31 @@ function parentOf(dir) {
   return cut <= 0 ? "/" : d.slice(0, cut)
 }
 
-// Jail paths to the roots, home first; the slash prevents /home/xpo2 from matching /home/xpo.
+// Collapse . and .. segments and repeated slashes, keeping a typed trailing slash: a typed
+// ~/../ would otherwise pass the jail by starting with home's own prefix.
+function cleanPath(path) {
+  var p = String(path || "")
+  var out = []
+  var parts = p.split("/")
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] === "" || parts[i] === ".") continue
+    if (parts[i] === "..") out.pop()
+    else out.push(parts[i])
+  }
+  var clean = "/" + out.join("/")
+  return clean !== "/" && p.slice(-1) === "/" ? clean + "/" : clean
+}
+
+// Jail paths to the roots, home first; the slash prevents /home/alex2 from matching /home/alex.
 function within(dir, roots) {
-  var d = String(dir || "")
+  var d = cleanPath(dir)
   return roots.some(function (r) { return d === r || d.indexOf(r + "/") === 0 }) ? d : roots[0]
 }
 
+// Home and what is under it wear the tilde; a sibling such as /home/alex2 does not.
 function display(dir, home) {
   var d = String(dir || "")
-  return d.indexOf(home) === 0 ? "~" + d.slice(home.length) : d
+  return d === home || d.indexOf(home + "/") === 0 ? "~" + d.slice(home.length) : d
 }
 
 function crumbs(dir, home) {

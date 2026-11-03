@@ -3,7 +3,7 @@
   "id": "xpo.files",
   "name": "Files",
   "version": "0.1.0",
-  "author": "xpo",
+  "author": "Xpond",
   "description": "Keyboard-driven directory browser",
   "kinds": ["overlay"],
   "keepLoaded": true,

@@ -3,7 +3,7 @@
   "id": "xpo.wheel",
   "name": "Wheel",
   "version": "0.1.0",
-  "author": "xpo",
+  "author": "Xpond",
   "description": "Radial control center: panels on a ring, and one search for everything else",
   "kinds": ["overlay", "menu"],
   "keepLoaded": true,

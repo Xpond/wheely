@@ -1,51 +1,35 @@
 # wheely
 
-A radial control center, a file browser and centered shell panels for
-[Omarchy](https://omarchy.org).
+A radial launcher for [Omarchy](https://omarchy.org): your bar's panels on a ring, and
+one search for apps, open windows, the Omarchy menu, every keybinding, themes, fonts and
+files. It also brings a keyboard-driven file browser, centered shell panels, and swappable
+lock-screen designs. It sits alongside Omarchy's own menu and Walker rather than replacing them.
+
+> **Before you install.** Tested only on Omarchy 4.5.0rc3 with Quickshell 0.3.2.r7; the
+> installer refuses an older Omarchy and does not check Quickshell. It patches eight
+> package-owned shell files with `sudo` (see [Why sudo](#why-sudo)), so it is not a plugin
+> `omarchy plugin add` can install. It takes over `SUPER+A` and `SUPER+W`, and `Ctrl+Space`
+> while one of its animated themes is active. The lock screen is a work in progress.
+
+## What you get
 
 - **Wheel** (`SUPER+A`): your bar's panels on a ring. Start typing to search
   every panel, the Omarchy menu, every keybinding, apps, open windows
-  (`workspace` lists them all), themes and fonts; begin
-  with `/` to search files and folders under your home, and any folders you add, instead (`Ctrl+Enter`
-  opens a terminal in one), or with `=`
-  to calculate (`Enter` copies the answer). `SUPER+W`
-  closes the wheel and any open shell panel, otherwise the active window. Its
-  settings are search rows too: `wheely shortcut` changes the key that opens it.
-  Type `help` to search the manual, every key and setting in one place.
-  See [`docs/wheel.md`](docs/wheel.md).
+  (`workspace` lists them all), themes and fonts. Begin with `/` to search files and
+  folders under your home and any folders you add (`Ctrl+Enter` opens a terminal in one),
+  or with `=` to calculate (`Enter` copies the answer). `SUPER+W` closes the wheel and any
+  open shell panel, otherwise the active window. Its settings are search rows too:
+  `wheely shortcut` changes the key that opens it. Type `help` to search the manual, every
+  key and setting in one place. See [`docs/wheel.md`](docs/wheel.md).
 - **Files**: a keyboard-driven directory browser with previews, opened from
   the wheel. See [`docs/files.md`](docs/files.md).
 - **Centered panels**: bar panels open centered over a blurred desktop, unless
   the wheel's Centered panels setting is off. See
   [`docs/centered-panels.md`](docs/centered-panels.md).
-- **Lock screen**: swappable designs, picked in the wheel under Style ›
-  Lockscreen Designs. `rally`: a 3D line-art Audi quattro assembles above the
-  password field as comets trace its outlines, gains city reflections and gold
-  rims, and drives off through a painted neon scene when you unlock.
-  `tunnel`: Omarchy logos stacked into a neon line-art corridor you fly through, each
-  with its own hue and a comet running through it like the wheel's.
-  `mycelium`: a colony of fine hyphae grows from the centre until it has taken the
-  screen, its tips glowing as they push on and lighting the dark ground, with more of it
-  out of focus deeper down; it sways as in a hyperlapse, and draws back in when you unlock.
-  `shore`: where the wash meets the sand, seen close from high above: the water's edge surges
-  across the middle of the screen under a rope of foam and slides back, with ripples, glints and
-  caustics in the shallow water; unlocking brings the tide in.
-  `meadow`: wildflowers grow into “omarchy” above a low meadow, under a starlit sunset sky
-  with drifting fireflies. The flowers sway gently and fade on unlock.
-  `wallpaper`, the default: Omarchy's own blurred wallpaper. Try one without locking:
-  `omarchy-shell lock preview`. Work in progress; see
+- **Lock screen**: six swappable designs (`rally`, `tunnel`, `mycelium`, `shore`, `meadow`
+  and the default `wallpaper`), picked in the wheel under Style › Lockscreen Designs and
+  previewed without locking with `omarchy-shell lock preview`. See
   [`docs/lockscreen.md`](docs/lockscreen.md).
-
-Tested only on Omarchy 4.5.0rc3 with Quickshell 0.3.2.r7, and refuses older releases. It patches the packaged
-shell, so it is not a plugin `omarchy plugin add` can install.
-
-[Tidal](themes/tidal/README.md) is our independent light Omarchy theme: an
-animated coast in colorful and muted palettes, plus three static wallpapers.
-Preview it with `./themes/tidal/tidal preview`; its installation is separate.
-
-[Wheelie](themes/wheelie/README.md) is our light Omarchy theme around a live desert
-scene: a rider holds a wheelie while a sandstorm builds, plus four static wallpapers.
-Install it with `./themes/wheelie/wheelie install`; its installation is separate.
 
 ## Install
 
@@ -96,7 +80,9 @@ Omarchy's own menus keep using `scrim-alpha`, so delete that line to get the the
 The eight patched files live in `/usr/share/omarchy/shell`, owned by the Omarchy
 package. Copying them in (install) and restoring them (revert) are the only
 `sudo` calls, and each runs only when a file actually needs changing.
-Everything else stays in your home directory.
+Everything else stays in your home directory. Two of the patches set environment
+variables for the whole shell: a threaded render loop, and software decoding for video
+previews.
 
 Because the package owns them, `omarchy update` overwrites them. The hook then
 reruns `install.sh`, which merges the patches onto the new version; a conflict
@@ -104,6 +90,16 @@ leaves the shipped file as it is and is reported, on the desktop too when
 `notify-send` is available. The lock screen's two files are never merged: when an
 update changes either, both stay Omarchy's own until wheely is updated for it
 (`git pull && ./install.sh`).
+
+## Also in this repo
+
+Two light Omarchy themes with animated wallpapers, each installed separately:
+
+- [Tidal](themes/tidal/README.md): an animated coast in colorful and muted palettes, plus
+  three static wallpapers. Preview it with `./themes/tidal/tidal preview`.
+- [Wheelie](themes/wheelie/README.md): a live desert scene where a rider holds a wheelie
+  while a sandstorm builds, plus four static wallpapers. Install it with
+  `./themes/wheelie/wheelie install`.
 
 ## Reporting a bug
 
@@ -115,9 +111,13 @@ omarchy-version
 quickshell log -p "$OMARCHY_PATH/shell" -t 50
 ```
 
+Working on it: see [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`tests/README.md`](tests/README.md).
+
 ## License
 
 MIT, see [`LICENSE`](LICENSE). `patches/` holds original and modified Omarchy
 shell files and `plugins/xpo.wheel/mark.png` is derived from Omarchy's icon,
 both under [`LICENSE.omarchy`](LICENSE.omarchy). The fluid shader is adapted
-from hyprglaze: [`LICENSE.hyprglaze`](plugins/xpo.wheel/LICENSE.hyprglaze).
+from hyprglaze: [`LICENSE.hyprglaze`](plugins/xpo.wheel/LICENSE.hyprglaze). The
+wallpapers, scene layers and the rally lock screen's backdrop are AI-generated; each
+theme's README and `lock/rally/README.md` name the model.
