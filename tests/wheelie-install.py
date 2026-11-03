@@ -104,3 +104,21 @@ if name == "mv":
         assert destination.exists() == (failure == "none")
         assert not list(destination.parent.parent.glob(".wheelie-install-*"))
         print(f"ok: first Wheelie install {failure}")
+
+    # Omarchy's theme removal deletes only the folder; each animated theme's hook then removes itself.
+    for theme in ("wheelie", "tidal"):
+        home = root / ("home-" + theme)
+        hook = home / ".config/omarchy/hooks/theme-set.d" / (theme + "-wallpaper")
+        hook.parent.mkdir(parents=True)
+        shutil.copy2(repo.parent / theme / "hooks" / hook.name, hook)
+        (home / ".local/state/omarchy/current").mkdir(parents=True)
+        (home / ".local/state/omarchy/current/theme.name").write_text("other\n")
+        folder = home / ".config/omarchy/themes" / theme
+        folder.mkdir(parents=True)
+        hooked = os.environ | {"HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")}
+        subprocess.run(["bash", str(hook)], env=hooked, check=True)
+        assert hook.exists(), theme + "'s hook left with its theme still installed"
+        folder.rmdir()
+        subprocess.run(["bash", str(hook)], env=hooked, check=True)
+        assert not hook.exists(), theme + "'s hook outlived its theme"
+        print(f"ok: {theme}'s hook leaves with its theme")

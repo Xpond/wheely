@@ -222,6 +222,9 @@ assert.equal(F.within("/mnt/../etc", ["/home/test", "/mnt"]), "/home/test", "a t
 assert.equal(F.within("/home/test//docs", ["/home/test"]), "/home/test/docs", "doubled slashes survived")
 assert.deepEqual([F.display("/home/test", "/home/test"), F.display("/home/test/docs", "/home/test"),
   F.display("/home/test2/x", "/home/test")], ["~", "~/docs", "/home/test2/x"], "a sibling of home wore the tilde")
+// Outside home the first crumb keeps its root slash, as the root's row at home reads.
+assert.deepEqual([F.crumbs("/mnt/media", "/home/test"), F.crumbs("/home/test/docs", "/home/test"), F.crumbs("/", "/home/test")],
+  [["/mnt", "media"], ["~", "docs"], ["/"]], "a root outside home lost its slash")
 // Home lists the roots outside it, by full path, and only home does.
 const listed = dir => F.withRoots([{ name: "a" }], dir, "/home/test", ["/mnt", "/home/test/inside"]).map(e => e.name)
 assert.deepEqual([listed("/home/test"), listed("/home/test/"), listed("/mnt")], [["a", "/mnt"], ["a", "/mnt"], ["a"]],

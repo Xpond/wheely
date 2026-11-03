@@ -17,7 +17,8 @@ run, and the log warns if it's missing. The rest is optional:
 | `host` | The `LockView`, for state such as `backgroundPath`, `failureMessage`, `authenticatingPassword` or `passwordText.length` |
 | `play()` | Called when the lock shows and automatically when wake completes |
 | `hide()` | Called when the display blanks, resetting the design for its next `play()` |
-| `leave()` | Called when the password is accepted; the lock releases after 550ms for mycelium or 1.1s for the other designs, whatever the animation does |
+| `leave()` | Called when the password is accepted; the lock releases `releaseDelay` later, whatever the animation does |
+| `releaseDelay` | Milliseconds from the password being accepted to the lock releasing; 1100 when absent, 550 for mycelium |
 | `accent` | The field's edge colour, in the design's own light; white when absent |
 
 Each lock or preview runs in a fresh worker, so edits
@@ -34,7 +35,7 @@ list; neither needs `install.sh` or sudo.
 | `lock-session/shell.qml` | Runs the installed authentication service and exits after unlock/wake or preview closure |
 | `patches/orig/plugins/lock/` | Stock copies used by the verified install/revert workflow |
 | `bin/omarchy-lock-design` | Lists the designs, names the chosen one, or sets the one the next lock shows |
-| `lock/wallpaper/Scene.qml` | The wallpaper, blurred, fading out on unlock |
+| `lock/wallpaper/Scene.qml` | The wallpaper, blurred, fading in once decoded and out on unlock |
 | `tests/lock-idle.js` | The shared five-second idle blank, the monitor wake allowance and one replay per wake |
 | `tests/lock-render.py` | GPU captures, drive-off exit and design switching checks |
 | `tests/lock-process.py` | Offscreen memory, process exit, shell reconnection and crash recovery; simulated compositor and authentication |
@@ -57,9 +58,9 @@ Its normal startup also runs the existing stranded-lock recovery check before re
 
 Authentication stays in the stock trusted lock plugin. On success, `driveOffThenUnlock()`
 sets `unlocking`, which disables input; its independent timer calls `finishUnlock()`
-after 550ms for mycelium or 1100ms for the other designs. Each lock view sets the interval from
-its selected design; 1100ms remains the fallback if no view loads. The field fades out within
-300ms, still reading "Checking…", so it is gone before any design finishes its exit.
+after the design's `releaseDelay`. Each lock view binds the interval to it; 1100ms remains the
+fallback if no view loads. The field fades out within 300ms, still reading "Checking…", so it is
+gone before any design finishes its exit.
 
 ## Verification
 

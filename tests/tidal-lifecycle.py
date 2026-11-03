@@ -45,7 +45,8 @@ source = qslog.patch(source, "id: root", '''id: root
   FileView {
     path: %s; watchChanges: true
     onFileChanged: reload()
-    onLoaded: root.activity = JSON.parse(text())
+    // A rewrite read between its truncate and its write is empty; the write's own change follows.
+    onLoaded: if (text()) root.activity = JSON.parse(text())
   }
   onAnimatedChanged: console.log("STATE", root.animated)
   Component.onCompleted: console.log("STATE", root.animated)''' % json.dumps(str(activity)), 1)

@@ -114,6 +114,8 @@ function crumbs(dir, home) {
   var out = []
   for (var i = 0; i < parts.length; i++) if (parts[i]) out.push(parts[i])
   if (!out.length) return ["/"]
+  // Outside home the first crumb keeps its root slash, as the root's row at home reads.
+  if (!parts[0]) out[0] = "/" + out[0]
   // Preserve both ends of long paths.
   if (out.length > 5) out = [out[0], "\u2026"].concat(out.slice(-3))
   return out

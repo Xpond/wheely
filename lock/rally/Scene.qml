@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
 
-// Rally: a Sport quattro S1 E2 traced by comets in front of a neon city, driving off on unlock.
+// Rally: a Group B rally car traced by comets in front of a neon city, driving off on unlock.
 Item {
   // The lock screen's view (LockView.qml), for designs that read its state.
   property var host

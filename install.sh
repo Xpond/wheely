@@ -45,7 +45,7 @@ mkdir -p "$data/lock-session" &&
 # The reload below takes SUPER + A for the wheel, so read what held it first; a saved key was chosen.
 replaced=""
 [[ -e ~/.config/omarchy/wheel-shortcut ]] || replaced=$(hyprctl binds -j 2>/dev/null | jq -r 'first(.[] |
-  select(.modmask == 64 and .key == "A" and .description != "Wheel") | (.description | select(. != "")) // .arg) // empty')
+  select(.modmask == 64 and .key == "A" and .description != "Wheel") | (.description | select(. != "")) // .arg) // empty' 2>/dev/null)
 python3 "$REPO/scripts/user-config.py" install ~/.config/hypr/hyprland.lua "$STATE" ~/.local/bin ||
   { alert "Could not update the Hyprland configuration"; exit 1; }
 mkdir -p ~/.config/omarchy/plugins ~/.local/bin || exit 1

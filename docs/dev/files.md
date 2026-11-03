@@ -174,6 +174,12 @@ Ready and no rows as an empty one. So each folder entered, and a previewed one
 that lists empty, is asked with `test -r -x`; one that fails shows "Can't list
 this folder".
 
+**A folder still listing holds the last one's rows.** Moved to another folder,
+`FolderListModel` keeps the previous rows until the new listing arrives, and
+`snapshot()` drops them as another folder's. A slow listing, such as a network
+share mounting after its idle timeout, would read as "Can't list this folder",
+so neither pane says anything while its model is `Loading`.
+
 **Hover never claims the selection.** The selection is what `Return`, `F2` and
 `Delete` act on, so only a click moves it. When hover claimed it, a pointer
 drifting over the list moved the selection while you typed a rename, and `Return`

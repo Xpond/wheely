@@ -32,7 +32,7 @@ dividing out alpha at its edges; interpolation also works across the packed 255-
 Growth advances at 45 steps a second on the frame clock, starting once the colony is drawn.
 Both growth and camera motion pause when the display is blank. `hide()` resets growth and
 freezes the ground while blanked; `play()` resumes both automatically after wake. `leave()`
-keeps the camera moving while it retracts and fades over the host's 550ms unlock delay; then the
+keeps the camera moving while it retracts and fades over its own 550ms `releaseDelay`; then the
 clock stops.
 
 After GLSL changes, rebuild the shaders:
