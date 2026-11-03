@@ -24,7 +24,6 @@ function build(m) {
     M: [[[0, 0], [0, 6], [2, 3], [4, 6], [4, 0]]],
     N: [[[0, 0], [0, 6], [4, 0], [4, 6]]],
     O: [[[1, 0], [3, 0], [4, 1], [4, 5], [3, 6], [1, 6], [0, 5], [0, 1], [1, 0]]],
-    Q: [[[1, 0], [3, 0], [4, 1], [4, 5], [3, 6], [1, 6], [0, 5], [0, 1], [1, 0]], [[2.5, 1.5], [4, 0]]],
     R: [[[0, 0], [0, 6], [3, 6], [4, 5], [4, 4], [3, 3], [0, 3]], [[2, 3], [4, 0]]],
     S: [[[4, 5], [3, 6], [1, 6], [0, 5], [0, 4], [1, 3], [3, 3], [4, 2], [4, 1], [3, 0], [1, 0], [0, 1]]],
     T: [[[0, 6], [4, 6]], [[2, 6], [2, 0]]],
@@ -36,9 +35,9 @@ function build(m) {
     " ": [],
     "4": [[[3, 0], [3, 6], [0, 2], [4, 2]]]
   }
-  // Center text of height s at (u, v); wide compensates for foreshortening.
-  function letter(tone, text, u, v, s, place, wide) {
-    var k = s / 6, kx = k * (wide || 1), u0 = u - (text.length * 5.5 - 1.5) * kx / 2
+  // Center text of height s at (u, v).
+  function letter(tone, text, u, v, s, place) {
+    var k = s / 6, u0 = u - (text.length * 5.5 - 1.5) * k / 2
     text.split("").forEach(function(ch, n) {
       glyphs[ch].forEach(function(stroke) {
         var pts = []
@@ -46,7 +45,7 @@ function build(m) {
           var a = stroke[i - 1], b = stroke[i], steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * k))
           for (var j = i > 1 ? 1 : 0; j <= steps; j++) {
             var gx = a[0] + (b[0] - a[0]) * j / steps, gy = a[1] + (b[1] - a[1]) * j / steps
-            pts.push(place(u0 + (n * 5.5 + gx) * kx + gy * 0.25 * k, v - s / 2 + gy * k))
+            pts.push(place(u0 + (n * 5.5 + gx) * k + gy * 0.25 * k, v - s / 2 + gy * k))
           }
         }
         surface(tone, pts)
@@ -149,11 +148,10 @@ function build(m) {
   for (i = 0; i <= 12; i++) { edge.push(glassAt(72 * (i / 6 - 1), 44)); top.unshift(glassAt(72 * (i / 6 - 1), 63.7)) }
   surface(9, edge.concat(top))
   letter(15, "OMARCHY", 0, 54, 14, glassAt)
-  // Foreshortened front lettering and red chin wrapping to the arch.
-  letter(14, "QUATTRO", 0, 26, 4.5, function(u, v) { return [-5, v, -u] }, 1.8)
+  // A red chin wrapping to the arch.
   surface(11, lift([[-9, 15], [-9, 18], [lip(100, 18, -1), 18], [lip(100, 15, -1), 15]], -1))
   surface(11, across(-9, 15, 0).concat(flip(across(-9, 18, 0))))
-  // A black lamp panel round the grille, as the S1's, bevel and all: the white hood ends at a crisp edge.
+  // A black lamp panel round the grille, bevel and all: the white hood ends at a crisp edge.
   surface(18, nose)
   // Tyre lettering round each sidewall, top and bottom, turning with the wheel.
   wheels.forEach(function(wheel) {

@@ -7,6 +7,8 @@ Item {
   property var host
   // Edges the password field.
   readonly property color accent: "#8ee8e0"
+  // The lock releases once the colony has drawn back, sooner than other designs' 1.1s.
+  readonly property int releaseDelay: 550
 
   // Growth steps at 45/s; each tip moves 3 units in a 1080-unit-high frame.
   property real grown: 0
@@ -54,8 +56,8 @@ Item {
 
   ParallelAnimation {
     id: leaving
-    NumberAnimation { target: root; property: "grown"; to: 0; duration: 550; easing.type: Easing.OutQuad }
-    NumberAnimation { target: root; property: "opacity"; to: 0; duration: 550; easing.type: Easing.InQuart }
+    NumberAnimation { target: root; property: "grown"; to: 0; duration: root.releaseDelay; easing.type: Easing.OutQuad }
+    NumberAnimation { target: root; property: "opacity"; to: 0; duration: root.releaseDelay; easing.type: Easing.InQuart }
   }
 
   // Batch strands of each width into one antialiased stroke.

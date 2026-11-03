@@ -16,7 +16,7 @@ function build(m) {
   // Fender tops and window pillars share the highlight tone.
   surface(3, lift([[4, 72]].concat(hood, glass.slice(1), deck.slice(1), tail.slice(0, 2),
     [[403, 72]], flip(along(72, 4, 403))), -1))
-  // The side windows' opening, B-pillar included: the S1's frames and B-pillar are black.
+  // The side windows' opening, B-pillar included: the frames and B-pillar are black.
   var windows = lift([[154, 93], [206, 126], [262, 128], [296, 128], [334, 96], [268, 93], [154, 93]], -1)
   surface(3, windows)
   surface(5, panes[0])

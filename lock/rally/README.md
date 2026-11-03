@@ -2,7 +2,7 @@
 
 Part of the lock screen; see [`docs/lockscreen.md`](../../docs/lockscreen.md) for the host, installation and wake handling.
 
-A fixed front-left view of a Sport quattro S1 E2 assembles as blue comets trace its outlines.
+A fixed front-left view of a Group B rally car assembles as blue comets trace its outlines.
 The wireframe builds over 2940ms, followed by a 600ms paint sweep from nose to tail.
 Successful authentication starts the car, spins the wheels and launches it left;
 the session unlocks after the 1.1-second drive-off.
@@ -107,11 +107,11 @@ triangles through the windscreen and beside the seat as the body pitched during 
 | 15 | Cabin shell, seats, dash and roll cage |
 | 16 | Rounded mirror housings (green 0 near / 1 far) and rubber flaps (green 0.5) |
 
-The S1 wing is kept compact: a 24-unit chord and a 2-unit airfoil section from x 384
+The wing is kept compact: a 24-unit chord and a 2-unit airfoil section from x 384
 to 408, rising from 120 to 121.5. It stands on white fins flush with the deck's edges
 (z ±76), no deeper than the plane: from a short foot (x 393–403) their front edges
-sweep forward to its nose, like the S1's, with carbon tips curving up over the
-trailing edge. The deck runs flat to the tail (the Quattro's lip is gone), and each
+sweep forward to its nose, with carbon tips curving up over the
+trailing edge. The deck runs flat to the tail, without a lip, and each
 fin's rear edge rises from the tail's top corner, so nothing pokes out beside it.
 The fins share the flank's curved clear-coat normal, so the body's reflections carry
 across them; the far fin's inner face darkens toward the plane's shade. The carbon
@@ -219,6 +219,6 @@ The tests check behaviour, not looks: inspect whole captures for visual changes.
 
 ## Known gaps
 
-- The S1 E2's aero parts remain subject to visual review.
+- The car's aero parts remain subject to visual review.
 - Thin gaps along the roof and belt show during pitch.
 - Native 4K artwork is deferred.

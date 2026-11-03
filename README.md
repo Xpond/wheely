@@ -5,11 +5,12 @@ one search for apps, open windows, the Omarchy menu, every keybinding, themes, f
 files. It also brings a keyboard-driven file browser, centered shell panels, and swappable
 lock-screen designs. It sits alongside Omarchy's own menu and Walker rather than replacing them.
 
-> **Before you install.** Tested only on Omarchy 4.5.0rc3 with Quickshell 0.3.2.r7; the
-> installer refuses an older Omarchy and does not check Quickshell. It patches eight
-> package-owned shell files with `sudo` (see [Why sudo](#why-sudo)), so it is not a plugin
-> `omarchy plugin add` can install. It takes over `SUPER+A` and `SUPER+W`, and `Ctrl+Space`
-> while one of its animated themes is active. The lock screen is a work in progress.
+> **Before you install.** Tested only on Omarchy 4.5.0rc3 with Quickshell 0.3.2.r7, on one
+> NVIDIA GPU and one monitor, without fingerprint unlock; the installer refuses an older
+> Omarchy and does not check Quickshell. It patches eight package-owned shell files with
+> `sudo` (see [Why sudo](#why-sudo)), so it is not a plugin `omarchy plugin add` can install.
+> It takes over `SUPER+A` and `SUPER+W`, and `Ctrl+Space` while one of its animated themes
+> is active. The lock screen is a work in progress.
 
 ## What you get
 
@@ -109,6 +110,8 @@ happened, your GPU, and the output of:
 ```bash
 omarchy-version
 quickshell log -p "$OMARCHY_PATH/shell" -t 50
+# The lock screen runs in its own process:
+quickshell log -p ~/.local/share/wheely/lock-session -t 50
 ```
 
 Working on it: see [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`tests/README.md`](tests/README.md).

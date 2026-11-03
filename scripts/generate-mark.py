@@ -1,19 +1,21 @@
 """Generate the wheel's mask, path distances, and bevel. Needs NumPy and ImageMagick."""
 from collections import deque
+import os
 from pathlib import Path
 import subprocess
 import sys
 
 import numpy as np
 
-SRC = "/usr/share/omarchy/icon.png"
+SRC = str(Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy")) / "icon.png")
 UP = 4
 T = int(sys.argv[1]) if len(sys.argv) > 1 else 2
 OUT = (sys.argv[2] if len(sys.argv) > 2 else
        str(Path(__file__).resolve().parents[1] / "plugins/xpo.wheel/mark.png"))
 
 raw=subprocess.check_output(["magick",SRC,"-depth","8","rgba:-"])
-a=np.frombuffer(raw,dtype=np.uint8).reshape(300,300,4)
+w,h=map(int,subprocess.check_output(["magick","identify","-format","%w %h",SRC]).split())
+a=np.frombuffer(raw,dtype=np.uint8).reshape(h,w,4)
 ink=np.repeat(np.repeat(a[...,3]>128,UP,axis=0),UP,axis=1)
 H,W=ink.shape
 

@@ -344,14 +344,7 @@ Item {
   }
   // Freeze the focused screen on open; pointer focus can otherwise move it.
   property var openScreen: null
-  function focusedScreen() {
-    var m = Hyprland.focusedMonitor
-    if (!m) return null
-    var screens = Quickshell.screens
-    for (let i = 0; i < screens.length; i++)
-      if (screens[i].name === m.name) return screens[i]
-    return null
-  }
+  function focusedScreen() { return Pinned.focusedScreen(Hyprland.focusedMonitor, Quickshell.screens) }
 
   // Refresh live panels/apps/windows per open; panels need not be on the ring.
   function rebuildIndex() {
@@ -442,14 +435,7 @@ Item {
     Qt.callLater(function () { searchInput.forceActiveFocus() })
   }
 
-  function raise() {
-    var all = Hyprland.toplevels.values
-    for (let i = 0; i < all.length; i++) {
-      const t = all[i]
-      if (t.wayland && t.wayland.appId === "org.quickshell" && t.title === pinned.title)
-        Hyprland.dispatch("hl.dsp.focus({ window = \"address:0x" + t.address + "\" })")
-    }
-  }
+  function raise() { Pinned.raise(Hyprland, pinned.title) }
 
   function closeForPopoutSwitch() { root.dismiss(true) }
 

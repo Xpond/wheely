@@ -46,6 +46,8 @@ Item {
   readonly property bool errorState: failureMessage.length > 0
   // The design's own light edges the field, white for designs without one.
   readonly property color edgeColor: errorState ? Commons.Color.lock.borderError : scene.item && scene.item.accent || "white"
+  // How long the design's exit runs before the lock releases, 1.1s for designs without their own.
+  readonly property int releaseDelay: scene.item && scene.item.releaseDelay || 1100
   // Once the password is accepted the field clears quickly, ahead of the design's exit.
   property real fieldOpacity: driving ? 0 : 1
   Behavior on fieldOpacity { NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }

@@ -1,0 +1,32 @@
+name: Bug report
+description: Something in wheely did not work.
+body:
+  - type: textarea
+    attributes:
+      label: What you did
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: GPU
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Output of omarchy-version
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Shell log
+      description: |
+        The output of `quickshell log -p "$OMARCHY_PATH/shell" -t 50`. For the lock screen,
+        which runs in its own process, also `quickshell log -p ~/.local/share/wheely/lock-session -t 50`.
+      render: text
+    validations:
+      required: true

@@ -59,14 +59,7 @@ Item {
 
   // Freeze the focused screen on open; pointer focus can otherwise move it.
   property var openScreen: null
-  function focusedScreen() {
-    var m = Hyprland.focusedMonitor
-    if (!m) return null
-    var screens = Quickshell.screens
-    for (let i = 0; i < screens.length; i++)
-      if (screens[i].name === m.name) return screens[i]
-    return null
-  }
+  function focusedScreen() { return Pinned.focusedScreen(Hyprland.focusedMonitor, Quickshell.screens) }
 
   // FolderListModel cannot combine directory filtering with our ranking.
   property var entries: []
@@ -276,7 +269,9 @@ Item {
     root.settledPath = path
     root.diffText = ""
     root.readDiff()
-    root.dirEntries = []
+    // Read, not cleared: snapshot() drops another folder's rows, while a folder selected again,
+    // as when the list reloads around it, keeps a model that never reloads to refill it.
+    root.dirEntries = root.childEntries()
     root.imageDims = ""
     measurer.cancel()
     if (root.showsImage)
@@ -294,11 +289,14 @@ Item {
       + (root.settledSel.modified
          ? "  ·  " + Qt.formatDateTime(root.settledSel.modified, "d MMM yyyy") : "")
 
-  // Empty while the preview has content of its own, or waits for a diff or a landing.
+  // Empty while the preview has content of its own, or waits for a diff, a landing or a listing: a
+  // folder model keeps the last folder's rows until the next arrives, which reads as unlistable.
   readonly property string previewNote:
     root.editing ? ""
-    : !root.settledSel ? (root.pending ? "" : root.unlisted ? "Can't list this folder" : root.query ? "No match" : "Empty")
-    : root.settledSel.isDir ? (root.showsDir ? "" : root.childUnlisted ? "Can't list this folder" : "Empty folder")
+    : !root.settledSel ? (root.pending || listedFolder.status === FolderListModel.Loading ? ""
+      : root.unlisted ? "Can't list this folder" : root.query ? "No match" : "Empty")
+    : root.settledSel.isDir ? (root.showsDir || childFolder.status === FolderListModel.Loading ? ""
+      : root.childUnlisted ? "Can't list this folder" : "Empty folder")
     : root.showsCode || root.previewBody || root.showsDiff ? ""
     : root.settledSel.missing ? "Deleted · Ctrl+D shows changes"
     : (root.showsVideo && preview.videoStatus !== Loader.Error) ? ""
@@ -376,15 +374,7 @@ Item {
   }
 
   // Focus the window the way the wheel focuses any other.
-  function raise() {
-    var all = Hyprland.toplevels.values
-    for (let i = 0; i < all.length; i++) {
-      const t = all[i]
-      if (t.wayland && t.wayland.appId === "org.quickshell"
-          && t.title === (root.host ? root.host.title : window.title))
-        Hyprland.dispatch("hl.dsp.focus({ window = \"address:0x" + t.address + "\" })")
-    }
-  }
+  function raise() { Pinned.raise(Hyprland, root.host ? root.host.title : window.title) }
 
   onOpenedChanged: if (root.shell) root.shell.panelSurfaceVisible(root.opened)
   // Drop preview state and pending work when the panel closes.

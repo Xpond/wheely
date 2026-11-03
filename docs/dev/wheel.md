@@ -26,7 +26,7 @@ traps, how search is built, and what the tests check.
       MenuIndex.js     JSONC parsing, flattening, search
       MenuKeys.js      the key map: which verb a key means
       Calc.js          the calculator behind a leading `=`
-      Pinned.js        the pinned search's window, shared with Files
+      Pinned.js        the pinned search's window and focus helpers, shared with Files
       scan.py          the file scan's output, in bounded UTF-8-safe batches
 
 The ring and the results take the dial as `wheel`, the way the browser's own
