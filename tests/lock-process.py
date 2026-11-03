@@ -30,6 +30,11 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     for name in ["Bridge.qml", "shell.qml"]:
         (worker / name).symlink_to(sources / name)
     shutil.copytree(repo / "lock", data / "lock")
+    # The wallpaper design names each URL it requests, and logs once its wallpaper is ready.
+    scene = data / "lock/wallpaper/Scene.qml"
+    scene.write_text(qslog.patch(scene.read_text(), "    cache: true\n", "    cache: true\n"
+        '    onSourceChanged: if (String(source)) console.log("WALLPAPER_REQUEST", source)\n'
+        '    onStatusChanged: if (status === Image.Ready) console.log("WALLPAPER_READY")\n', exactly=True))
     lock = out / "installed"
     # As installed: Omarchy's lock plugin (FingerprintModel.js, poster.sh) with our two files over it.
     shutil.copytree(omarchy / "shell/plugins/lock", lock)
@@ -138,6 +143,24 @@ ShellRoot { Lock.Service {} }
 
         # Every worker so far retired cleanly, which logs nothing.
         qslog.check("\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")))
+
+        # Each lock reads the background in a fresh worker. Its URL must change once, to the
+        # versioned file: an unversioned URL on the way costs a second decode before the wallpaper shows.
+        state = home / ".local/state/omarchy/current"
+        state.mkdir(parents=True)
+        (state / "background").symlink_to(repo / "themes/wheelie/backgrounds/02-night-track.jpg")
+        (config / "lock-design").write_text("wallpaper\n")
+        assert ipc("preview") == "ok"
+        until(lambda: "WALLPAPER_READY" in "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")),
+              "wallpaper design never drew its wallpaper")
+        assert ipc("hidePreview") == "ok"
+        until(lambda: not child_pid(), "closed preview retained its worker")
+        requests = re.findall(r"WALLPAPER_REQUEST (\S+)",
+                              "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")))
+        assert len(requests) == 1 and requests[0].endswith("?v=1"), requests
+        (state / "background").unlink()
+        (config / "lock-design").write_text("mycelium\n")
+        print("ok: a fresh worker requests its wallpaper once", flush=True)
 
         requested_at = time.time() * 1000
         assert ipc("lock") == "ok"

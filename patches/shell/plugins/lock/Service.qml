@@ -799,9 +799,11 @@ Item {
         var signature = String(lines[1] || "").trim()
         if (next !== root.backgroundPath) {
           root.videoPosterPath = ""
+          // Version first: each lock's fresh worker starts with no path, so its wallpaper URL
+          // changes once, not via an unversioned URL whose decode delays the wallpaper.
+          root.backgroundVersion += 1
           root.backgroundPath = next
           root.backgroundSignature = signature
-          root.backgroundVersion += 1
         } else if (signature !== root.backgroundSignature) {
           root.backgroundSignature = signature
           root.backgroundVersion += 1

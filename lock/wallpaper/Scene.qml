@@ -20,8 +20,8 @@ Item {
     anchors.fill: parent
     // A video wallpaper shows its still poster.
     property string path: root.host.video ? root.host.videoPosterPath : root.host.backgroundPath
-    // The lock service decodes this same URL ahead of the lock (Service.qml's lockWallpaperUrl), so
-    // it is built the same way: the version, when there is one, reloads a wallpaper changed while locked.
+    // Built as Service.qml builds lockWallpaperUrl, so the service's decode serves this one: ahead
+    // of the lock in-process, alongside it in each lock's fresh worker. Never re-read while locked.
     source: root.host.loadBackground && path
       ? Util.fileUrl(path) + (root.host.backgroundVersion ? "?v=" + root.host.backgroundVersion : "")
       : ""
