@@ -11,6 +11,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   assert.equal(M.scanCommand([home], M.SKIPPED, home).join(" "),
     "fd --hidden --max-depth 6 --exclude .cache --exclude .git --exclude node_modules --exclude .ssh --exclude .gnupg --exclude .password-store . /home/test")
   const tree = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "wheel-scan-"))
+  try {
   for (const name of ["home/.claude/CLAUDE.md", "home/Android/x", "home/Music [old]/x", "home/p/node_modules/m", "home/p/Android/x",
                       "home/1/2/3/4/5/6/deep", "mnt/Android/x"])
     fs.mkdirSync(path.dirname(path.join(tree, name)), { recursive: true }), fs.writeFileSync(path.join(tree, name), "")
@@ -21,7 +22,9 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     ["/home/.claude/", "/home/.claude/CLAUDE.md", "/home/1/", "/home/1/2/", "/home/1/2/3/", "/home/1/2/3/4/",
      "/home/1/2/3/4/5/", "/home/1/2/3/4/5/6/", "/home/p/", "/home/p/Android/", "/home/p/Android/x",
      "/mnt/Android/", "/mnt/Android/x"], "a skip by path reached a folder of that name elsewhere")
-  fs.rmSync(tree, { recursive: true })
+  } finally {
+    fs.rmSync(tree, { recursive: true })
+  }
 
   // Typing suggests: names and folders under home to skip, from the scan, and subfolders outside home to
   // search. A name starts with what is typed, and is offered once however many folders share it.

@@ -18,6 +18,7 @@ def interrupted(signum, frame):
 
 signal.signal(signal.SIGTERM, interrupted)
 repo = Path(__file__).resolve().parents[1]
+omarchy = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy"))
 with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     out = Path(directory)
     home, runtime, stubs = out / "home", out / "runtime", out / "bin"
@@ -31,11 +32,11 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     shutil.copytree(repo / "lock", data / "lock")
     lock = out / "installed"
     # As installed: Omarchy's lock plugin (FingerprintModel.js, poster.sh) with our two files over it.
-    shutil.copytree("/usr/share/omarchy/shell/plugins/lock", lock)
+    shutil.copytree(omarchy / "shell/plugins/lock", lock)
     shutil.copytree(repo / "patches/shell/plugins/lock", lock, dirs_exist_ok=True)
     (worker / "Lock").symlink_to(lock)
     (out / "Lock").symlink_to(lock)
-    shutil.copytree("/usr/share/omarchy/shell/Commons", out / "installed-commons")
+    shutil.copytree(omarchy / "shell/Commons", out / "installed-commons")
     (worker / "Commons").symlink_to(out / "installed-commons")
     (out / "Commons").symlink_to(worker / "Commons")
     runtime.mkdir(mode=0o700)
