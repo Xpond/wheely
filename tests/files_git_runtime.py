@@ -120,6 +120,7 @@ if name == 'old.txt':
   function childEntries() { return [] }
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
+  QtObject { id: listedFolder; property int status: 0 }
 ''' + preview.replace("Style.font.subtitle", "14")
         + segment("  readonly property bool showsMarkdown:", "  readonly property string previewPath:")
         + line(files, r"^  readonly property bool showsCode: .*")

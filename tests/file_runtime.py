@@ -160,9 +160,12 @@ def check(files, ops, base, run, block):
 
     # A folder selected again, as when the list reloads around it, keeps its preview: its model does
     # not change folder, so nothing would refill it. Another folder with as many entries still fills in.
+    # So does a folder's only folder, entered from it, as /mnt's server-storage is.
     for name in ["one", "two"]:
         (base / "reselect" / name).mkdir(parents=True)
         (base / "reselect" / name / ("in-" + name)).touch()
+    (base / "reselect/deep/in-deep").mkdir(parents=True)
+    (base / "reselect/deep/in-deep/in-in-deep").touch()
     reselect = '''
   property bool showHidden: false
   property bool showsImage: false
@@ -174,7 +177,7 @@ def check(files, ops, base, run, block):
   property var settledSel: null
   property var dirEntries: []
   readonly property int dirLimit: 400
-  property var dirs: ''' + json.dumps([str(base / "reselect" / n) for n in ["one", "one", "two"]]) + '''
+  property var dirs: ''' + json.dumps([str(base / "reselect" / n) for n in ["one", "one", "two", "deep", "deep/in-deep"]]) + '''
   property var seen: []
   function readDiff() {}
   function checkAccess(dir) {}
@@ -196,3 +199,30 @@ def check(files, ops, base, run, block):
   } }
 '''
     run("files-reselect-keeps-preview", reselect, expected=(r"QFileSystemWatcher::removePath: path is empty$",))
+
+    # A folder still listing, as a network share mounting, holds the last folder's rows: neither pane
+    # says it can't be listed until the listing is in.
+    note = files[files.index("  readonly property string previewNote:"):files.index("  // Payloads may choose")]
+    run("files-loading-is-not-unlistable", '''
+  property bool editing: false
+  property var settledSel: null
+  property string pending: ""
+  property bool unlisted: true
+  property bool childUnlisted: true
+  property bool showsDir: false
+  QtObject { id: listedFolder; property int status: FolderListModel.Loading }
+  QtObject { id: childFolder; property int status: FolderListModel.Loading }
+''' + note + '''
+  Timer { interval: 0; running: true; onTriggered: {
+    var seen = [previewNote]
+    settledSel = { isDir: true, name: "share", path: "/mnt/share" }
+    seen.push(previewNote)
+    listedFolder.status = childFolder.status = FolderListModel.Ready
+    seen.push(previewNote)
+    settledSel = null
+    seen.push(previewNote)
+    var want = ["", "", "Can't list this folder", "Can't list this folder"]
+    if (JSON.stringify(seen) !== JSON.stringify(want)) { console.error("FAIL", JSON.stringify(seen)); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
+''')

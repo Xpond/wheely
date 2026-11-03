@@ -289,11 +289,14 @@ Item {
       + (root.settledSel.modified
          ? "  ·  " + Qt.formatDateTime(root.settledSel.modified, "d MMM yyyy") : "")
 
-  // Empty while the preview has content of its own, or waits for a diff or a landing.
+  // Empty while the preview has content of its own, or waits for a diff, a landing or a listing: a
+  // folder model keeps the last folder's rows until the next arrives, which reads as unlistable.
   readonly property string previewNote:
     root.editing ? ""
-    : !root.settledSel ? (root.pending ? "" : root.unlisted ? "Can't list this folder" : root.query ? "No match" : "Empty")
-    : root.settledSel.isDir ? (root.showsDir ? "" : root.childUnlisted ? "Can't list this folder" : "Empty folder")
+    : !root.settledSel ? (root.pending || listedFolder.status === FolderListModel.Loading ? ""
+      : root.unlisted ? "Can't list this folder" : root.query ? "No match" : "Empty")
+    : root.settledSel.isDir ? (root.showsDir || childFolder.status === FolderListModel.Loading ? ""
+      : root.childUnlisted ? "Can't list this folder" : "Empty folder")
     : root.showsCode || root.previewBody || root.showsDiff ? ""
     : root.settledSel.missing ? "Deleted · Ctrl+D shows changes"
     : (root.showsVideo && preview.videoStatus !== Loader.Error) ? ""
