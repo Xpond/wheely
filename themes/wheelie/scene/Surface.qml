@@ -72,7 +72,7 @@ Item {
           function rect(x, y, w, h) { return Qt.vector4d(x / width, y / height, w / width, h / height) }
 
           Image {
-            source: "base.png"; smooth: true
+            source: "base.jpg"; smooth: true
             width: parent.width; height: parent.height
             sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
           }
