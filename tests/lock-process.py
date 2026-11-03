@@ -100,6 +100,9 @@ ShellRoot { Lock.Service {} }
     def status():
         return json.loads(ipc("status") or "{}")
 
+    def logs():
+        return "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log"))
+
     def until(check, message, timeout=8):
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -107,8 +110,7 @@ ShellRoot { Lock.Service {} }
             if value:
                 return value
             time.sleep(0.05)
-        logs = "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log"))
-        raise AssertionError(message + "\n" + logs)
+        raise AssertionError(message + "\n" + logs())
 
     def child_pid():
         result = subprocess.run(["quickshell", "list", "-p", str(worker), "-j"],
@@ -135,8 +137,7 @@ ShellRoot { Lock.Service {} }
             (config / "lock-design").write_text(design + "\n")
             assert ipc("preview") == "ok"
             pid = until(child_pid, "preview worker did not start")
-            until(lambda: "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log"))
-                  .count("RENDERED") > cycle, f"{design} never rendered")
+            until(lambda: logs().count("RENDERED") > cycle, f"{design} never rendered")
             print(f"loaded {design}: worker RSS {rss(pid):.1f} MiB", flush=True)
             assert ipc("hidePreview") == "ok"
             until(lambda: not child_pid(), "closed preview retained its worker")
@@ -145,7 +146,7 @@ ShellRoot { Lock.Service {} }
             print(f"ok: {design} worker {pid} exits; parent RSS change {retained:.1f} MiB", flush=True)
 
         # Every worker so far retired cleanly, which logs nothing.
-        qslog.check("\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")))
+        qslog.check(logs())
 
         # Each lock reads the background in a fresh worker. Its URL must change once, to the
         # versioned file: an unversioned URL on the way costs a second decode before the wallpaper shows.
@@ -154,12 +155,10 @@ ShellRoot { Lock.Service {} }
         (state / "background").symlink_to(repo / "themes/wheelie/backgrounds/02-night-track.jpg")
         (config / "lock-design").write_text("wallpaper\n")
         assert ipc("preview") == "ok"
-        until(lambda: "WALLPAPER_READY" in "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")),
-              "wallpaper design never drew its wallpaper")
+        until(lambda: "WALLPAPER_READY" in logs(), "wallpaper design never drew its wallpaper")
         assert ipc("hidePreview") == "ok"
         until(lambda: not child_pid(), "closed preview retained its worker")
-        requests = re.findall(r"WALLPAPER_REQUEST (\S+)",
-                              "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")))
+        requests = re.findall(r"WALLPAPER_REQUEST (\S+)", logs())
         assert len(requests) == 1 and requests[0].endswith("?v=1"), requests
         (state / "background").unlink()
         (config / "lock-design").write_text("mycelium\n")
@@ -168,10 +167,7 @@ ShellRoot { Lock.Service {} }
         requested_at = time.time() * 1000
         assert ipc("lock") == "ok"
         until(lambda: status().get("secure"), "lock never became secure")
-        def first_frame():
-            logs = "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log"))
-            return re.search(r"LOCK_FRAME (\d+)", logs)
-        frame = until(first_frame, "lock surface never rendered")
+        frame = until(lambda: re.search(r"LOCK_FRAME (\d+)", logs()), "lock surface never rendered")
         print(f"lock request to first frame: {int(frame[1]) - requested_at:.0f} ms", flush=True)
         pid = child_pid()
         parent.terminate()
@@ -191,8 +187,7 @@ ShellRoot { Lock.Service {} }
         until(lambda: child_pid() and child_pid() != pid and status().get("secure"), "crashed lock did not recover")
         assert ipc("authenticated", child=True) == "ok"
         until(lambda: not status().get("locked"), "authenticated unlock did not release")
-        assert "RELEASE_DELAY 550" in "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")), \
-            "mycelium's unlock did not wait its own releaseDelay"
+        assert "RELEASE_DELAY 550" in logs(), "mycelium's unlock did not wait its own releaseDelay"
         until(lambda: not child_pid(), "unlock retained its worker")
         until(lambda: not list(home.glob("wake.*")), "worker exited before its wake command finished", timeout=3)
         print("ok: shell restart/crash reconnects, worker crash recovers, unlock/wake retires", flush=True)

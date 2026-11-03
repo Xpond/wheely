@@ -58,9 +58,9 @@ Its normal startup also runs the existing stranded-lock recovery check before re
 
 Authentication stays in the stock trusted lock plugin. On success, `driveOffThenUnlock()`
 sets `unlocking`, which disables input; its independent timer calls `finishUnlock()`
-after the design's `releaseDelay`: 550ms for mycelium, 1100ms for the others. Each lock view binds
-the interval to its design's; 1100ms remains the fallback if no view loads. The field fades out within
-300ms, still reading "Checking…", so it is gone before any design finishes its exit.
+after the design's `releaseDelay`. Each lock view binds the interval to it; 1100ms remains the
+fallback if no view loads. The field fades out within 300ms, still reading "Checking…", so it is
+gone before any design finishes its exit.
 
 ## Verification
 

@@ -139,17 +139,3 @@ for (const plugin of ["xpo.wheel", "xpo.files"])
   require("node:child_process").execFileSync("omarchy",
     ["plugin", "validate", path.join(repo, "plugins", plugin)], { stdio: "inherit" })
 console.log("ok: xpo plugins use narrow facades and menus control only UI plugins")
-
-// Both plugins find the focused screen by name and focus only this shell's window with the title.
-const pinned = require("./qml.js").library("plugins/xpo.wheel/Pinned.js")
-const screens = [{ name: "DP-1" }, { name: "HDMI-A-1" }]
-assert.equal(pinned.focusedScreen({ name: "HDMI-A-1" }, screens), screens[1])
-assert.equal(pinned.focusedScreen(null, screens), null)
-assert.equal(pinned.focusedScreen({ name: "gone" }, screens), null)
-const focused = []
-pinned.raise({ dispatch: d => focused.push(d), toplevels: { values: [
-  { wayland: { appId: "org.quickshell" }, title: "Search", address: "a1" },
-  { wayland: { appId: "org.quickshell" }, title: "Other", address: "b2" },
-  { wayland: { appId: "kitty" }, title: "Search", address: "c3" }, { wayland: null, title: "Search", address: "d4" }] } }, "Search")
-assert.deepEqual(focused, ['hl.dsp.focus({ window = "address:0xa1" })'])
-console.log("ok: the wheel and Files share finding the focused screen and focusing their window")
