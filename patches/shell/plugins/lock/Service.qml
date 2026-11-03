@@ -592,6 +592,8 @@ Item {
       // Right-to-left languages read this window mirrored.
       Binding { target: lockSurface.contentItem; property: "LayoutMirroring.enabled"; value: Commons.I18n.rightToLeft }
       Binding { target: lockSurface.contentItem; property: "LayoutMirroring.childrenInherit"; value: true }
+      // The unlock waits out this design's exit, whatever the last lock's design set.
+      Binding { target: unlockTimer; property: "interval"; value: lockView.releaseDelay }
 
       color: Commons.Color.background
 
@@ -611,7 +613,6 @@ Item {
         blanked: root.blanked
         loadBackground: root.locked
         passwordText: root.enteredPassword
-        onDesignChanged: unlockTimer.interval = design === "mycelium" ? 550 : 1100
         onPasswordTextEdited: function(password) { root.enteredPassword = password }
         onSubmitPassword: function(password) { root.submitPassword(password) }
         onClearFailureRequested: root.failureMessage = ""

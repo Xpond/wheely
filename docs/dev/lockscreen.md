@@ -17,7 +17,8 @@ run, and the log warns if it's missing. The rest is optional:
 | `host` | The `LockView`, for state such as `backgroundPath`, `failureMessage`, `authenticatingPassword` or `passwordText.length` |
 | `play()` | Called when the lock shows and automatically when wake completes |
 | `hide()` | Called when the display blanks, resetting the design for its next `play()` |
-| `leave()` | Called when the password is accepted; the lock releases after 550ms for mycelium or 1.1s for the other designs, whatever the animation does |
+| `leave()` | Called when the password is accepted; the lock releases `releaseDelay` later, whatever the animation does |
+| `releaseDelay` | Milliseconds from the password being accepted to the lock releasing; 1100 when absent, 550 for mycelium |
 | `accent` | The field's edge colour, in the design's own light; white when absent |
 
 Each lock or preview runs in a fresh worker, so edits
@@ -57,8 +58,8 @@ Its normal startup also runs the existing stranded-lock recovery check before re
 
 Authentication stays in the stock trusted lock plugin. On success, `driveOffThenUnlock()`
 sets `unlocking`, which disables input; its independent timer calls `finishUnlock()`
-after 550ms for mycelium or 1100ms for the other designs. Each lock view sets the interval from
-its selected design; 1100ms remains the fallback if no view loads. The field fades out within
+after the design's `releaseDelay`: 550ms for mycelium, 1100ms for the others. Each lock view binds
+the interval to its design's; 1100ms remains the fallback if no view loads. The field fades out within
 300ms, still reading "Checking…", so it is gone before any design finishes its exit.
 
 ## Verification

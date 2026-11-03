@@ -68,6 +68,9 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     source = re.sub(r"^    (anchors \{ top:.*|WlrLayershell\..*|exclusionMode:.*)\n", "", source, flags=re.M)
     # Only the offscreen test contains this synthetic authentication entry point.
     source = source.replace('target: "lock"', 'target: "lock"\nfunction authenticated(): string { root.driveOffThenUnlock(); return "ok" }')
+    # The unlock names the delay it waited, which the design sets.
+    source = qslog.patch(source, "    onTriggered: root.finishUnlock()",
+                         '    onTriggered: { console.log("RELEASE_DELAY", interval); root.finishUnlock() }', exactly=True)
     (lock / "Service.qml").write_text(source)
     (lock / "TestSessionLock.qml").write_text('''import QtQuick
 Item {
@@ -188,6 +191,8 @@ ShellRoot { Lock.Service {} }
         until(lambda: child_pid() and child_pid() != pid and status().get("secure"), "crashed lock did not recover")
         assert ipc("authenticated", child=True) == "ok"
         until(lambda: not status().get("locked"), "authenticated unlock did not release")
+        assert "RELEASE_DELAY 550" in "\n".join(p.read_text() for p in runtime.glob("quickshell/by-id/*/log.log")), \
+            "mycelium's unlock did not wait its own releaseDelay"
         until(lambda: not child_pid(), "unlock retained its worker")
         until(lambda: not list(home.glob("wake.*")), "worker exited before its wake command finished", timeout=3)
         print("ok: shell restart/crash reconnects, worker crash recovers, unlock/wake retires", flush=True)
