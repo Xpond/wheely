@@ -276,7 +276,9 @@ Item {
     root.settledPath = path
     root.diffText = ""
     root.readDiff()
-    root.dirEntries = []
+    // Read, not cleared: snapshot() drops another folder's rows, while a folder selected again,
+    // as when the list reloads around it, keeps a model that never reloads to refill it.
+    root.dirEntries = root.childEntries()
     root.imageDims = ""
     measurer.cancel()
     if (root.showsImage)

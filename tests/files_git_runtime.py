@@ -79,6 +79,7 @@ if name == 'old.txt':
   property var dirEntries: []
   property var saving: null
   property string previewHtml: ''
+  function childEntries() { return [] }
   function readDiff() { diffText = '@@ -1 +1 @@\\n-old\\n+new\\n' }
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
@@ -116,6 +117,7 @@ if name == 'old.txt':
   property var saving: null
   property string previewHtml: ''
   property var seen: []
+  function childEntries() { return [] }
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
 ''' + preview.replace("Style.font.subtitle", "14")
