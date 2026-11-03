@@ -110,7 +110,7 @@ scripts/build-shaders.sh themes/wheelie/scene/*.{frag,vert}
 - Scene, storm plate, and the night track and desert camp backgrounds:
   `google/gemini-3-pro-image`, 4K.
 - Sky prints: `google/gemini-3.1-flash-image`, 4K.
-- Wheel sprites, rim finish, and chain material: the built-in imagegen tool.
+- Wheel sprites, rim finish, and chain material: OpenAI's gpt-image.
 - `backgrounds/01-forest-trail.jpg` and `03-hard-enduro.jpg`: 5456×3072 outputs
   from `black-forest-labs/flux-3-image`, 4K, 16:9, with the bottom
   vignette added, then resized like the others.
