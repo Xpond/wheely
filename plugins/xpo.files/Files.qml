@@ -59,14 +59,7 @@ Item {
 
   // Freeze the focused screen on open; pointer focus can otherwise move it.
   property var openScreen: null
-  function focusedScreen() {
-    var m = Hyprland.focusedMonitor
-    if (!m) return null
-    var screens = Quickshell.screens
-    for (let i = 0; i < screens.length; i++)
-      if (screens[i].name === m.name) return screens[i]
-    return null
-  }
+  function focusedScreen() { return Pinned.focusedScreen(Hyprland.focusedMonitor, Quickshell.screens) }
 
   // FolderListModel cannot combine directory filtering with our ranking.
   property var entries: []
@@ -378,15 +371,7 @@ Item {
   }
 
   // Focus the window the way the wheel focuses any other.
-  function raise() {
-    var all = Hyprland.toplevels.values
-    for (let i = 0; i < all.length; i++) {
-      const t = all[i]
-      if (t.wayland && t.wayland.appId === "org.quickshell"
-          && t.title === (root.host ? root.host.title : window.title))
-        Hyprland.dispatch("hl.dsp.focus({ window = \"address:0x" + t.address + "\" })")
-    }
-  }
+  function raise() { Pinned.raise(Hyprland, root.host ? root.host.title : window.title) }
 
   onOpenedChanged: if (root.shell) root.shell.panelSurfaceVisible(root.opened)
   // Drop preview state and pending work when the panel closes.
