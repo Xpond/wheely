@@ -37,6 +37,8 @@ def patch(name, old, new):
 patch("LockView.qml", "  id: root", "  id: root\n  property alias testScene: scene.item")
 patch("lock/rally/Scene.qml", "  property var host", "  property var host\n  property alias testCar: car")
 patch("lock/rally/Car.qml", "  id: car", "  id: car\n  readonly property bool testDriving: go.running")
+patch("lock/wallpaper/Scene.qml", "  property var host", "  property var host\n  readonly property real testFade: testEffect.opacity")
+patch("lock/wallpaper/Scene.qml", "  MultiEffect {", "  MultiEffect {\n    id: testEffect")
 
 stages = [{"name": "parked"}, {"name": "unlocking-rally", "unlock": 1}, {"name": "departed"}]
 # Last, since they unload the car: other designs at runtime, then one that is missing.
@@ -55,18 +57,20 @@ Window {
   property var stages: STAGES
   property int stage: 0
   property bool waitingForColony: false
+  property bool waitingForWallpaper: false
   property double preparationStarted: 0
   function prepare() {
     var s = stages[stage]
     if (s.design) {
       lock.driving = false
       waitingForColony = s.design === "mycelium"
+      waitingForWallpaper = s.design === "wallpaper"
       preparationStarted = Date.now()
       lock.design = s.design; lock.showDesign()
       lock.backgroundPath = OUTPUT + "/lock/rally/neon-city.jpg"
       lock.loadBackground = true
-      // The wallpaper loads asynchronously.
-      capture.interval = waitingForColony ? 20 : s.design === "meadow" ? 4000 : 1500
+      // The colony and the wallpaper are polled until ready; the others settle within the delay.
+      capture.interval = waitingForColony || waitingForWallpaper ? 20 : s.design === "meadow" ? 4000 : 1500
       capture.restart()
       return
     }
@@ -89,6 +93,14 @@ Window {
       if (Date.now() - preparationStarted > 10000) { console.error("FAIL colony preparation"); Qt.exit(1); return }
       waitingForColony = !lock.testScene.colony || lock.testScene.drawn < 4
       capture.interval = waitingForColony ? 20 : 1500
+      capture.restart()
+      return
+    }
+    // The wallpaper fades in once decoded: capture it settled. A restarted Timer can fire at once
+    // after a long grab, so this waits on the fade itself rather than a delay.
+    if (waitingForWallpaper) {
+      if (Date.now() - preparationStarted > 10000) { console.error("FAIL wallpaper fade"); Qt.exit(1); return }
+      waitingForWallpaper = lock.testScene.testFade < 1
       capture.restart()
       return
     }

@@ -26,7 +26,7 @@ Each design documents itself in its folder:
 - [`mycelium`](../lock/mycelium/README.md): a colony of fine hyphae grows from the centre and draws back on unlock.
 - [`shore`](../lock/shore/README.md): the wash meeting the sand from high above; unlocking brings the tide in.
 - [`meadow`](../lock/meadow/README.md): wildflowers grow into “omarchy” under a starlit sunset sky.
-- `wallpaper`: Omarchy's own blurred wallpaper (a video wallpaper's still poster), fading out on unlock.
+- `wallpaper`: Omarchy's own blurred wallpaper (a video wallpaper's still poster), fading in once decoded and out on unlock.
 
 ## Wake and authentication
 

@@ -18,6 +18,8 @@ Item {
   Image {
     id: wallpaper
     anchors.fill: parent
+    // Drawn only through the blur, so neither fade shows the sharp image.
+    visible: false
     // A video wallpaper shows its still poster.
     property string path: root.host.video ? root.host.videoPosterPath : root.host.backgroundPath
     // Built as Service.qml builds lockWallpaperUrl, so the service's decode serves this one: ahead
@@ -36,6 +38,9 @@ Item {
   MultiEffect {
     anchors.fill: wallpaper
     source: wallpaper
+    // Decoded after the lock showed, the wallpaper fades in rather than popping in.
+    opacity: wallpaper.status === Image.Ready ? 1 : 0
+    Behavior on opacity { NumberAnimation { duration: 250 } }
     autoPaddingEnabled: false
     blurEnabled: wallpaper.status === Image.Ready
     blur: 1.0

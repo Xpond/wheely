@@ -35,7 +35,7 @@ list; neither needs `install.sh` or sudo.
 | `lock-session/shell.qml` | Runs the installed authentication service and exits after unlock/wake or preview closure |
 | `patches/orig/plugins/lock/` | Stock copies used by the verified install/revert workflow |
 | `bin/omarchy-lock-design` | Lists the designs, names the chosen one, or sets the one the next lock shows |
-| `lock/wallpaper/Scene.qml` | The wallpaper, blurred, fading out on unlock |
+| `lock/wallpaper/Scene.qml` | The wallpaper, blurred, fading in once decoded and out on unlock |
 | `tests/lock-idle.js` | The shared five-second idle blank, the monitor wake allowance and one replay per wake |
 | `tests/lock-render.py` | GPU captures, drive-off exit and design switching checks |
 | `tests/lock-process.py` | Offscreen memory, process exit, shell reconnection and crash recovery; simulated compositor and authentication |
