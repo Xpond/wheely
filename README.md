@@ -109,6 +109,8 @@ happened, your GPU, and the output of:
 ```bash
 omarchy-version
 quickshell log -p "$OMARCHY_PATH/shell" -t 50
+# The lock screen runs in its own process:
+quickshell log -p ~/.local/share/wheely/lock-session -t 50
 ```
 
 Working on it: see [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`tests/README.md`](tests/README.md).
