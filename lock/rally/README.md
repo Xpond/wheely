@@ -11,7 +11,7 @@ The scene uses a painted neon-city plate behind the live car, a contact shadow,
 and a subdued wet-floor reflection. The grille
 and wheel wells have solid dark backing so the bright pavement cannot show through.
 The plate is **1672×941**, generated with OpenAI's gpt-image (ChatGPT image generation) and
-stored as a quality-90 JPEG, which the blur and mipmaps make indistinguishable from the original.
+stored as a quality-90 JPEG.
 It is distributed under the repository's [MIT license](../../LICENSE).
 
 The car is framed at 89% scale about screen centre, then lowered by 4% of screen
