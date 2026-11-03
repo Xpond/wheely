@@ -72,7 +72,7 @@ behind the bar. Pausing holds every particle in place.
 
 ### How it is built
 
-- `base.png` holds the scene with the prints baked in; `cutout.png` holds everything but
+- `base.jpg` holds the scene with the prints baked in; `cutout.png` holds everything but
   the sky and is drawn over the storm, which ends just inside the dunes at the `horizon`
   row in `layout.json`. `Surface.qml` redraws the print borders over the storm from
   `prints` and `printBorder`, so thin dust never ghosts a border through it.
