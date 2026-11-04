@@ -21,8 +21,8 @@ const ops = {
   hold: (e, move) => calls.push(["hold", [].concat(e).map(x => x.name).join(), move]), paste: into => calls.push(["paste", into]),
   remove() { this.doomed = this.doomed ? "" : "armed"; calls.push(["remove"]) }
 }
-const panel = { edit: () => calls.push(["edit"]), beginRename: () => calls.push(["rename"]),
-  beginCopyName: verb => calls.push(["name", verb]), beginNew: () => calls.push(["new"]), popOut: () => calls.push(["pop"]) }
+const panel = { edit: () => calls.push(["edit"]), beginRename: e => calls.push(["rename", e.name]),
+  beginCopyName: (verb, e) => calls.push(["name", verb, e.name]), beginNew: () => calls.push(["new"]), popOut: () => calls.push(["pop"]) }
 const file = (name, extra) => Object.assign({ name, path: "/home/t/d/" + name, isDir: false, size: 1 }, extra)
 const menu = (entry, extra) => A.tree(Object.assign({ panel, ops, entry, many: null, dir: "/home/t/d", held: null, image: false,
   video: false, urls: ["file:///home/t/d/x"], editable: false, script: false, executable: false, apps: [], preferred: "",
@@ -31,18 +31,19 @@ const menu = (entry, extra) => A.tree(Object.assign({ panel, ops, entry, many: n
 // What each kind of entry is offered.
 const apps = [{ id: "imv", name: "imv" }, { id: "nvim", name: "Neovim", terminal: true, command: ["nvim"] }]
 const image = menu(file("photo.jpg"), { image: true, apps, preferred: "imv", peers: ["laptop"] })
-assert.equal(ids(image), "open with[with:imv with:nvim] nautilus | share[localsend taildrop[to:laptop] clip pixels] "
+assert.equal(ids(image), "open with[with:imv with:nvim] nautilus | share[localsend to:laptop clip pixels] "
   + "convert[as:jpg-high as:jpg-medium as:jpg-low as:png-high as:png-medium as:png-low] wallpaper "
-  + "compress[pack.zip pack.tar.zst] | cut copy duplicate rename link | path trash | here[new terminal nautilus | hidden sort[by:name by:date by:size] window]")
+  + "compress[pack.zip pack.tar.zst] | cut copy duplicate rename link | path trash | here[new terminal nautilus | hidden by:name by:date by:size window]")
 assert.equal(find(image, "with").sub[0].hint, "default", "the default app is not marked")
 assert.equal(ids(find(menu(file("clip.mkv"), { video: true }), "convert").sub), "as:mp4-4k as:mp4-1080p as:mp4-720p as:gif-4k as:gif-1080p as:gif-720p")
 assert.ok(!find(find(menu(file("clip.mkv"), { video: true }), "share").sub, "pixels"), "a video offers Copy image")
 for (const [name, stem] of [["src.tar.gz", "src"], ["Pack.ZIP", "Pack"], ["notes.gz", ""], [".zip", ""], ["disk.iso", "disk"]])
   assert.equal(A.archiveStem(name), stem, name)
 assert.ok(find(menu(file("src.tar.gz")), "extract") && !find(image, "extract"))
-const script = menu(file("go.sh"), { script: true })
-assert.ok(find(script, "run") && find(script, "exec"), "a script offers neither Run nor Make executable")
-assert.ok(!find(menu(file("go.sh"), { script: true, executable: true }), "exec"), "an executable script offers Make executable")
+// Run only once it can: a script not executable would only fail with 126.
+const script = menu(file("go.sh"), { script: true }), runnable = menu(file("go.sh"), { script: true, executable: true })
+assert.ok(find(script, "exec") && !find(script, "run"), "a script that cannot run offers Run, or not Make executable")
+assert.ok(find(runnable, "run") && !find(runnable, "exec"), "an executable script offers Make executable, or not Run")
 assert.ok(A.isScript("tool", "#!/bin/sh\n") && A.isScript("x.py", "") && !A.isScript("x.txt", "plain"))
 assert.ok(find(menu(file("a.txt"), { editable: true }), "edit") && !find(image, "edit"))
 const folder = menu(file("docs", { isDir: true }))
@@ -54,11 +55,14 @@ for (const id of ["cut", "copy", "rename", "duplicate", "link", "trash", "compre
   assert.ok(!root.split(/[ \[\]]/).includes(id), "a root's row offers " + id)
 assert.equal(ids(menu(file("a.txt"), { apps: null })).split(" ")[1], "with[looking]")
 assert.ok(find(menu(file("a.txt"), { apps: null }), "with").sub[0].off, "the wait for apps can be chosen")
-assert.equal(ids(menu(null)), "new terminal nautilus | hidden sort[by:name by:date by:size] window")
+assert.equal(ids(menu(null)), "new terminal nautilus | hidden by:name by:date by:size window")
 for (const rows of [image, folder, script, menu(null), menu(file("x"), { apps: [] })]) {
   const s = ids(rows)
   assert.ok(!/^\||\|$|\| \||\[\||\|\]/.test(s), "a stray separator in " + s)
+  // Beside a menu that is itself beside another there is no room left, so none opens two deep.
+  assert.ok(!rows.some(r => r.sub && r.sub.some(t => t.sub)), "a submenu holds a submenu in " + s)
 }
+assert.equal(find(find(image, "share").sub, "to:laptop").label, "Taildrop to laptop")
 
 // Holding something offers it here, and into a folder row unless the row is what is held.
 const held = { items: [{ path: "/home/t/x/a.txt", name: "a.txt" }], name: "a.txt", move: true }
@@ -72,10 +76,10 @@ assert.equal(find(menu(null, { held: { ...held, move: false } }), "paste").label
 calls.length = 0
 find(image, "open").run(); find(image, "rename").run(); find(image, "duplicate").run(); find(image, "link").run()
 find(find(image, "with").sub, "with:imv").run(); find(find(image, "with").sub, "with:nvim").run()
-find(find(find(image, "share").sub, "taildrop").sub, "to:laptop").run()
-find(find(menu(null), "sort").sub, "by:date").run()
+find(find(image, "share").sub, "to:laptop").run()
+find(menu(null), "by:date").run()
 assert.equal(panel.order, "date", "Sort did not set the order")
-assert.deepEqual(calls.slice(0, 7), [["open", "photo.jpg"], ["rename"], ["name", "copy"], ["name", "link"],
+assert.deepEqual(calls.slice(0, 7), [["open", "photo.jpg"], ["rename", "photo.jpg"], ["name", "copy", "photo.jpg"], ["name", "link", "photo.jpg"],
   ["launch", "uwsm-app", "--", "gtk-launch", "imv.desktop", "/home/t/d/photo.jpg"],
   ["launch", "omarchy-launch-tui", "nvim", "/home/t/d/photo.jpg"],
   ["detach", "omarchy-tailscale-send", "laptop", "/home/t/d/photo.jpg"]])
@@ -83,13 +87,19 @@ ops.doomed = ""
 assert.equal(find(image, "trash").run(), true, "the first Trash closed the menu")
 assert.equal(find(menu(file("photo.jpg"), { doomed: true }), "trash").label, "Again to trash photo.jpg")
 assert.equal(find(image, "trash").run(), false, "the second Trash kept the menu open")
+// An entry of a folder's preview is not in the folder listed: Extract and Compress write beside it.
+const inner = menu(file("src.tar.gz", { path: "/home/t/d/sub/src.tar.gz" }))
+calls.length = 0
+find(inner, "extract").run(); find(find(inner, "compress").sub, "pack.zip").run()
+assert.deepEqual(calls.map(c => c[1]), [A.extractCommand("/home/t/d/sub/src.tar.gz", "/home/t/d/sub/src"),
+  A.compressCommand("/home/t/d/sub", "/home/t/d/sub/src.tar.gz.zip", ["src.tar.gz"])], "a preview's entry wrote into the folder listed")
 console.log("ok: the menu offers each kind of entry its own rows, and each row runs its verb")
 
 // Marks get the verbs that take many; Taildrop only while every mark is a file.
 const marks = [file("a.jpg"), file("b.jpg"), file("docs", { isDir: true })]
 const many = menu(null, { many: marks, peers: ["laptop"], urls: marks.map(e => "file://" + e.path) })
 assert.equal(ids(many), "count | share[localsend clip] compress[pack.zip pack.tar.zst] | cut copy unmark | path trash "
-  + "| here[new terminal nautilus | hidden sort[by:name by:date by:size] window]")
+  + "| here[new terminal nautilus | hidden by:name by:date by:size window]")
 assert.deepEqual([find(many, "count").label, find(many, "count").off, find(many, "trash").label], ["3 items", true, "Trash 3 items"])
 assert.equal(find(find(many, "compress").sub, "pack.zip").label, "d.zip", "many are not archived after their folder")
 assert.equal(find(find(menu(null, { many: marks, dir: "/home/t/d/" }), "compress").sub, "pack.zip").label, "d.zip",
@@ -97,7 +107,7 @@ assert.equal(find(find(menu(null, { many: marks, dir: "/home/t/d/" }), "compress
 const photos = menu(null, { many: marks.slice(0, 2), peers: ["laptop"], urls: ["file:///a", "file:///b"] })
 calls.length = 0
 for (const id of ["localsend", "clip"]) find(find(photos, "share").sub, id).run()
-find(find(find(photos, "share").sub, "taildrop").sub, "to:laptop").run()
+find(find(photos, "share").sub, "to:laptop").run()
 find(find(photos, "compress").sub, "pack.zip").run()
 find(photos, "cut").run(); find(photos, "path").run()
 assert.deepEqual(calls.map(c => c[0] === "run" ? c[1] : c), [
@@ -117,9 +127,9 @@ assert.deepEqual(A.readProbe("peers\n"), { executable: false, apps: [], preferre
 
 // The menu's keys while it is open; any other key closes it and does what it always does.
 const seen = []
-const open = { open: false, current: "", armed: false,
+const open = { open: false, current: "", trashes: true,
   step: d => seen.push("step " + d), fire: (row, into) => seen.push(into ? "into" : "fire"), back: () => seen.push("back"),
-  close() { this.open = false; seen.push("close") }, confirm() { this.armed = false; seen.push("confirm") },
+  close() { this.open = false; seen.push("close") }, trash() { seen.push("trash"); return this.trashes },
   openHere() { this.open = true; seen.push("open") } }
 const doom = { doomed: "", remove: () => seen.push("remove") }
 const browser = { menu: open, editing: false, naming: "", listShown: true, filter: "",
@@ -137,10 +147,11 @@ assert.equal(press("Key_F10", SHIFT), "open")
 assert.equal(press("Key_F10", SHIFT), "close", "Shift+F10 does not close the menu it opened")
 open.open = true
 assert.equal(press("Key_N", CTRL | SHIFT), "close,new", "Ctrl+Shift+N stepped the menu")
-open.open = true; open.armed = true
-assert.equal(press("Key_Delete"), "confirm", "Del with Trash armed did more than confirm it")
+// Del is the menu's own Trash, never the selection's; a menu without one closes and Del arms the selection.
 open.open = true
-assert.equal(press("Key_Delete"), "close,remove", "Del with nothing armed did not arm the selection")
+assert.equal(press("Key_Delete"), "trash", "Del in the menu did more than its Trash")
+open.trashes = false
+assert.equal(press("Key_Delete"), "trash,close,remove", "Del in a menu without Trash did not arm the selection")
 open.open = true; doom.doomed = "/x"; open.current = "trash"; key("Key_Return")
 assert.equal(doom.doomed, "/x", "Enter on the armed Trash disarmed it")
 open.open = true; doom.doomed = "/x"; key("Key_Down")
@@ -223,12 +234,16 @@ try {
   for (const name of ["guarded", "inHere", "pasteCommand", "paste"]) real[name] = method(opsSource, name, { root: real })
   for (const [verb, name] of [["copy", "loose copy"], ["link", "loose link"]])
     for (const status of [0, 17]) {
-      const naming = { naming: verb, renameTo: name, sel: { name: "loose", path: at("out", "loose") } }
+      const naming = { naming: verb, renameTo: name, named: { name: "loose", path: at("out", "loose") } }
       method(panelSource, "commitName", { root: naming, ops: real })()
       assert.equal(real.status, status, verb + (status ? " overwrote" : ""))
     }
   assert.deepEqual(tree(at("out", "loose copy")), ["a.txt", "sub", "sub/b.txt"])
   assert.equal(fs.readlinkSync(at("out", "loose link")), at("out", "loose"))
+  // An entry of a folder's preview is duplicated beside itself, and nothing lands in the folder listed.
+  const aside = { naming: "copy", renameTo: "a copy.txt", named: { name: "a.txt", path: at("-odd dir", "a.txt") } }
+  method(panelSource, "commitName", { root: aside, ops: real })()
+  assert.deepEqual([real.status, real.about.land, fs.readFileSync(at("-odd dir", "a copy.txt"), "utf8")], [0, false, "a"])
 
   // Paste into a folder row lands nothing in view and says where it went.
   fs.writeFileSync(at("moving.txt"), "m")
@@ -246,7 +261,7 @@ try {
   real.panel.listedDir = at("dest")
   real.held = { items: [{ path: at("m1.txt"), name: "m1.txt" }, { path: at("m2 '$x'.txt"), name: "m2 '$x'.txt" }], move: true, name: "2 items" }
   real.paste()
-  assert.deepEqual([real.status, real.about.taken, real.about.done, real.about.land], [17, "some names were already here; the rest moved", "moved 2 items", true])
+  assert.deepEqual([real.status, real.about.taken, real.about.done, real.about.land], [18, "some names were already here; the rest moved", "moved 2 items", true])
   assert.deepEqual([fs.readFileSync(at("dest", "m1.txt"), "utf8"), fs.existsSync(at("m1.txt")), fs.readFileSync(at("dest", "m2 '$x'.txt"), "utf8"),
                     fs.readFileSync(at("m2 '$x'.txt"), "utf8")], ["1", false, "keep", "2"], "a paste of many overwrote, or did not go on")
   fs.writeFileSync(at("m3.txt"), "3")
@@ -254,6 +269,9 @@ try {
   real.panel.listedDir = at("out")
   real.paste()
   assert.deepEqual([real.status, fs.readFileSync(at("out", "m3.txt"), "utf8"), fs.existsSync(at("m3.txt"))], [0, "3", true])
+  // Every name taken is 17, as for one: nothing went, so a move keeps its hold and none "moved".
+  real.paste()
+  assert.equal(real.status, 17, "a paste of many with every name taken said some went")
 } finally {
   fs.rmSync(base, { recursive: true, force: true })
 }
@@ -262,8 +280,11 @@ console.log("ok: compress, extract, convert, duplicate, link and paste-into neve
 // Trash arms for the exact list it was given: another list, even a part of it, arms anew.
 const trashed = []
 const trashing = { panel: { editing: false, sel: null, home: "/home/t" }, doomed: "", note() {}, run: (c, about) => trashed.push([[...c], about.done]) }
-for (const name of ["given", "label", "remove", "copyPath"])
+for (const name of ["label", "remove", "copyPath"])
   trashing[name] = method(opsSource, name, { root: trashing, doomArmed: { restart() {} }, FilesIndex: { display: p => p } })
+// Del in an empty folder, or with a filter matching nothing, has nothing to arm.
+trashing.remove([]); trashing.copyPath([])
+assert.deepEqual([trashing.doomed, trashed.length], ["", 0], "nothing selected was armed, trashed or copied")
 const two = [{ path: "/d/a", name: "a" }, { path: "/d/b", name: "b" }]
 trashing.remove(two)
 assert.deepEqual([trashing.doomed, trashed.length], ["/d/a\n/d/b", 0])

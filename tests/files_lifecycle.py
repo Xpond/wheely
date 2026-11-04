@@ -125,6 +125,10 @@ def check(files, run, block, line):
     check(sel.path === "/d/b", "a new file above moved the menu's row")
     entries = entries.filter(e => e.name !== "b")
     check(menu.closed === 1 && !menu.open, "the menu outlived its row")
+    // A menu on an entry of a folder's preview keeps that folder selected, and no row is its own.
+    index = 1; settledSel = sel; menu.open = true; menu.aside = true; menu.entry = { path: "/d/x/inner" }
+    entries = entries.concat([file("g", 9000)])
+    check(sel.path === settledSel.path && menu.open, "a menu on a preview's entry moved the selection or closed")
     console.log("PASS"); Qt.quit()
   } }
 ''')

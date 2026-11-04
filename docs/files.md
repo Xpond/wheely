@@ -352,8 +352,9 @@ Enter, `F2`, `Ctrl+E` — still act on the selection.
 
 A right-click on a row selects it and opens the menu at the pointer; `Menu` or
 `Shift+F10` opens it under the selected row. A right-click below the rows, or on
-the path, opens the folder's own menu; one on the preview opens the selection's,
-since the preview is the selection. Every verb above is in it, each with the key
+the path, opens the folder's own menu. One on an entry in a folder's preview opens
+that entry's menu where it is, the list left as it was; anywhere else on the
+preview, the selection's. Every verb above is in it, each with the key
 that does the same without it, and what the selection is decides the rest:
 
 | selection | adds |
@@ -362,14 +363,15 @@ that does the same without it, and what the selection is decides the rest:
 | an image | Copy image, Convert for sharing ▸, Set as wallpaper |
 | a video | Convert for sharing ▸, Set as wallpaper |
 | an archive | Extract here |
-| a script | Run in a terminal, and Make executable while it is not |
+| a script | Run in a terminal, or Make executable while it is not |
 | text the editor can write back | Edit |
 | a folder | Open in a terminal; with something held, Move or Copy it into the folder |
 | a deleted row | only Show changes and Copy path |
 
 Every row's menu ends in **Current folder ▸**, the folder's own menu — New file or
-folder, Paste, Open in a terminal, Show in Nautilus, Show hidden files, Sort ▸,
-Pop out — because a folder full of rows leaves nothing below them to click.
+folder, Paste, Open in a terminal, Show in Nautilus, Show hidden files, Sort by
+name, newest or largest, Pop out — because a folder full of rows leaves nothing
+below them to click.
 
 **With marks, the menu is theirs** when it opens from the keyboard or on a marked
 row; a right-click on an unmarked row is for that row alone. It counts them and
@@ -378,44 +380,42 @@ offers what takes many: Share ▸ (Taildrop only while they are all files), Comp
 Trash.
 
 **Share is Omarchy's own.** LocalSend goes through `omarchy-menu-share`, Taildrop
-through `omarchy-tailscale-send` to each device online, and none is listed while
-Tailscale is down. **Copy to clipboard** copies the file itself, as a
-`text/uri-list`, so it pastes into a browser chat or a mail as an attachment.
-**Convert for sharing** runs `omarchy-transcode`, which writes a smaller copy
-beside the original — `photo-medium.jpg` — puts that on the clipboard, and says
-when it is done.
+through `omarchy-tailscale-send`, a row for each device online — `Taildrop to
+laptop` — and none while Tailscale is down. **Copy to clipboard** copies the file
+itself, as a `text/uri-list`, so it pastes into a browser chat or a mail as an
+attachment. **Convert for sharing** runs `omarchy-transcode`, which writes a
+smaller copy beside the original — `photo-medium.jpg` — puts that on the
+clipboard, and says when it is done.
 
 A submenu opens beside the row that holds it, level with it, and the menu it came
 from stays open with that row lit — on the other side when there is no room on
-this one. A click opens it, and so does `Enter` or `→`, or the pointer reaching the
-row and staying on it for 150 ms, moving or not; a second click on the row closes
-it. Reaching another row of the menu further out switches to that row after the
-same moment, so the pointer can cross rows on its way into a submenu without
-closing it.
+this one, which over the overlay, where the menus may reach past the card, is only
+at the card's right edge. No submenu holds another, so none ever covers the menu
+it came from. A click opens it, and so does `Enter` or `→`, or the pointer
+reaching the row and staying on it for 150 ms, moving or not; a second click on
+the row closes it. Reaching another row of the menu further out switches to that
+row after the same moment, so the pointer can cross rows on its way into a submenu
+without closing it.
 
 Inside the menu `↑` `↓` `Tab` `Ctrl+N` `Ctrl+P` move, `Enter` runs, `←` or
-`Backspace` closes the submenu, `Esc` closes them all. Any other key closes the
-menu and does what it always does, so `F2` still renames and typing still filters:
-the menu never traps the keyboard. Hover moves the highlight only once the pointer
-moves, so the row that opens under a resting pointer is not taken for a choice.
+`Backspace` closes the submenu, `Esc` closes them all, `Del` is its Trash. Any
+other key closes the menu and does what it always does, so `F2` still renames and
+typing still filters: the menu never traps the keyboard. Hover moves the highlight
+only once the pointer moves, so the row that opens under a resting pointer is not
+taken for a choice.
 
-The verbs keep their rules in the menu. **Trash asks twice**: the first pick turns
-it red and keeps the menu open, and the second, or `Del`, trashes. **Nothing is
+The verbs keep their rules in the menu. **Trash asks twice**: the first pick, or
+`Del`, turns it red and keeps the menu open, and the second trashes. **Nothing is
 overwritten**: Compress, Extract, Duplicate, Make link and Convert each answer
 `a … is already here` instead. Duplicate and Make link name what they make in the
 rename field, starting from `photo copy.jpg` or `photo link.jpg`, rather than
-inventing a name you never saw.
+inventing a name you never saw. What a row makes or renames stays beside its entry,
+so one in a folder's preview stays in that folder.
 
 **Extract here** unpacks into a folder named after the archive. An archive that
 holds a single folder of its own name, as most downloads of a repository do,
 gives that folder rather than a folder inside a folder. It unpacks aside first,
 so a broken archive leaves nothing behind.
-
-Left out: rotating or resizing an image in place, which overwrites it — Convert
-writes a new file instead; email and Bluetooth, which Omarchy ships nothing to
-send with; uploading to a web host, which hands your file to someone else; and
-mounting, the trash itself and permissions, which Show in Nautilus is one click
-from.
 
 ## Editing
 

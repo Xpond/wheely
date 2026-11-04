@@ -15,14 +15,12 @@ Item {
   Timer { id: noteFade; interval: 4000; onTriggered: root.fileNote = "" }
   function note(text) { root.fileNote = text; noteFade.restart() }
 
-  // The verbs take one entry or a list of them, and the selection when given nothing.
-  function given(entries) { return entries ? [].concat(entries) : [root.panel.sel] }
-  // What a list is called: its one entry, or how many.
+  // The verbs take a list of entries. What a list is called: its one entry, or how many.
   function label(entries) { return entries.length > 1 ? entries.length + " items" : entries[0].name }
 
   // A deleted row or a root's cannot be held.
   function hold(entries, move) {
-    entries = root.given(entries).filter(e => e && !e.missing && !e.shortcut)
+    entries = entries.filter(e => !e.missing && !e.shortcut)
     if (!entries.length) return
     root.held = { items: entries.map(e => ({ path: e.path, name: e.name })), move: !!move, name: root.label(entries) }
     root.note((move ? "moving " : "copying ") + root.held.name)
@@ -45,21 +43,22 @@ Item {
 
   function inHere(name) { return root.panel.listedDir.replace(/\/+$/, "") + "/" + name }
 
-  // Each into the folder in turn, past a name already taken, its own name included: 17 when one was,
-  // 1 when any failed.
+  // Each into the folder in turn, past a name already taken, its own name included: 17 when every
+  // name was taken, 18 when only some were, 1 when any failed.
   function pasteCommand(move, dir, paths) {
-    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0; for f do t="$d/${f##*/}"; '
-      + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif ! $v -- "$f" "$t"; then s=1; fi; done; exit $s',
+    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; for f do t="$d/${f##*/}"; '
+      + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif $v -- "$f" "$t"; then p=1; else s=1; fi; done; '
+      + '[ "$s" = 17 ] && [ "$p" = 1 ] && s=18; exit $s',
       "files", move ? "mv" : "cp -r", dir].concat(paths)
   }
 
   // Into the folder being listed, or into the folder given; only the first lands in view.
   function paste(into) {
-    var h = root.held, many = h && h.items.length > 1
+    var h = root.held
     if (!h) return
     root.run(root.pasteCommand(h.move, into || root.panel.listedDir.replace(/\/+$/, ""), h.items.map(i => i.path)),
              { name: h.items[0].name, land: !into, spend: h.move,
-               taken: many ? "some names were already here; the rest " + (h.move ? "moved" : "copied") : "",
+               taken: "some names were already here; the rest " + (h.move ? "moved" : "copied"),
                done: (h.move ? "moved " : "copied ") + h.name + (into ? " into " + into.slice(into.lastIndexOf("/") + 1) : ""),
                fail: (h.move ? "move" : "copy") + " failed" })
   }
@@ -71,9 +70,9 @@ Item {
       root.op = null
       if (!o) return
       if (exitCode !== 0) {
-        root.note(exitCode === 17 ? o.taken || "a " + o.name + " is already here" : o.fail)
+        root.note(exitCode === 17 ? "a " + o.name + " is already here" : exitCode === 18 && o.taken ? o.taken : o.fail)
         // Some of many went, so the hold no longer names what is there to move.
-        if (exitCode === 17 && o.taken && o.spend) root.held = null
+        if (exitCode === 18 && o.spend) root.held = null
         return
       }
       if (o.land) root.panel.pending = o.name
@@ -85,8 +84,7 @@ Item {
   }
   // Many paths go one to a line.
   function copyPath(entries) {
-    entries = root.given(entries)
-    if (!entries[0] || root.panel.editing) return
+    if (!entries.length || root.panel.editing) return
     root.run(["sh", "-c", 'printf %s "$1" | wl-copy', "files", entries.map(e => e.path).join("\n")],
              { done: "copied " + (entries.length > 1 ? entries.length + " paths" : FilesIndex.display(entries[0].path, root.panel.home)),
                fail: "copy path failed" })
@@ -114,8 +112,7 @@ Item {
     : root.doomed.slice(root.doomed.lastIndexOf("/") + 1)
   Timer { id: doomArmed; interval: 3000; onTriggered: root.doomed = "" }
   function remove(entries) {
-    entries = root.given(entries)
-    if (entries.some(e => !e || e.missing || e.shortcut) || root.panel.editing) return
+    if (!entries.length || entries.some(e => e.missing || e.shortcut) || root.panel.editing) return
     var paths = entries.map(e => e.path)
     if (root.doomed !== paths.join("\n")) {
       root.doomed = paths.join("\n")

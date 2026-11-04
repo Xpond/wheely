@@ -516,10 +516,14 @@ Item {
   property string naming: ""
   property string renameTo: ""
   property int renameAt: 0
+  // What a rename, duplicate or link names: the selection, or the entry a menu was opened on.
+  property var named: null
 
-  function beginRename() {
-    if (!root.sel || root.sel.missing || root.sel.shortcut || root.editing) return
-    root.renameTo = root.sel.name
+  function beginRename(e) {
+    e = e || root.sel
+    if (!e || e.missing || e.shortcut || root.editing) return
+    root.named = e
+    root.renameTo = e.name
     var dot = root.renameTo.lastIndexOf(".")
     root.renameAt = dot > 0 ? dot : root.renameTo.length
     root.naming = "rename"
@@ -534,10 +538,12 @@ Item {
 
   // Duplicate and Make link name what they make in the same field: the name with "copy" or "link"
   // before its extension, the caret after the word.
-  function beginCopyName(verb) {
-    if (!root.sel || root.sel.missing || root.sel.shortcut || root.editing) return
-    var name = root.sel.name, dot = root.sel.isDir ? -1 : name.lastIndexOf(".")
+  function beginCopyName(verb, e) {
+    e = e || root.sel
+    if (!e || e.missing || e.shortcut || root.editing) return
+    var name = e.name, dot = e.isDir ? -1 : name.lastIndexOf(".")
     var cut = dot > 0 ? dot : name.length
+    root.named = e
     root.renameTo = name.slice(0, cut) + " " + verb + name.slice(cut)
     root.renameAt = cut + verb.length + 1
     root.naming = verb
@@ -598,13 +604,15 @@ Item {
                { name: name, land: true, done: "made " + name, fail: "could not make " + name })
       return
     }
-    var e = root.sel
+    var e = root.named
     if (!e || name === e.name) return
-    // A rename moves the entry; a duplicate copies it and a link points at it.
+    // A rename moves the entry; a duplicate copies it and a link points at it, each beside it, which
+    // lands in view only in the folder listed.
     var how = { rename: ["mv", "renamed to ", "rename failed"], copy: ["cp -r", "duplicated as ", "duplicate failed"],
                 link: ["ln -s", "linked as ", "link failed"] }[verb]
-    ops.run(ops.guarded(how[0], e.path, ops.inHere(name)),
-             { name: name, land: true, done: how[1] + name, fail: how[2] })
+    var to = e.path.slice(0, e.path.lastIndexOf("/") + 1) + name
+    ops.run(ops.guarded(how[0], e.path, to),
+             { name: name, land: to === ops.inHere(name), done: how[1] + name, fail: how[2] })
   }
 
   // Marks pick several entries for the verbs that take many. They are paths in the folder listed,
@@ -716,14 +724,15 @@ Item {
   }
 
   onRowsChanged: {
-    // A folder change shifts the rows; an open edit, naming or menu stays on its file.
-    var keep = root.menu.open ? root.menu.entry
+    // A folder change shifts the rows; an open edit, naming or menu stays on its file, and a menu on an
+    // entry of a folder's preview on that folder.
+    var keep = root.menu.open ? (root.menu.aside ? root.settledSel : root.menu.entry)
       : root.editing || (root.naming && root.naming !== "new") ? root.settledSel : null
     var held = keep ? root.rows.findIndex(e => e.path === keep.path) : -1
     if (held >= 0) root.index = held
     else if (root.index >= root.rows.length) root.index = 0
     // A row gone from under its menu takes the menu with it.
-    if (held < 0 && root.menu.open && root.menu.entry) root.menu.close()
+    if (held < 0 && root.menu.open && root.menu.entry && !root.menu.aside) root.menu.close()
     root.claimPending()
   }
 
@@ -857,9 +866,11 @@ Item {
           anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
         }
 
-        // Last, so it draws over both panes and the legend.
+        // Last, so it draws over both panes and the legend. Over the overlay it has the whole screen, so
+        // a submenu has room beside the card; a window or the pinned search keeps it inside.
         FilesMenu {
           id: menu
+          parent: root.host || root.windowed ? keys : surface.contentItem
           anchors.fill: parent
           panel: root
           ops: ops

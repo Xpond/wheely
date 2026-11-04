@@ -6,9 +6,7 @@
 var SEP = { sep: true }
 
 function row(id, label, hint, run, extra) {
-  var r = { id: id, label: label, hint: hint || "", run: run }
-  for (var k in extra || {}) r[k] = extra[k]
-  return r
+  return Object.assign({ id: id, label: label, hint: hint || "", run: run }, extra)
 }
 
 // A submenu with nothing in it is not offered.
@@ -27,16 +25,10 @@ function tidy(rows) {
   return out
 }
 
-// What Extract here unpacks, compound suffixes first so a .tar.gz is not taken for a .tar.
-var ARCHIVES = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tgz", ".tbz2", ".txz", ".tzst",
-                ".tar", ".zip", ".7z", ".rar", ".iso"]
+// What Extract here unpacks: the name less its archive suffix, or "" for anything else.
 function archiveStem(name) {
-  var n = String(name).toLowerCase()
-  for (var i = 0; i < ARCHIVES.length; i++) {
-    var s = ARCHIVES[i]
-    if (n.length > s.length && n.slice(-s.length) === s) return String(name).slice(0, -s.length)
-  }
-  return ""
+  var m = /^(.+?)\.(tar\.(gz|bz2|xz|zst)|tgz|tbz2|txz|tzst|tar|zip|7z|rar|iso)$/i.exec(String(name))
+  return m ? m[1] : ""
 }
 
 // A shebang says so; the extensions catch a script whose first line has not been read.
@@ -129,9 +121,11 @@ function tree(c) {
   var e = c.entry, p = c.panel, o = c.ops
   if (!e && !c.many) return folderRows(c)
   if (e && e.missing) return [row("open", "Show changes", "enter", function () { o.activate(e) }),
-                              row("path", "Copy path", "ctrl+y", function () { o.copyPath(e) })]
-  // A typed path keeps its trailing slash.
-  var dir = String(c.dir).replace(/(.)\/+$/, "$1"), list = c.many || [e], named = o.label(list), one = c.many ? null : e
+                              row("path", "Copy path", "ctrl+y", function () { o.copyPath([e]) })]
+  var list = c.many || [e], named = o.label(list), one = c.many ? null : e
+  // One entry's own folder, which a folder's preview shows rather than the list; the marks' is the
+  // folder listed, whose typed path keeps its trailing slash.
+  var dir = one ? e.path.slice(0, e.path.lastIndexOf("/")) || "/" : String(c.dir).replace(/(.)\/+$/, "$1")
   var paths = list.map(function (t) { return t.path }), files = list.every(function (t) { return !t.isDir })
   // A root's row stands for the root itself: it cannot be held, renamed, archived or trashed.
   var own = !one || !one.shortcut, file = !!one && !one.isDir, media = file && (c.image || c.video)
@@ -144,20 +138,22 @@ function tree(c) {
           return row("with:" + a.id, a.name, a.id === c.preferred ? "default" : "",
                      function () { o.launch(openWithCommand(a, e.path)) }) })),
     file && c.editable && row("edit", "Edit", "ctrl+e", function () { p.edit() }),
-    file && c.script && row("run", "Run in a terminal", "", function () { o.launch(runCommand(e.path)) }),
+    file && c.script && c.executable && row("run", "Run in a terminal", "", function () { o.launch(runCommand(e.path)) }),
     one && e.isDir && row("terminal", "Open in a terminal", "", function () { o.terminal(e.path) }),
     one && row("nautilus", "Show in Nautilus", "", function () { o.launch(["uwsm-app", "--", "nautilus", "--select", e.path]) }),
     SEP,
+    // Taildrop is a row for each device online, not a menu of its own: no menu opens two deep, where
+    // the menus before it leave it no room.
     sub("share", "Share", [
-      row("localsend", "LocalSend…", "", function () { o.launch(["omarchy-menu-share", "file"].concat(paths)) }),
-      files && sub("taildrop", "Taildrop", c.peers.map(function (name) {
-        return row("to:" + name, name, "", function () {
-          o.detach(["omarchy-tailscale-send", name].concat(paths), "sending " + named + " to " + name) }) })),
+      row("localsend", "LocalSend…", "", function () { o.launch(["omarchy-menu-share", "file"].concat(paths)) })
+    ].concat((files ? c.peers : []).map(function (name) {
+      return row("to:" + name, "Taildrop to " + name, "", function () {
+        o.detach(["omarchy-tailscale-send", name].concat(paths), "sending " + named + " to " + name) }) }), [
       row("clip", "Copy to clipboard", "", function () { o.run(clipCommand(c.urls), { done: "copied " + named, fail: "copy failed" }) }),
       c.image && row("pixels", "Copy image", "", function () {
         o.run(["sh", "-c", 'exec wl-copy --type "$(file -b --mime-type -- "$1")" < "$1"', "files", e.path],
               { done: "copied the image", fail: "copy failed" }) })
-    ]),
+    ])),
     media && sub("convert", "Convert for sharing", CONVERSIONS[c.image ? "image" : "video"].map(function (f) {
       return row("as:" + f.join("-"), f[0].toUpperCase() + " · " + f[1], "", function () {
         var out = convertTarget(e.path, f[0], f[1])
@@ -182,9 +178,9 @@ function tree(c) {
     c.held && one && e.isDir && !c.held.items.some(function (i) { return i.path === e.path }) && pasteRow(c, e),
     c.held && pasteRow(c),
     c.many && row("unmark", "Unmark all", "esc", function () { p.unmarkAll() }),
-    one && own && row("duplicate", "Duplicate…", "", function () { p.beginCopyName("copy") }),
-    one && own && row("rename", "Rename…", "f2", function () { p.beginRename() }),
-    one && own && row("link", "Make link…", "", function () { p.beginCopyName("link") }),
+    one && own && row("duplicate", "Duplicate…", "", function () { p.beginCopyName("copy", e) }),
+    one && own && row("rename", "Rename…", "f2", function () { p.beginRename(e) }),
+    one && own && row("link", "Make link…", "", function () { p.beginCopyName("link", e) }),
     SEP,
     row("path", c.many ? "Copy paths" : "Copy path", "ctrl+y", function () { o.copyPath(list) }),
     // Asked twice, as Del is: the first pick arms it and keeps the menu open, the second trashes.
@@ -203,9 +199,9 @@ function folderRows(c) {
     row("terminal", "Open in a terminal", "ctrl+enter", function () { o.terminal(c.dir) }),
     row("nautilus", "Show in Nautilus", "", function () { o.launch(["uwsm-app", "--", "nautilus", "--new-window", c.dir]) }),
     SEP,
-    row("hidden", c.showHidden ? "Hide hidden files" : "Show hidden files", "ctrl+h", function () { p.showHidden = !c.showHidden }),
-    sub("sort", "Sort", [["name", "Name"], ["date", "Newest first"], ["size", "Largest first"]].map(function (s) {
-      return row("by:" + s[0], s[1], c.order === s[0] ? "•" : "", function () { p.order = s[0]; p.index = 0 }) })),
+    row("hidden", c.showHidden ? "Hide hidden files" : "Show hidden files", "ctrl+h", function () { p.showHidden = !c.showHidden })
+  ].concat([["name", "Sort by name"], ["date", "Sort newest first"], ["size", "Sort largest first"]].map(function (s) {
+    return row("by:" + s[0], s[1], c.order === s[0] ? "•" : "", function () { p.order = s[0]; p.index = 0 }) }), [
     row("window", c.popped ? "Back to the overlay" : "Pop out to a window", "ctrl+t", function () { p.popOut() })
-  ])
+  ]))
 }

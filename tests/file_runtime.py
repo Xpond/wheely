@@ -9,7 +9,8 @@ def check(files, ops, base, run, block):
     check_file_edits(files, base, run, block)
 
     # The real preview under real pointer events: the entry under the pointer is tinted, a click picks
-    # its column and line, a double click opens the pick, and the wheel still scrolls the preview.
+    # its column and line, a double click opens the pick, a right-click opens its menu without picking
+    # it, and the wheel still scrolls the preview.
     run("preview-pointer", '''
   property var entries: Array.from({ length: 200 }, (_, i) => ({ name: "e" + i, isDir: false, size: 1, modified: null }))
   property var dirColumns: FilesIndex.columns(root.entries, 10, 120, 400, ({}))
@@ -35,6 +36,9 @@ def check(files, ops, base, run, block):
   property var settledSel: null
   property color hoverFill: "gray"
   property var picks: []
+  property var sel: ({ name: "the folder" })
+  property string naming: ""
+  property QtObject menu: QtObject { function openAt(item, x, y, entry) { root.picks.push("menu " + entry.name) } }
   function previewEntry(column, line) { return FilesIndex.columnEntry(root.entries, 10, 120, 400, column, line) }
   function pickPreview(column, line) { root.picks.push(column + ":" + line) }
   function openPicked() { root.picks.push("open") }
@@ -60,6 +64,16 @@ def check(files, ops, base, run, block):
     if (!tint || tint.column !== column || tint.line !== 3) { console.error("FAIL a folder under the pointer tinted the wrong entry"); Qt.exit(1); return }
     pointer.mouseClick(preview, p.x, p.y, Qt.LeftButton, Qt.NoModifier, -1)
     if (root.picks.join() !== "1:3,1:4,open,1:3") { console.error("FAIL a click on a folder under the pointer gave", root.picks.join()); Qt.exit(1); return }
+    // A right-click on an entry is that entry's menu, with nothing picked or entered; off the entries,
+    // the selection's.
+    root.picks = []
+    pointer.mouseMove(preview, p.x, p.y, -1, Qt.NoButton, Qt.NoModifier)
+    pointer.mouseClick(preview, p.x, p.y, Qt.RightButton, Qt.NoModifier, -1)
+    pointer.mouseMove(preview, 2, 2, -1, Qt.NoButton, Qt.NoModifier)
+    pointer.mouseClick(preview, 2, 2, Qt.RightButton, Qt.NoModifier, -1)
+    if (root.picks.join() !== "menu " + root.previewEntry(1, 3).name + ",menu the folder") {
+      console.error("FAIL right-clicks in the preview gave", root.picks.join()); Qt.exit(1); return
+    }
     pointer.mouseWheel(preview, p.x, p.y, Qt.NoButton, Qt.NoModifier, 0, -120, -1)
     scrolled.start()
   } }
@@ -255,9 +269,9 @@ esac
   property var op: null
   property string fileNote: ""
   function note(text) { root.fileNote = text }
-''' + re.search(r"^  function given\(.*$", ops, re.M).group() + "\n" + block(ops, r"  function run\(") + block(ops, r"  function copyPath\(") + block(ops, r"  Process {\n    id: filer") + '''
+''' + block(ops, r"  function run\(") + block(ops, r"  function copyPath\(") + block(ops, r"  Process {\n    id: filer") + '''
   Component.onCompleted: {
-    root.copyPath()
+    root.copyPath([root.sel])
     if (root.fileNote) { console.error("FAIL premature success"); Qt.exit(1) }
   }
   onFileNoteChanged: {

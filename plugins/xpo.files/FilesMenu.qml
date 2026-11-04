@@ -7,10 +7,11 @@ import qs.Ui
 import "FilesActions.js" as FilesActions
 import "FilesIndex.js" as FilesIndex
 
-// The right-click menu. Drawn inside the browser rather than as a popup of its own, so it goes with
-// the browser into its window or the pinned search, and the keyboard never leaves the panel. It acts
-// on the row it opened on, which the panel keeps selected while it is open, or on the marks. A
-// submenu opens beside the row that holds it, and the menus it came from stay open.
+// The right-click menu. Drawn by the panel rather than as a popup of its own: over the whole overlay,
+// or inside its window or the pinned search, and the keyboard never leaves the panel. It acts on the
+// entry it opened on (a row the panel keeps selected while it is open, or an entry of a folder's
+// preview) or on the marks. A submenu opens beside the row that holds it, and the menu it came from
+// stays open.
 Item {
   id: root
 
@@ -23,6 +24,8 @@ Item {
   // The row it opened on, or null for the folder's own menu; or else the marks it acts on.
   property var entry: null
   property var many: null
+  // An entry of a folder's preview rather than a row of the list, which keeps its selection.
+  property bool aside: false
   readonly property var targets: root.many || (root.entry ? [root.entry] : [])
   // What the probe learned of the row, or null until it answers.
   property var probe: null
@@ -100,6 +103,7 @@ Item {
     var marks = root.panel.marks
     root.many = marks.length && (keyboard || (!!entry && !!root.panel.marked[entry.path])) ? marks : null
     root.entry = root.many ? null : entry
+    root.aside = !!root.entry && root.entry !== root.panel.sel
     root.probe = null
     root.stack = []
     root.shut = ""
@@ -168,10 +172,11 @@ Item {
     root.stack = root.stack.slice(0, -1)
     gate.reset()
   }
-  // Del with Trash armed confirms it, wherever the highlight is.
-  function confirm() {
-    var trash = root.topRows.find(r => r.id === "trash")
-    if (trash) root.fire(trash, false, 0)
+  // Del is the menu's Trash, wherever the highlight is; false when the menu has none.
+  function trash() {
+    var row = root.topRows.find(r => r.id === "trash")
+    if (row) root.fire(row, false, 0)
+    return !!row
   }
 
   // The pointer highlights a row of the innermost menu, and resting on one that holds a submenu opens

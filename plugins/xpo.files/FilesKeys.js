@@ -18,8 +18,8 @@ function menuKey(menu, event) {
   case Qt.Key_Left: case Qt.Key_Backspace: menu.back(); return true
   case Qt.Key_Escape: case Qt.Key_Menu: menu.close(); return true
   case Qt.Key_F10: if (event.modifiers & Qt.ShiftModifier) menu.close(); return !!(event.modifiers & Qt.ShiftModifier)
-  // Read before confirming, which disarms it: a Del that trashed must not go on to arm the next row.
-  case Qt.Key_Delete: var armed = menu.armed; if (armed) menu.confirm(); return armed
+  // The menu's own Trash, asked twice as it is, never the selection's.
+  case Qt.Key_Delete: return menu.trash()
   }
   return false
 }

@@ -338,11 +338,13 @@ Item {
     onDoubleClicked: root.panel.openPicked()
   }
 
-  // The preview shows the selection, so a right-click on it is one on the selection.
+  // A right-click on an entry of a folder's preview opens that entry's menu where it is, the list left
+  // as it was; anywhere else the preview is the selection.
   MouseArea {
     anchors.fill: parent
     acceptedButtons: Qt.RightButton
     enabled: !root.panel.editing && !root.panel.naming && !!root.panel.sel
-    onPressed: mouse => root.panel.menu.openAt(root, mouse.x, mouse.y, root.panel.sel)
+    onPressed: mouse => root.panel.menu.openAt(root, mouse.x, mouse.y,
+      root.panel.previewEntry(hovered.column ? hovered.column.index : -1, hovered.line) || root.panel.sel)
   }
 }
