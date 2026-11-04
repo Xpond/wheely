@@ -14,7 +14,8 @@ traps, wiring, and what the tests check.
       FilesPreview.qml  the scroller, and the editor inside it
       FilesVideo.qml    muted video preview, controls and native mpv handoff
       FilesHints.qml    the foot: the legend, and what a held file would do
-      FilesMenu.qml     the right-click menu, drawn inside the card
+      FilesMenu.qml     context, keyboard and pointer state for the right-click menu
+      FilesMenuCard.qml the main menu and submenu cards
       FilesActions.js   the menu as data: the rows an entry gets, and the commands they run
       FilesProcess.qml  a reader whose cancelled output never lands
       FilesIndex.js     snapshotting, filtering, path and text helpers
@@ -118,42 +119,34 @@ falls through to the list's map.
 **The rows are data.** `FilesActions.tree()` takes a context — the entry or the
 marks, what the preview knows of the entry, what the probe found — and returns
 rows with their `run`; `FilesMenu` only draws them. One table serves an entry and
-the marks, which get the rows that take a list. It finds each open menu by submenu
-ids each time rather than keeping the rows it opened, so a submenu the probe fills
-in refills in place, and the node tests read the same table the menu draws.
+the marks, which get the rows that take a list. It resolves the open submenu by
+id so the probe can update its rows in place. The node tests read the same table
+the menu draws.
 
-**Submenus cascade.** Each open menu is a card of its own, and `stack` holds, for
-each submenu open, its row's id and where it opens — past the right edge of the
-menu it came from, level with that row, measured off the row's delegate when it
-opens. No submenu holds another: three cards side by side are wider than a window
-has room for, and a third flipped onto the first, so Taildrop's devices and the
-sort orders are rows. Nothing already open is rebuilt when a submenu opens or
-closes, which is what made moving between menus lag at first:
+**There is one submenu level.** `FilesMenuCard` is instantiated twice: the main
+menu and its submenu stay mounted. `submenu` holds the open row's id, and `subAt`
+holds the position beside that row. The submenu flips left when needed and resets
+its scroll position when opened or switched. Switching submenus leaves the main
+menu's rows intact.
 
-- The cards come from a `ListModel` kept as long as the menus are; a `Repeater`
-  over an array or a count rebuilds every card whenever it changes.
-- A card's rows are a `Repeater` over their count, not over the rows: every
-  change to `stack` hands each card its rows again, and an array handed over
-  again resets whatever views it and rebuilds every row.
-- A card's rows sit in a `Column`, not a `ListView`. The card takes its height
-  from its rows, and a `ListView` builds only the rows its height shows, so it
-  started a row tall and grew a frame at a time. A `Column` places its rows when
-  the frame is drawn, so `beside()` and `reveal()` call `forceLayout()` for a key
-  that comes first.
+A card uses a `Column` so its full height is known without waiting for a
+`ListView` to create offscreen rows. `forceLayout()` places rows before keyboard
+navigation measures them. Its row `Repeater` uses a count so a probe update can
+replace row data without recreating every delegate.
 
-150 ms on a row opens its submenu or, in a menu further out, switches to it. The
-wait is timed from reaching the row — `soon.wait()` restarts only for another row
-— because restarting it on every move held a submenu off for as long as the
-pointer kept moving. The pointer reaching a submenu's card cancels a pending
-switch, which is what lets it cross the outer menu's rows on the way in; a submenu
-closed by a second click on its row stays closed while the pointer is on that row.
+Hover opens or switches submenus after 150 ms, measured from reaching the row.
+Entering the submenu cancels a pending switch; clicking its parent row again
+closes it until the pointer leaves that row.
 
 **The menu holds its row.** Its rows act on the entry it opened on, which
 `beginRename()` and `beginCopyName()` take as `named`, and what they make goes
 beside that entry. `onRowsChanged` keeps the selection on the entry while the menu
 is open, as it does for an edit, and closes the menu when the row is gone. An
 entry of a folder's preview is no row (`aside`): the selection stays on that
-folder, and Edit, which edits the preview, is not offered.
+folder, and Edit, which edits the preview, is not offered. Show changes on a
+deleted child enters its containing folder and selects it before showing the diff.
+Compress and Extract request landing only when their output is in the listed
+folder, so a preview's output cannot select an unrelated same-named entry.
 
 **One probe per opening.** `PROBE` asks in one `sh` whether the file is executable,
 which apps gio has for its content type, and tailscale's Taildrop targets. gio runs

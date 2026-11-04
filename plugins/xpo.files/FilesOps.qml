@@ -128,7 +128,16 @@ Item {
   function activate(e) {
     if (!e || root.panel.editing) return
     if (e.isDir) { root.panel.enter(e.path); return }
-    if (e.missing) { root.panel.diffMode = true; return }
+    if (e.missing) {
+      // A preview's deleted child needs its own selection for the diff reader.
+      if (!root.panel.sel || root.panel.sel.path !== e.path) {
+        root.panel.enter(e.path.slice(0, e.path.lastIndexOf("/")) || "/")
+        root.panel.pending = e.name
+        root.panel.claimPending()
+      }
+      root.panel.diffMode = true
+      return
+    }
     root.opening = e
     opener.command = ["omarchy-open-path", e.path]
     opener.running = true

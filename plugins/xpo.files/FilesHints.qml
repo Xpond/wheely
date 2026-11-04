@@ -32,7 +32,7 @@ Item {
     : root.arming ? [["del", "again to trash " + root.panel.doomedName],
                      ["any other key", "cancel"]]
     : root.panel.menu.open
-      ? [["↑↓", "choose"], ["enter", "do it"]].concat(root.panel.menu.stack.length ? [["←", "back"]] : [],
+      ? [["↑↓", "choose"], ["enter", "do it"]].concat(root.panel.menu.submenu ? [["←", "back"]] : [],
                                                       [["esc", "close"]])
     : root.panel.editing
       ? [["ctrl+s", "save"], ["ctrl+c/x/v", "clipboard"],

@@ -50,6 +50,17 @@ const folder = menu(file("docs", { isDir: true }))
 assert.ok(find(folder, "terminal") && find(folder, "compress") && !find(folder, "convert"))
 assert.equal(ids(find(folder, "share").sub), "localsend clip", "a folder can go by Taildrop")
 assert.equal(ids(menu(file("gone.txt", { missing: true }))), "open path", "a deleted row offers more than its diff and path")
+// A preview's deleted child must become the selection before its diff can be shown.
+const deleted = file("gone.txt", { path: "/home/t/d/sub/gone.txt", missing: true })
+const browsing = { sel: file("sub", { isDir: true }), listedDir: "/home/t/d", diffMode: false,
+  rows: [], index: 0, pending: "", enter(dir) { this.listedDir = dir; this.rows = []; this.index = 0 } }
+browsing.claimPending = method(panelSource, "claimPending", { root: browsing, Qt: { callLater() {} } })
+const opening = { panel: browsing }
+opening.activate = method(opsSource, "activate", { root: opening })
+find(menu(deleted, { panel: browsing, ops: opening }), "open").run()
+assert.deepEqual([browsing.listedDir, browsing.pending, browsing.diffMode], ["/home/t/d/sub", "gone.txt", true])
+browsing.rows = [file("another.txt"), deleted]; browsing.claimPending()
+assert.equal(browsing.rows[browsing.index].path, deleted.path, "Show changes did not land on the deleted child")
 const root = ids(menu(file("/mnt", { path: "/mnt", isDir: true, shortcut: true })))
 for (const id of ["cut", "copy", "rename", "duplicate", "link", "trash", "compress"])
   assert.ok(!root.split(/[ \[\]]/).includes(id), "a root's row offers " + id)
@@ -93,6 +104,13 @@ calls.length = 0
 find(inner, "extract").run(); find(find(inner, "compress").sub, "pack.zip").run()
 assert.deepEqual(calls.map(c => c[1]), [A.extractCommand("/home/t/d/sub/src.tar.gz", "/home/t/d/sub/src"),
   A.compressCommand("/home/t/d/sub", "/home/t/d/sub/src.tar.gz.zip", ["src.tar.gz"])], "a preview's entry wrote into the folder listed")
+assert.ok(calls.every(c => !c[2].land), "a preview's archive operation requested landing in its parent listing")
+for (const dir of ["/home/t/d", "/home/t/d/"]) {
+  const here = menu(file("src.tar.gz"), { dir })
+  calls.length = 0
+  find(here, "extract").run(); find(find(here, "compress").sub, "pack.zip").run()
+  assert.ok(calls.every(c => c[2].land), "an archive operation in the listed folder did not request landing")
+}
 console.log("ok: the menu offers each kind of entry its own rows, and each row runs its verb")
 
 // Marks get the verbs that take many; Taildrop only while every mark is a file.

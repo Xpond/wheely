@@ -154,6 +154,8 @@ esac
   property var host: null
   property bool shown: true
   property alias menu: menu
+  property var mainMenu: null
+  property var subMenu: null
   property var calls: []
   property var marked: ({})
   readonly property var marks: root.rows.filter(e => !!root.marked[e.path])
@@ -218,21 +220,22 @@ esac
     var share = root.at("Share"), cut = root.find(c => c.text === "Cut" && c.visible)[0]
     root.click(share)
     var shown = root.cards(), first = root.at("LocalSend…")
-    if (shown.length !== 2 || menu.stack.map(s => s.id).join() !== "share" || shown[1].x < shown[0].x + shown[0].width / 2
+    root.mainMenu = shown[0]; root.subMenu = shown[1]
+    if (shown.length !== 2 || menu.submenu !== "share" || shown[1].x < shown[0].x + shown[0].width / 2
         || !first || Math.abs(first.y - share.y) > 1)
-      return root.fail("a click on Share did not open its menu beside it: " + JSON.stringify([shown.length, menu.stack, first, share]))
+      return root.fail("a click on Share did not open its menu beside it: " + JSON.stringify([shown.length, menu.submenu, first, share]))
     if (root.find(c => c.text === "Cut" && c.visible)[0] !== cut) return root.fail("opening a submenu rebuilt the menu it came from")
     // A second click on the row closes its submenu, which stays closed while the pointer stays on the row.
     root.click(share)
-    if (menu.stack.length || root.cards().length !== 1) return root.fail("a second click on Share left its submenu open")
+    if (menu.submenu || root.cards().length !== 1) return root.fail("a second click on Share left its submenu open")
     pointer.mouseMove(window.contentItem, share.x + 3, share.y, -1, Qt.NoButton, Qt.NoModifier)
     pointer.mouseMove(window.contentItem, share.x + 6, share.y, -1, Qt.NoButton, Qt.NoModifier)
     shut.start()
   } }
   Timer { id: shut; interval: 300; onTriggered: {
-    if (!menu.open || menu.stack.length) return root.fail("a submenu closed by a click reopened under the pointer")
+    if (!menu.open || menu.submenu) return root.fail("a submenu closed by a click reopened under the pointer")
     root.click(root.at("Share"))
-    if (menu.stack.map(s => s.id).join() !== "share") return root.fail("a third click on Share did not open it")
+    if (menu.submenu !== "share") return root.fail("a third click on Share did not open it")
     // Resting on another row of the menu further out switches to that row's submenu, timed from
     // reaching the row: a pointer still moving within it does not hold it off.
     var pack = root.at("Compress")
@@ -244,12 +247,62 @@ esac
     onTriggered: { jiggle.n++; pointer.mouseMove(window.contentItem, jiggle.at.x + 2 + jiggle.n % 2, jiggle.at.y, -1, Qt.NoButton, Qt.NoModifier) } }
   Timer { id: rested; interval: 300; onTriggered: {
     jiggle.stop()
-    if (menu.stack.map(s => s.id).join() !== "compress" || root.cards().length !== 2)
-      return root.fail("a pointer moving on Compress gave " + menu.stack.map(s => s.id))
+    if (menu.submenu !== "compress" || root.cards().length !== 2)
+      return root.fail("a pointer moving on Compress gave " + menu.submenu)
     // ← closes only the submenu, onto the row that holds it.
     menu.back()
-    if (menu.stack.length || root.cards().length !== 1 || menu.current !== "compress")
+    if (menu.submenu || root.cards().length !== 1 || menu.current !== "compress")
       return root.fail("← did not close just the submenu")
+    // The keyboard reopens onto the first choice and wraps within the submenu.
+    menu.fire(null, true)
+    if (menu.current !== "pack.zip") return root.fail("Right did not enter the submenu's first row")
+    menu.step(-1)
+    if (menu.current !== "pack.tar.zst") return root.fail("Up did not wrap in the submenu")
+    menu.back(); menu.current = "with"; menu.fire()
+    menu.probe = { apps: ["nvim", "omawrite", "imv"], preferred: "nvim", peers: [], executable: false }
+    if (menu.rows.length !== 3) return root.fail("the probe did not fill the open submenu")
+    menu.step(Infinity)
+    if (menu.current !== "with:imv") return root.fail("End did not reach the probe's new row")
+    if (root.cards()[0] !== root.mainMenu || root.cards()[1] !== root.subMenu)
+      return root.fail("switching submenus rebuilt a card")
+    menu.back(); menu.back()
+    if (menu.open) return root.fail("Back from the main menu did not close it")
+    window.height = 300
+    menu.show(Qt.point(0, 0), root.sel, false)
+    geometry.start()
+  } }
+  Timer { id: geometry; interval: 200; onTriggered: {
+    // Both cards fit at each corner, with only the deliberate overlap at their shared edge.
+    for (var x of [0, window.width]) for (var y of [0, window.height]) {
+      menu.at = Qt.point(x, y)
+      for (var row of menu.topRows.filter(r => r.sub)) {
+        menu.openSub(row.id, true)
+        var cards = root.cards(), a = cards[0], b = cards[1]
+        for (var c of cards)
+          if (c.x < 0 || c.y < 0 || c.x + c.width > menu.width || c.y + c.height > menu.height)
+            return root.fail("a menu left the window at " + [x, y, row.id])
+        if (Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > a.margin + 1)
+          return root.fail("a submenu covered its parent at " + [x, y, row.id])
+        menu.back()
+      }
+    }
+    menu.probe = { apps: Array.from({length: 30}, (_, i) => "test-app-" + i), preferred: "", peers: [], executable: false }
+    menu.openSub("with", true); menu.step(Infinity)
+    var view = root.subMenu.children.find(c => c.contentY !== undefined)
+    if (view.contentY <= 0) return root.fail("End did not scroll a tall submenu")
+    // Resting on the already-open parent must not reopen it and lose its scroll or highlight.
+    menu.hover(menu.topRows.find(r => r.id === "with"), false)
+    stayed.start()
+  } }
+  Timer { id: stayed; interval: 200; onTriggered: {
+    if (menu.current !== "with:test-app-29") return root.fail("hovering the open submenu's parent reset it")
+    menu.openSub("share", true)
+    var view = root.subMenu.children.find(c => c.contentY !== undefined)
+    if (view.contentY !== 0) return root.fail("switching submenus retained the old scroll")
+    menu.openSub("with", true)
+    menu.probe = { apps: [], preferred: "", peers: [], executable: false }
+    if (menu.submenu || root.cards().length !== 1) return root.fail("an empty submenu stayed open after the probe")
+    menu.close()
     console.log("PASS"); Qt.quit()
   } }
 ''', {"PATH": str(base) + ":" + os.environ["PATH"]})

@@ -2,39 +2,29 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.Commons
-import qs.Commons as Commons
 import qs.Ui
 import "FilesActions.js" as FilesActions
 import "FilesIndex.js" as FilesIndex
 
-// The right-click menu. Drawn by the panel rather than as a popup of its own: over the whole overlay,
-// or inside its window or the pinned search, and the keyboard never leaves the panel. It acts on the
-// entry it opened on (a row the panel keeps selected while it is open, or an entry of a folder's
-// preview) or on the marks. A submenu opens beside the row that holds it, and the menu it came from
-// stays open.
+// The menu covers the overlay, or stays inside the browser's window or pinned search.
+// It acts on its entry (including a preview's child) or the marks without moving keyboard focus.
 Item {
   id: root
-
   property var panel: null
   property var ops: null
-  // The list, so the keyboard can open the menu under its selected row.
   property var list: null
-
   property bool open: false
-  // The row it opened on, or null for the folder's own menu; or else the marks it acts on.
   property var entry: null
   property var many: null
-  // An entry of a folder's preview rather than a row of the list, which keeps its selection.
   property bool aside: false
   readonly property var targets: root.many || (root.entry ? [root.entry] : [])
-  // What the probe learned of the row, or null until it answers.
   property var probe: null
-  // The submenus open, outermost first: each the id of the row that holds it, and where it opens.
-  property var stack: []
-  // The highlighted row's id, in the innermost menu open.
+  property string submenu: ""
+  property point subAt: Qt.point(0, 0)
   property string current: ""
   property point at: Qt.point(0, 0)
-
+  property string shut: ""
+  readonly property alias pointerGate: gate
   visible: root.open
 
   readonly property var context: {
@@ -55,33 +45,13 @@ Item {
     }
   }
   readonly property var topRows: root.open ? FilesActions.tree(root.context) : []
-  // Each menu open, outermost first, with where it opens. Found by id each time, so a submenu fills
-  // in when the probe answers.
-  readonly property var levels: {
-    var out = [{ rows: root.topRows, x: root.at.x, y: root.at.y, left: 0 }]
-    for (var i = 0; i < root.stack.length; i++) {
-      var node = out[i].rows.find(r => r.id === root.stack[i].id)
-      if (!node || !node.sub) break
-      out.push({ rows: node.sub, x: root.stack[i].x, y: root.stack[i].y, left: root.stack[i].left })
-    }
-    return out
-  }
-  // The innermost menu, which the keyboard moves through.
-  readonly property int depth: root.levels.length - 1
-  readonly property var rows: root.levels[root.depth].rows
+  // Resolve by id so the probe can fill an already-open submenu.
+  readonly property var subRows: (root.topRows.find(r => r.id === root.submenu) || {}).sub || []
+  readonly property var rows: root.subRows.length ? root.subRows : root.topRows
   readonly property var choices: root.rows.filter(r => !r.sep && !r.off)
-  // Trash is armed for exactly what the menu acts on: its paths, joined as FilesOps arms them.
   readonly property bool armed: root.open && root.targets.length > 0
                                 && root.panel.doomed === root.targets.map(t => t.path).join("\n")
-
-  // A card for each menu open, kept while it stays open: a submenu opening adds a card rather than
-  // rebuilding the cards already open.
-  ListModel { id: slots }
-  function fitSlots() {
-    while (slots.count < root.levels.length) slots.append({ n: slots.count })
-    if (slots.count > root.levels.length) slots.remove(root.levels.length, slots.count - root.levels.length)
-  }
-  onLevelsChanged: root.fitSlots()
+  onTopRowsChanged: if (root.submenu && !root.topRows.some(r => r.id === root.submenu && r.sub)) root.submenu = ""
 
   function app(id) {
     var e = DesktopEntries.byId(id)
@@ -105,9 +75,10 @@ Item {
     root.entry = root.many ? null : entry
     root.aside = !!root.entry && root.entry !== root.panel.sel
     root.probe = null
-    root.stack = []
+    root.submenu = ""
     root.shut = ""
     root.at = point
+    mainCard.resetScroll()
     root.open = true
     root.current = keyboard ? root.firstChoice() : ""
     gate.reset()
@@ -122,13 +93,12 @@ Item {
     root.open = false
     root.entry = null
     root.many = null
-    root.stack = []
+    root.submenu = ""
     prober.cancel()
     root.ops.doomed = ""
   }
 
   function firstChoice() { return root.choices.length ? root.choices[0].id : "" }
-  // The arrows wrap; any longer step goes to that end.
   function step(d) {
     var ids = root.choices.map(r => r.id), i = ids.indexOf(root.current)
     if (!ids.length) return
@@ -136,258 +106,86 @@ Item {
     else i = i < 0 ? (d > 0 ? 0 : ids.length - 1) : (i + d + ids.length) % ids.length
     root.current = ids[i]
     gate.reset()
-    cards.itemAt(root.depth).reveal(root.current)
+    var card = root.submenu ? subCard : mainCard
+    card.reveal(root.current)
   }
-  // The submenu of row id, in the menu at depth, opened beside that row and closing any opened
-  // from further in; from the keyboard, onto its first row.
-  function openSub(depth, id, keyboard) {
+  function openSub(id, keyboard) {
     soon.stop()
-    root.stack = root.stack.slice(0, depth).concat([cards.itemAt(depth).beside(id)])
+    root.subAt = mainCard.beside(id)
+    root.submenu = id
+    subCard.resetScroll()
     root.current = keyboard ? root.firstChoice() : ""
     gate.reset()
   }
-  // A click on a row of the menu at depth, or Enter or → (into only) on the highlighted row: its
-  // submenu opens, or it runs. A row that returns true keeps the menu open.
-  function fire(row, into, depth) {
-    var keyboard = depth === undefined
+  // Enter or a click runs a row; Right only opens submenus. A true result keeps the menu open.
+  function fire(row, into, pointer) {
     row = row || root.choices.find(r => r.id === root.current)
     if (!row || row.sep || row.off || (into && !row.sub)) return
     if (!row.sub) { if (!row.run()) root.close(); return }
-    // A second click on the row of an open submenu closes it, and it stays closed while the pointer
-    // stays on the row.
-    if (!keyboard && depth < root.depth && root.stack[depth].id === row.id) {
-      soon.stop()
-      root.stack = root.stack.slice(0, depth)
-      root.current = row.id
-      root.shut = depth + ":" + row.id
-      return
-    }
-    root.openSub(keyboard ? root.depth : depth, row.id, keyboard)
+    if (pointer && root.submenu === row.id) {
+      root.back()
+      root.shut = row.id
+    } else root.openSub(row.id, !pointer)
   }
-  // Out of the innermost submenu onto the row that holds it; out of the menu from the top.
   function back() {
     soon.stop()
-    if (!root.stack.length) { root.close(); return }
-    root.current = root.stack[root.stack.length - 1].id
-    root.stack = root.stack.slice(0, -1)
+    if (!root.submenu) { root.close(); return }
+    root.current = root.submenu
+    root.submenu = ""
     gate.reset()
   }
-  // Del is the menu's Trash, wherever the highlight is; false when the menu has none.
   function trash() {
     var row = root.topRows.find(r => r.id === "trash")
-    if (row) root.fire(row, false, 0)
+    if (row) root.fire(row)
     return !!row
   }
-
-  // The pointer highlights a row of the innermost menu, and resting on one that holds a submenu opens
-  // it, as desktop menus do. Back on a menu further out it switches after the same rest, so a pointer
-  // crossing that menu's rows on its way into a submenu leaves the submenu open.
-  property string shut: ""
-  function hover(depth, row) {
-    var shut = root.shut === depth + ":" + row.id
-    if (!shut) root.shut = ""
-    if (depth === root.depth) {
-      root.current = row.id
-      if (row.sub && !shut) soon.wait(depth, row.id)
-      else soon.stop()
-    } else if (root.stack[depth].id !== row.id) soon.wait(depth, row.id)
+  // Delay switches while crossing the main menu; entering the submenu cancels the switch.
+  function hover(row, fromSub) {
+    if (fromSub) { soon.stop(); if (row) root.current = row.id; return }
+    if (root.shut !== row.id) root.shut = ""
+    if (!root.submenu) root.current = row.id
+    if (root.submenu ? root.submenu !== row.id : row.sub && root.shut !== row.id) soon.wait(row.id)
     else soon.stop()
   }
-  // The rest is timed from reaching the row: the pointer still moving within it does not hold it off.
   Timer {
     id: soon
     interval: 150
-    property int depth: 0
     property string row: ""
-    function wait(depth, row) {
-      if (soon.running && soon.depth === depth && soon.row === row) return
-      soon.depth = depth
-      soon.row = row
+    function wait(id) {
+      if (soon.running && soon.row === id) return
+      soon.row = id
       soon.restart()
     }
     onTriggered: {
-      var row = (root.levels[soon.depth] || { rows: [] }).rows.find(x => x.id === soon.row)
+      var row = root.topRows.find(r => r.id === soon.row)
       if (!row) return
-      if (row.sub) root.openSub(soon.depth, row.id, false)
-      else { root.stack = root.stack.slice(0, soon.depth); root.current = row.id }
+      if (row.sub) root.openSub(row.id, false)
+      else { root.submenu = ""; root.current = row.id }
     }
   }
-
   Connections {
     target: root.panel
     function onShownChanged() { if (!root.panel.shown) root.close() }
     function onListedDirChanged() { root.close() }
     function onNamingChanged() { if (root.panel.naming) root.close() }
   }
-
-  FilesProcess {
-    id: prober
-    onFinished: output => root.probe = FilesActions.readProbe(output)
-  }
-
+  FilesProcess { id: prober; onFinished: output => root.probe = FilesActions.readProbe(output) }
   PointerMoveGate { id: gate; referenceItem: root }
-
-  TextMetrics {
-    id: metrics
-    font.family: Style.font.menuFamily
-    font.pixelSize: Style.font.body
-    text: "0"
-  }
-
-  // Anywhere outside the menus closes them, and nothing beneath takes the click or the wheel.
+  // Outside clicks close the menu without reaching the browser underneath.
   MouseArea {
     anchors.fill: parent
     acceptedButtons: Qt.AllButtons
     onPressed: root.close()
     onWheel: wheel => wheel.accepted = true
   }
-
-  Repeater {
-    id: cards
-    model: slots
-
-    delegate: BorderSurface {
-      id: card
-      required property int index
-      readonly property var level: root.levels[card.index] || { rows: [], x: 0, y: 0, left: 0 }
-      readonly property var rows: card.level.rows
-      readonly property int margin: Style.spacing.sm
-
-      width: Math.min(root.width - margin * 2, Math.round(metrics.advanceWidth * 36) + Style.spacing.rowPaddingX * 2)
-      height: Math.min(root.height - margin * 2, column.height + Style.spacing.sm * 2)
-      // The menu opens at the pointer. A submenu opens beside its row, over the edge of the menu it
-      // came from so no gap lies between them, its first row level with that row; and on the other
-      // side of that menu when there is no room on this one.
-      x: !card.index ? Math.max(margin, Math.min(card.level.x, root.width - width - margin))
-         : card.level.x - Style.spacing.sm + width <= root.width - margin ? card.level.x - Style.spacing.sm
-         : Math.max(margin, card.level.left - width + Style.spacing.sm)
-      y: Math.max(margin, Math.min(card.level.y - (card.index ? Style.spacing.sm : 0), root.height - height - margin))
-      radius: Style.space(16)
-      color: Util.alpha(Commons.Color.menu.background, 0.98)
-      borderSpec: Border.flat(root.panel.edge, Style.spacing.hairline)
-
-      // The column places its rows when the frame is drawn, and a key can come first.
-      function rowItem(id) {
-        column.forceLayout()
-        return lines.itemAt(card.rows.findIndex(r => r.id === id))
-      }
-      // Where the submenu of row id opens: past this menu's right edge, level with the row.
-      function beside(id) {
-        var row = card.rowItem(id)
-        return { id: id, x: card.x + card.width, y: row ? row.mapToItem(root, 0, 0).y : card.y, left: card.x }
-      }
-      // Scrolls a menu taller than the browser to the row the keyboard reached.
-      function reveal(id) {
-        var row = card.rowItem(id)
-        if (!row) return
-        if (row.y < view.contentY) view.contentY = row.y
-        else if (row.y + row.height > view.contentY + view.height) view.contentY = row.y + row.height - view.height
-      }
-
-      // A click between rows stays in the menu, and the pointer reaching a submenu keeps it open.
-      MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.AllButtons
-        hoverEnabled: true
-        onPositionChanged: if (card.index > soon.depth) soon.stop()
-      }
-
-      // Every row built at once, not as a ListView builds them, a screen at a time: the card takes
-      // its height from its rows, so a ListView inside it would start a row tall and grow by frames.
-      Flickable {
-        id: view
-        anchors.fill: parent
-        anchors.margins: Style.spacing.sm
-        clip: true
-        contentHeight: column.height
-        interactive: contentHeight > height
-        boundsBehavior: Flickable.StopAtBounds
-
-        Column {
-          id: column
-          width: view.width
-
-          Repeater {
-            id: lines
-            // A count, not the rows: an array handed over again rebuilds every row, and every
-            // submenu that opens or closes hands each menu its rows again.
-            model: card.rows.length
-
-            delegate: Item {
-              id: line
-              required property int index
-              readonly property var modelData: card.rows[line.index] || ({})
-              // A menu further out keeps lit the row whose submenu is open.
-              readonly property bool lit: card.index < root.depth ? root.stack[card.index].id === line.modelData.id
-                                                                   : root.current === line.modelData.id
-              readonly property bool armedRow: line.modelData.id === "trash" && root.armed
-
-              width: column.width
-              height: line.modelData.sep ? Style.spacing.lg : Style.spacing.popupRowHeight
-
-              Rectangle {
-                visible: !!line.modelData.sep
-                anchors.centerIn: parent
-                width: parent.width - Style.spacing.md * 2
-                height: Style.spacing.hairline
-                color: root.panel.edge
-              }
-
-              // The list's selection capsule; Trash fills red once armed, as its row in the list does.
-              Rectangle {
-                visible: !line.modelData.sep
-                anchors.fill: parent
-                radius: height / 2
-                color: line.armedRow ? Util.alpha(root.panel.danger, 0.30) : line.lit ? root.panel.activeFill
-                       : pointer.containsMouse ? root.panel.hoverFill : "transparent"
-                border.width: line.lit || line.armedRow ? Style.spacing.hairline : 0
-                border.color: line.armedRow ? root.panel.danger : Commons.Color.accent
-              }
-
-              Text {
-                visible: !line.modelData.sep
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: Style.spacing.rowPaddingX
-                anchors.right: hint.left
-                anchors.rightMargin: Style.spacing.md
-                elide: Text.ElideMiddle
-                text: line.modelData.label || ""
-                color: line.modelData.danger ? root.panel.danger
-                       : line.lit ? Commons.Color.menu.selectedText : Commons.Color.menu.text
-                opacity: line.modelData.off ? 0.35 : line.lit || line.modelData.danger ? 1.0 : 0.82
-                font.family: Style.font.menuFamily
-                font.pixelSize: Style.font.body
-              }
-
-              // The key that does the same without the menu, or › for a submenu.
-              Text {
-                id: hint
-                visible: !line.modelData.sep
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.right: parent.right
-                anchors.rightMargin: Style.spacing.rowPaddingX
-                text: line.modelData.sub ? "›" : line.modelData.hint || ""
-                color: line.lit ? Commons.Color.accent : Commons.Color.menu.text
-                opacity: line.lit ? 0.75 : 0.45
-                font.family: Style.font.menuFamily
-                font.pixelSize: line.modelData.sub ? Style.font.body : Style.font.caption
-              }
-
-              // Hover counts only once the pointer itself moves, so the rows that open under a resting
-              // pointer do not claim it.
-              MouseArea {
-                id: pointer
-                anchors.fill: parent
-                enabled: !line.modelData.sep && !line.modelData.off
-                hoverEnabled: true
-                onPositionChanged: mouse => { if (gate.moved(pointer, mouse)) root.hover(card.index, line.modelData) }
-                onClicked: root.fire(line.modelData, false, card.index)
-              }
-            }
-          }
-        }
-      }
-    }
+  FilesMenuCard { id: mainCard; menu: root; rows: root.topRows; at: root.at }
+  FilesMenuCard {
+    id: subCard
+    menu: root
+    rows: root.subRows
+    visible: rows.length > 0
+    isSub: true
+    at: root.subAt
+    parentLeft: mainCard.x
   }
 }

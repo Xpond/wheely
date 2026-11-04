@@ -125,7 +125,9 @@ function tree(c) {
   var list = c.many || [e], named = o.label(list), one = c.many ? null : e
   // One entry's own folder, which a folder's preview shows rather than the list; the marks' is the
   // folder listed, whose typed path keeps its trailing slash.
-  var dir = one ? e.path.slice(0, e.path.lastIndexOf("/")) || "/" : String(c.dir).replace(/(.)\/+$/, "$1")
+  var here = String(c.dir).replace(/(.)\/+$/, "$1")
+  var dir = one ? e.path.slice(0, e.path.lastIndexOf("/")) || "/" : here
+  var land = dir === here
   var paths = list.map(function (t) { return t.path }), files = list.every(function (t) { return !t.isDir })
   // A root's row stands for the root itself: it cannot be held, renamed, archived or trashed.
   var own = !one || !one.shortcut, file = !!one && !one.isDir, media = file && (c.image || c.video)
@@ -163,13 +165,13 @@ function tree(c) {
     media && row("wallpaper", "Set as wallpaper", "", function () {
       o.run(["omarchy-theme-bg-set", e.path], { done: "wallpaper set", fail: "could not set the wallpaper" }) }),
     stem && row("extract", "Extract here", "", function () {
-      o.run(extractCommand(e.path, dir + "/" + stem), { name: stem, land: true, done: "extracted " + e.name, fail: "extract failed" }) }),
+      o.run(extractCommand(e.path, dir + "/" + stem), { name: stem, land: land, done: "extracted " + e.name, fail: "extract failed" }) }),
     // Many go into one archive, named after their folder.
     own && sub("compress", "Compress", [".zip", ".tar.zst"].map(function (ext) {
       var name = (one ? e.name : dir.slice(dir.lastIndexOf("/") + 1)) + ext
       return row("pack" + ext, name, "", function () {
         o.run(compressCommand(dir, dir + "/" + name, list.map(function (t) { return t.name })),
-              { name: name, land: true, done: "compressed " + named, fail: "compress failed" }) }) })),
+              { name: name, land: land, done: "compressed " + named, fail: "compress failed" }) }) })),
     file && c.script && !c.executable && row("exec", "Make executable", "", function () {
       o.run(["chmod", "+x", "--", e.path], { done: "made " + e.name + " executable", fail: "could not make it executable" }) }),
     SEP,
