@@ -72,17 +72,28 @@ const listSource = read("plugins/xpo.files/FilesList.qml")
 // Hover only tints; a click selects and a double click opens, neither while naming or editing.
 assert.doesNotMatch(listSource, /onPositionChanged|onEntered/, "hovering a row selects it")
 const mouse = name => new Function("root", "entry", listSource.match(new RegExp(name + ":\\s*([^\\n]+)"))[1])
+assert.match(listSource, /onClicked: mouse => root\.click\(entry\.index, mouse\.modifiers\)/)
 const activated = [], row = { index: 4, modelData: { name: "picked" } }
-const clicked = { index: 0, pending: "gone", naming: "", editing: false }
+const rows = Array.from({ length: 6 }, (_, i) => ({ name: "r" + i, path: "/d/r" + i }))
+const marking = () => ({ marked: {}, mark(list, on) { list.forEach(e => { if (on) this.marked[e.path] = true; else delete this.marked[e.path] }) } })
+const clicked = Object.assign({ index: 0, pending: "gone", naming: "", editing: false, rows, sel: rows[0] }, marking())
 const operations = { activate: entry => activated.push(entry) }
-mouse("onClicked")({ operations, panel: clicked }, row)
-assert.deepEqual([clicked.index, clicked.pending, activated], [4, "", []], "a click must select, and only select")
+const click = (panel, i, modifiers) =>
+  method(listSource, "click", { root: { panel }, Qt: { ControlModifier: 1 << 26, ShiftModifier: 1 << 25 } })(i, modifiers || 0)
+click(clicked, 4)
+assert.deepEqual([clicked.index, clicked.pending, activated, clicked.marked], [4, "", [], {}], "a click must select, and only select")
+click(clicked, 1, 1 << 26)
+assert.deepEqual([clicked.index, Object.keys(clicked.marked)], [1, ["/d/r1"]], "a ctrl+click must select and mark its row")
+click(clicked, 1, 1 << 26)
+assert.deepEqual(clicked.marked, {}, "a second ctrl+click must unmark the row")
+click(clicked, 3, 1 << 25)
+assert.deepEqual([clicked.index, Object.keys(clicked.marked)], [3, ["/d/r1", "/d/r2", "/d/r3"]], "a shift+click marks from the selection")
 mouse("onDoubleClicked")({ operations, panel: clicked }, row)
 assert.deepEqual(activated, [row.modelData], "a double click does not open the row")
 for (const busy of [{ naming: "rename" }, { editing: true }]) {
-  const held = Object.assign({ index: 0, pending: "", naming: "", editing: false }, busy)
-  mouse("onClicked")({ operations, panel: held }, row)
-  assert.equal(held.index, 0, "a click moved the selection away from the row being " + (held.naming ? "renamed" : "edited"))
+  const held = Object.assign({ index: 0, pending: "", naming: "", editing: false, rows, sel: rows[0] }, marking(), busy)
+  click(held, 4, 1 << 26)
+  assert.deepEqual([held.index, held.marked], [0, {}], "a click moved the selection away from the row being " + (held.naming ? "renamed" : "edited"))
 }
 mouse("onDoubleClicked")({ operations, panel: { naming: "rename" } }, row)
 assert.equal(activated.length, 1, "a double click opened a row mid-rename")
@@ -137,10 +148,11 @@ assert.deepEqual(scrolls, [7, -7, "to0", "to1", "x3", "x-3"])
 assert.equal(browser.index, 99, "no shifted key reaches the list")
 // Ctrl+Enter is a terminal in the folder being browsed; Enter alone still opens the selection.
 const browsed = []
+const terminalScope = { root: { panel: { dir: "/home/test/My Dir", close: () => browsed.push("closed") } },
+  Quickshell: { execDetached: argv => browsed.push([...argv]) } }
+terminalScope.root.launch = method(read("plugins/xpo.files/FilesOps.qml"), "launch", terminalScope)
 const terminalOps = { doomed: "", activate: () => browsed.push("open"),
-  terminal: method(read("plugins/xpo.files/FilesOps.qml"), "terminal", {
-    root: { panel: { dir: "/home/test/My Dir", close: () => browsed.push("closed") } },
-    Quickshell: { execDetached: argv => browsed.push([...argv]) } }) }
+  terminal: method(read("plugins/xpo.files/FilesOps.qml"), "terminal", terminalScope) }
 const browserKey = keymap("plugins/xpo.files/FilesKeys.js", browser, terminalOps, preview)
 browserKey("Key_Return", 1 << 26); browserKey("Key_Return")
 assert.deepEqual(browsed, ["closed", ["uwsm-app", "--", "xdg-terminal-exec", "--dir=/home/test/My Dir"], "open"])

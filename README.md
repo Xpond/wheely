@@ -22,8 +22,8 @@ lock-screen designs. It sits alongside Omarchy's own menu and Walker rather than
   open shell panel, otherwise the active window. Its settings are search rows too:
   `wheely shortcut` changes the key that opens it. Type `help` to search the manual, every
   key and setting in one place. See [`docs/wheel.md`](docs/wheel.md).
-- **Files**: a keyboard-driven directory browser with previews, opened from
-  the wheel. See [`docs/files.md`](docs/files.md).
+- **Files**: a keyboard-driven directory browser with previews and a right-click
+  menu that changes with the file type, opened from the wheel. See [`docs/files.md`](docs/files.md).
 - **Centered panels**: bar panels open centered over a blurred desktop, unless
   the wheel's Centered panels setting is off. See
   [`docs/centered-panels.md`](docs/centered-panels.md).
