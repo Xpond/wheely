@@ -21,14 +21,14 @@ try {
     calls.push({ command: [...command], status: result && result.status })
   }
   const scope = { root: ops, doomArmed: { restart() {} } }
-  for (const name of ["guarded", "inHere", "hold", "paste", "remove"])
+  for (const name of ["label", "guarded", "inHere", "hold", "pasteCommand", "paste", "remove"])
     ops[name] = method(opsSource, name, scope)
   const commitName = method(panelSource, "commitName", { root: panel, ops })
   for (const move of [false, true]) {
     const name = (move ? "move" : "copy") + " ' $(touch injected).txt"
     const src = path.join(incoming, name), dst = path.join(destination, name)
     fs.writeFileSync(src, "source bytes"); fs.writeFileSync(dst, "destination bytes")
-    ops.hold({ path: src, name }, move)
+    ops.hold([{ path: src, name }], move)
     ops.paste()
     assert.equal(calls.at(-1).status, 17, "existing paste destination must be refused")
     assert.equal(fs.readFileSync(src, "utf8"), "source bytes")
@@ -42,7 +42,7 @@ try {
   const original = path.join(destination, "original.txt")
   const occupied = path.join(destination, "occupied.txt")
   fs.writeFileSync(original, "original"); fs.writeFileSync(occupied, "occupied")
-  panel.sel = { path: original, name: "original.txt" }
+  panel.sel = panel.named = { path: original, name: "original.txt" }
   panel.naming = "rename"; panel.renameTo = "occupied.txt"
   commitName()
   assert.equal(calls.at(-1).status, 17)
@@ -75,7 +75,7 @@ try {
     if (operation === "move") {
       const src = path.join(incoming, name)
       fs.writeFileSync(src, "keep source")
-      ops.hold({ path: src, name }, true); ops.paste()
+      ops.hold([{ path: src, name }], true); ops.paste()
       assert.equal(calls.at(-1).status, 17, "move must refuse a dangling destination symlink")
       assert.equal(fs.readFileSync(src, "utf8"), "keep source")
     } else {
@@ -88,23 +88,23 @@ try {
   const selected = { path: occupied, name: "occupied.txt" }
   panel.sel = selected
   const before = calls.length
-  ops.remove()
+  ops.remove([panel.sel])
   assert.equal(calls.length, before, "first Delete must only arm confirmation")
   assert.equal(ops.doomed, occupied)
   panel.sel = { path: path.join(destination, "new.txt"), name: "new.txt" }
-  ops.remove()
+  ops.remove([panel.sel])
   assert.equal(calls.length, before, "changing selection requires its own confirmation")
-  ops.remove()
+  ops.remove([panel.sel])
   assert.deepEqual(calls.at(-1).command, ["gio", "trash", "--", panel.sel.path])
   assert.equal(ops.doomed, "")
   panel.editing = true
   const after = calls.length
-  ops.remove(); ops.remove()
+  ops.remove([panel.sel]); ops.remove([panel.sel])
   assert.equal(calls.length, after, "Delete must not trash while editing")
   // A root's row at home is a way in, not a file: it cannot be held, renamed or trashed.
   const place = { path: "/mnt", name: "/mnt", isDir: true, shortcut: true }
   panel.editing = false; panel.sel = place; ops.held = null
-  ops.hold(place, true); ops.remove(); ops.remove()
+  ops.hold([place], true); ops.remove([place]); ops.remove([place])
   const naming = { sel: place, editing: false, naming: "" }
   method(panelSource, "beginRename", { root: naming })()
   assert.deepEqual([ops.held, calls.length, naming.naming], [null, after, ""], "a root's row was held, trashed or renamed")

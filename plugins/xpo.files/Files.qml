@@ -78,6 +78,8 @@ Item {
     interval: 60
     onTriggered: root.settledSel = root.sel
   }
+  // The menu shows what the preview knows of its row, so it settles at once.
+  function settleNow() { settle.stop(); root.settledSel = root.sel }
   readonly property var crumbs: FilesIndex.crumbs(root.listedDir, root.home)
 
   readonly property color edge: Util.alpha(Commons.Color.menu.text, 0.13)
@@ -111,10 +113,14 @@ Item {
   readonly property int lineHeight: Math.round(Style.font.subtitle * 1.75)
 
   readonly property int previewLimit: 262144
-  readonly property bool showsImage: !!root.settledSel && !root.settledSel.isDir && !root.settledSel.missing
-                                     && FilesIndex.isImage(root.settledSel.name)
-  readonly property bool showsVideo: !!root.settledSel && !root.settledSel.isDir && !root.settledSel.missing
-                                     && FilesIndex.isVideo(root.settledSel.name)
+  // What an entry previews as: "image", "video" or "". A handler of settledSel asks it of the entry,
+  // since it runs before the bindings below and would see the last entry's answer.
+  function media(e) {
+    return !e || e.isDir || e.missing ? ""
+      : FilesIndex.isImage(e.name) ? "image" : FilesIndex.isVideo(e.name) ? "video" : ""
+  }
+  readonly property bool showsImage: root.media(root.settledSel) === "image"
+  readonly property bool showsVideo: root.media(root.settledSel) === "video"
   property string imageDims: ""
   FilesProcess {
     id: measurer
@@ -203,6 +209,8 @@ Item {
     // Only rows that are there are cleared: at startup the first read of listedDir comes from inside
     // listedEntries, which a fresh [] would re-enter.
     if (root.entries.length) root.entries = []
+    // Marks are this folder's.
+    if (Object.keys(root.marked).length) root.marked = ({})
     root.readChanges()
     root.checkAccess(root.listedDir)
   }
@@ -225,7 +233,7 @@ Item {
   function readDiff() {
     differ.cancel()
     var e = root.settledSel
-    root.diffLoading = !!e && !e.isDir && !root.showsImage && !root.showsVideo && !!root.changes[e.name]
+    root.diffLoading = !!e && !e.isDir && !root.media(e) && !!root.changes[e.name]
     if (!root.diffLoading) { root.diffText = ""; return }
     differ.start(FilesIndex.diffCommand(root.listedDir, e.name, root.gitScript))
   }
@@ -274,7 +282,7 @@ Item {
     root.dirEntries = root.childEntries()
     root.imageDims = ""
     measurer.cancel()
-    if (root.showsImage)
+    if (root.media(root.settledSel) === "image")
       measurer.start(["identify", "-ping", "-format", "%w×%h\n", root.settledSel.path])
   }
 
@@ -512,10 +520,14 @@ Item {
   property string naming: ""
   property string renameTo: ""
   property int renameAt: 0
+  // What a rename, duplicate or link names: the selection, or the entry a menu was opened on.
+  property var named: null
 
-  function beginRename() {
-    if (!root.sel || root.sel.missing || root.sel.shortcut || root.editing) return
-    root.renameTo = root.sel.name
+  function beginRename(e) {
+    e = e || root.sel
+    if (!e || e.missing || e.shortcut || root.editing) return
+    root.named = e
+    root.renameTo = e.name
     var dot = root.renameTo.lastIndexOf(".")
     root.renameAt = dot > 0 ? dot : root.renameTo.length
     root.naming = "rename"
@@ -526,6 +538,19 @@ Item {
     root.renameTo = ""
     root.renameAt = 0
     root.naming = "new"
+  }
+
+  // Duplicate and Make link name what they make in the same field: the name with "copy" or "link"
+  // before its extension, the caret after the word.
+  function beginCopyName(verb, e) {
+    e = e || root.sel
+    if (!e || e.missing || e.shortcut || root.editing) return
+    var name = e.name, dot = e.isDir ? -1 : name.lastIndexOf(".")
+    var cut = dot > 0 ? dot : name.length
+    root.named = e
+    root.renameTo = name.slice(0, cut) + " " + verb + name.slice(cut)
+    root.renameAt = cut + verb.length + 1
+    root.naming = verb
   }
 
   function renameKey(event) {
@@ -583,17 +608,53 @@ Item {
                { name: name, land: true, done: "made " + name, fail: "could not make " + name })
       return
     }
-    var e = root.sel
+    var e = root.named
     if (!e || name === e.name) return
-    ops.run(ops.guarded("mv", e.path, ops.inHere(name)),
-             { name: name, land: true, done: "renamed to " + name, fail: "rename failed" })
+    // A rename moves the entry; a duplicate copies it and a link points at it, each beside it, which
+    // lands in view only in the folder listed.
+    var how = { rename: ["mv", "renamed to ", "rename failed"], copy: ["cp -r", "duplicated as ", "duplicate failed"],
+                link: ["ln -s", "linked as ", "link failed"] }[verb]
+    var to = e.path.slice(0, e.path.lastIndexOf("/") + 1) + name
+    ops.run(ops.guarded(how[0], e.path, to),
+             { name: name, land: to === ops.inHere(name), done: how[1] + name, fail: how[2] })
   }
+
+  // Marks pick several entries for the verbs that take many. They are paths in the folder listed,
+  // kept through the filter and dropped with the folder; the verbs take them, or the selection.
+  property var marked: ({})
+  readonly property var marks: root.listedEntries.filter(e => !e.missing && !!root.marked[e.path])
+  readonly property int hiddenMarks: {
+    var visible = new Set(root.rows.map(e => e.path))
+    return root.marks.filter(e => !visible.has(e.path)).length
+  }
+  readonly property var targets: root.marks.length ? root.marks : root.sel ? [root.sel] : []
+  function mark(list, on) {
+    var next = Object.assign({}, root.marked)
+    list.forEach(e => { if (e && !e.missing && !e.shortcut) { if (on) next[e.path] = true; else delete next[e.path] } })
+    root.marked = next
+  }
+  // Ctrl+Space marks or unmarks the selection and steps on, so a run of rows is a run of presses.
+  function toggleMark() {
+    if (!root.sel) return
+    root.mark([root.sel], !root.marked[root.sel.path])
+    root.move(1)
+  }
+  // Ctrl+A marks every row shown, or unmarks them when they all are.
+  function markAll() {
+    var free = root.rows.filter(e => !e.missing && !e.shortcut)
+    root.mark(free, !free.every(e => root.marked[e.path]))
+  }
+  function unmarkAll() { root.marked = ({}) }
+  // A Trash armed for some marks must not trash others.
+  onMarkedChanged: ops.doomed = ""
+
   FilesOps { id: ops; panel: root }
   readonly property alias held: ops.held
   readonly property alias fileNote: ops.fileNote
   readonly property alias doomed: ops.doomed
   readonly property alias doomedName: ops.doomedName
   readonly property alias danger: ops.danger
+  readonly property alias menu: menu
 
   FolderListModel {
     id: listedFolder
@@ -671,11 +732,15 @@ Item {
   }
 
   onRowsChanged: {
-    // A folder change shifts the rows; an open edit or rename stays on its file.
-    var held = (root.editing || root.naming === "rename") && root.settledSel
-      ? root.rows.findIndex(e => e.path === root.settledSel.path) : -1
+    // A folder change shifts the rows; an open edit, naming or menu stays on its file, and a menu on an
+    // entry of a folder's preview on that folder.
+    var keep = root.menu.open ? (root.menu.aside ? root.settledSel : root.menu.entry)
+      : root.editing || (root.naming && root.naming !== "new") ? root.settledSel : null
+    var held = keep ? root.rows.findIndex(e => e.path === keep.path) : -1
     if (held >= 0) root.index = held
     else if (root.index >= root.rows.length) root.index = 0
+    // A row gone from under its menu takes the menu with it.
+    if (held < 0 && root.menu.open && root.menu.entry && !root.menu.aside) root.menu.close()
     root.claimPending()
   }
 
@@ -806,6 +871,17 @@ Item {
           id: hints
           panel: root
           anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
+        }
+
+        // Last, so it draws over both panes and the legend. Over the overlay it has the whole screen, so
+        // a submenu has room beside the card; a window or the pinned search keeps it inside.
+        FilesMenu {
+          id: menu
+          parent: root.host || root.windowed ? keys : surface.contentItem
+          anchors.fill: parent
+          panel: root
+          ops: ops
+          list: list.view
         }
       }
     }

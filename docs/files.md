@@ -42,6 +42,9 @@ red, and a save is confirmed by reading the file back.
 | `Ctrl+Shift+N` | make a file or a folder here — the name says which, see [Moving files](#moving-files) |
 | `Del` | trash the selection, asked twice |
 | `Ctrl+Y` | copy the selection's path to the clipboard |
+| `Menu` `Shift+F10` | the menu for the selection: every verb here and more, by what it is — see [The menu](#the-menu) |
+| `Ctrl+Space` | mark the selection, or unmark it, and step on — see [Marking several](#marking-several) |
+| `Ctrl+A` | mark every row shown, or unmark them when they all are |
 | `Ctrl+Enter` | open a terminal in the directory you are in |
 | `Ctrl+O` | order by name, then newest, then largest — see [Ordering](#ordering) |
 | `Ctrl+H` | show hidden files |
@@ -51,7 +54,7 @@ red, and a save is confirmed by reading the file back.
 | `Ctrl+B` | slide the list out so the preview takes its width, and back |
 | `Ctrl+D` | show a changed file's diff instead of its contents, and back — see [Uncommitted changes](#uncommitted-changes) |
 | `F1` | show every key in the legend, or only the everyday ones |
-| `Esc` | clear the field, then close |
+| `Esc` | unmark, then clear the field, then close |
 
 Shift is the one modifier that means "the other pane", and while the list is
 shown it is the whole rule: every bare key drives the list, every shifted one
@@ -67,12 +70,13 @@ once the list is out: reflowing a Markdown table every frame of the slide would
 stutter. The choice holds across the overlay and its windows while the shell runs.
 
 The mouse works too — hover only tints a row, a click selects it, a double click
-opens it, a click outside the card closes it, and the wheel scrolls whichever
-pane is under the pointer. In a folder's preview, the entry under the pointer is
-tinted too; a click on it enters the folder with that entry selected, and a
-double click opens it. The click area lies over the whole preview, so the second
-click counts whatever the preview shows by then; dragging no longer scrolls the
-preview, the wheel and `Shift`+arrows do.
+opens it, a right-click opens [the menu](#the-menu), `Ctrl`+click and
+`Shift`+click [mark](#marking-several), a click outside the card closes it, and
+the wheel scrolls whichever pane is under the pointer. In a folder's preview, the
+entry under the pointer is tinted too; a click on it enters the folder with that
+entry selected, and a double click opens it. The click area lies over the whole
+preview, so the second click counts whatever the preview shows by then; dragging
+no longer scrolls the preview, the wheel and `Shift`+arrows do.
 
 ## Home is the floor
 
@@ -288,7 +292,7 @@ waiting three seconds — a second
 `Del` can never land on a row you did not aim it at.
 
 **Nothing is ever overwritten.** The destination name is tested before the
-command runs:
+command runs, as a rename runs it here and a paste for each entry it places:
 
     sh -c 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; exec mv -- "$1" "$2"' files <src> <dst>
 
@@ -322,6 +326,58 @@ so both cross the same collision test and come back as the same `17`.
 **`Ctrl+Y` copies the selection's path**, through `wl-copy` with the path as an
 argument rather than spliced into the script — the discipline the move commands
 are written with.
+
+## Marking several
+
+`Ctrl+Space` toggles a mark and steps on; `Ctrl+A` toggles marks for every row
+shown. `Ctrl`+click toggles one row; `Shift`+click marks a range. The header counts
+the marks and how many the current filter hides.
+
+`Ctrl+X`, `Ctrl+C`, `Ctrl+Y` and `Del` act on **all marks, including hidden ones**.
+Trash confirmation names the hidden count, such as `5 items (3 hidden)`.
+`Esc` unmarks first; leaving the folder drops the marks. Enter, `F2` and `Ctrl+E`
+still act on the selected row.
+
+Paste skips occupied names and reports collisions or failures. A move that
+partly succeeds clears its hold; select the remaining files to retry. If nothing
+moved, the hold stays.
+
+## The menu
+
+Right-click a row or an entry in a folder's preview for its actions. `Menu` or
+`Shift+F10` opens the selection's menu. Right-click the path or below the rows
+for folder actions: New, Paste, terminal, Nautilus, hidden files, sorting and Pop
+out. These are also under **Current folder** on existing entries.
+
+| selection | actions added |
+|---|---|
+| existing entry | Open with, Show in Nautilus, Share, Compress, Duplicate, Make link |
+| image | Copy image, Convert for sharing, Set as wallpaper |
+| video | Convert for sharing, Set as wallpaper |
+| archive | Extract here |
+| script | Run in a terminal, or Make executable |
+| editable text | Edit |
+| folder | Open in a terminal; move or copy held files into it |
+| deleted entry | Show changes, Copy path |
+
+The marks' menu opens from the keyboard or on a marked row. It offers batch
+sharing, compression, cut/copy, paths and trash, and closes if its targets change.
+Right-click an unmarked row for that entry alone.
+
+**Share** offers LocalSend, online Taildrop devices for files, and copying files
+to the clipboard as attachments. **Convert for sharing** makes a smaller copy
+beside the original, copies it to the clipboard and notifies when done.
+
+Use arrows or Tab to choose, Enter to run, Right to open a submenu, Left or
+Backspace to return, and Esc to close. Submenus also open on click or hover.
+`Del` only acts on the menu's Trash; without that action it does nothing. Other
+keys close the menu and retain their usual behavior.
+
+**Trash asks twice**, including hidden marks. Naming and archive operations refuse
+occupied destinations. Duplicate and Make link let you choose the new name;
+outputs stay beside the entry, including entries in a folder's preview.
+**Extract here** creates a folder named after the archive, avoids nesting a
+same-named folder twice, and removes scratch files after a failure.
 
 ## Editing
 

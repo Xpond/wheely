@@ -14,6 +14,9 @@ traps, wiring, and what the tests check.
       FilesPreview.qml  the scroller, and the editor inside it
       FilesVideo.qml    muted video preview, controls and native mpv handoff
       FilesHints.qml    the foot: the legend, and what a held file would do
+      FilesMenu.qml     context, keyboard and pointer state for the right-click menu
+      FilesMenuCard.qml the main menu and submenu cards
+      FilesActions.js   the menu as data: the rows an entry gets, and the commands they run
       FilesProcess.qml  a reader whose cancelled output never lands
       FilesIndex.js     snapshotting, filtering, path and text helpers
       FilesKeys.js      the key map: which verb a key means
@@ -84,7 +87,8 @@ want; `--literal-pathspecs` keeps `a*b` from diffing `axb` too.
 ## Writing
 
 **One process, one contract.** Every write goes through the same `Process` and
-the same exit codes: `0` done, `17` the name is taken, anything else failed.
+the same exit codes: `0` done, `17` names taken with nothing pasted, `18` partial
+paste with collisions, `19` partial paste with failures, anything else failed.
 `op` carries what to say about each outcome, so move, copy, rename and delete
 share one success path and one failure path rather than three of each.
 
@@ -100,6 +104,99 @@ made an edit at the foot of a file come back to the middle of it. `keepPlace()`
 stores the fraction of the way down, `takePlace()` applies it when the scroller
 re-measures (at the moment the mode flips, `contentHeight` is still the other
 mode's), and the caret lands on the line you were reading.
+
+## The menu
+
+**It is drawn in the panel, not as a popup window.** An xdg-popup under a layer
+surface that holds the keyboard exclusively would need keyboard routing of its own,
+and a case each for the overlay, the window and the pinned search. In a window or
+the pinned search it is the last child of `keys`, reparented with everything else;
+over the overlay it covers the whole surface instead, so a submenu has the screen
+beside the card rather than only the card. `FilesKeys` hands it keys the way it
+hands them to naming or editing: it takes its own, and any other closes it and
+falls through to the list's map.
+
+**The rows are data.** `FilesActions.tree()` takes a context — the entry or the
+marks, what the preview knows of the entry, what the probe found — and returns
+rows with their `run`; `FilesMenu` only draws them. One table serves an entry and
+the marks, which get the rows that take a list. It resolves the open submenu by
+id so the probe can update its rows in place. The node tests read the same table
+the menu draws.
+
+**There is one submenu level.** `FilesMenuCard` is instantiated twice: the main
+menu and its submenu stay mounted. `submenu` holds the open row's id, and `subAt`
+holds the position beside that row. The submenu flips left when needed and resets
+its scroll position when opened or switched. Switching submenus leaves the main
+menu's rows intact.
+
+A card uses a `Column` so its full height is known without waiting for a
+`ListView` to create offscreen rows. `forceLayout()` places rows before keyboard
+navigation measures them. Its row `Repeater` uses a count so a probe update can
+replace row data without recreating every delegate.
+
+Hover opens or switches submenus after 150 ms, measured from reaching the row.
+Entering the submenu cancels a pending switch; clicking its parent row again
+closes it until the pointer leaves that row.
+
+**The menu holds its row.** Its rows act on the entry it opened on, which
+`beginRename()` and `beginCopyName()` take as `named`, and what they make goes
+beside that entry. `onRowsChanged` keeps the selection on the entry while the menu
+is open, as it does for an edit, and closes the menu when the row is gone. An
+entry of a folder's preview is no row (`aside`): the selection stays on that
+folder, and Edit, which edits the preview, is not offered. Show changes on a
+deleted child enters its containing folder and selects it before showing the diff.
+Compress and Extract request landing only when their output is in the listed
+folder, so a preview's output cannot select an unrelated same-named entry.
+
+**Probe only what the menu uses.** `probeCommand()` queries executability and
+MIME applications for a single existing entry. It asks for Taildrop targets only
+when all targets are files; a marks menu containing folders needs no probe.
+gio runs under `LC_ALL=C` because its headings are translated. A Taildrop target's
+line carries a third field only when the device is offline.
+
+**Open with launches as Omarchy's own launcher does** (`AppLibrary.launch`): a
+terminal app through `omarchy-launch-tui`, with its command less the field codes,
+and anything else through `uwsm-app -- gtk-launch`, which resolves ids uwsm rejects.
+
+**`Del` in the menu is its Trash**, armed or not, so a menu on one entry never
+arms another: the selection, or the marks. A menu without Trash consumes `Del`
+without acting.
+
+**Extract makes its scratch folder with `mkdir`, not `mktemp -d`,** whose 0700
+would stay with the folder when it is renamed into place. **Convert checks its
+name first** because `omarchy-transcode` would overwrite with `magick`: the check
+is the process `FilesOps` runs, and its `then` starts the transcoder detached only
+once the check has passed.
+
+## Marks
+
+**Marks are paths, and `marks` is read off the listing.** `marked` maps a path to
+`true`; `marks` filters live `listedEntries` by it, excluding Git-deleted rows. So a filter hides marks without
+dropping them, a file moved or trashed drops out of `marks` on its own, and only
+leaving the folder clears the map. `targets` — the marks, or else the selection —
+is what `Ctrl+X`/`C`/`Y` and `Del` hand to `FilesOps`, whose verbs take a list.
+`hiddenMarks` counts targets absent from `rows`; the header, menu and trash
+confirmation show that count. A marks menu closes when its target paths change.
+
+**What Trash arms is the list's paths, joined by newlines.** The second press
+trashes only when it names the same list, the rows red are the rows in that
+string, and any change to the marks disarms it (`onMarkedChanged`) — a `Ctrl`+click
+on the row already selected changes the marks without moving the selection, which
+would otherwise leave a Trash armed for a different list.
+
+**A paste is one process**, `pasteCommand()`, for one entry or many. It goes on past
+a name already taken — its own, when pasted where it already is. `17` means every
+name was, so nothing went and the hold stays. `18` means some names collided;
+`19` means some entries succeeded and others failed. Both clear a move hold,
+since it contains paths already moved. Total failure preserves the hold for retry.
+
+`node tests/files-menu.js` holds each kind of entry to its rows, the marks to theirs,
+drives the menu's and the marks' keys, and runs compress, extract, convert, duplicate,
+link, paste-into and a paste of many against disposable files; `menu-pointer` in
+`python3 tests/runtime.py` right-clicks and `Ctrl`+clicks the real list and opens its
+submenus, with gio and tailscale stood in for. `tests/files-failures.js` covers
+partial operations, extraction cleanup after failed renames, hidden target counts
+and which commands each probe invokes.
 
 ## Highlighting and Markdown
 
@@ -264,6 +361,13 @@ on its way to `Ready`, so ungated the model was snapshotted twice per directory
 and flashed empty in between. `onCountChanged` is still needed for a file
 appearing under an open panel, which raises `count` with the model already
 `Ready`.
+
+**A change handler sees the bindings on its property still on the last value.**
+QML calls a property's handlers before the bindings that read it, which connect
+later, so `onSettledSelChanged` reading `showsImage` got the previous entry's
+answer: an image after a text file was never measured, and an image giving way to
+nothing read the path of `null`. The handler and `readDiff()` ask `media()` of the
+entry itself, and the bindings ask the same function, so the two cannot disagree.
 
 ## Wiring
 

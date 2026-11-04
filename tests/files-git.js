@@ -116,9 +116,9 @@ const calls = [], e = { name: "gone", path: "/tmp/gone", missing: true, isDir: f
 const panel = { sel: e, editing: false, diffMode: false, enter: p => calls.push(p) }
 const ops = { held: null, doomed: "", panel, note() {}, run: () => calls.push("operation") }
 const scope = { root: ops, opener: {}, doomArmed: { restart() {} } }
-for (const name of ["hold", "remove", "activate"])
+for (const name of ["label", "hold", "remove", "activate"])
   ops[name] = method(read("plugins/xpo.files/FilesOps.qml"), name, scope)
-ops.hold(e, true); ops.hold(e, false); ops.remove(); ops.remove(); ops.activate(e)
+ops.hold([e], true); ops.hold([e], false); ops.remove([e]); ops.remove([e]); ops.activate(e)
 assert.equal(ops.held, null)
 assert.equal(ops.doomed, "")
 assert.deepEqual(calls, [])

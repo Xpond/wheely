@@ -25,12 +25,10 @@ if name == 'old.txt':
   property string gitScript: ''' + json.dumps(str(helper)) + '''
   property var settledSel: ({name: 'old.txt', isDir: false})
   property var changes: ({'old.txt': 'M', 'next.txt': 'M'})
-  property bool showsImage: false
-  property bool showsVideo: false
   property string diffText: ""
   property bool diffLoading: false
   property bool switched: false
-''' + block(files, r"^  FilesProcess \{\n    id: differ") + block(files, r"^  function readDiff\(") + '''
+''' + block(files, r"^  FilesProcess \{\n    id: differ") + block(files, r"^  function media\(") + block(files, r"^  function readDiff\(") + '''
   FileView {
     path: root.listedDir + '/ready'
     watchChanges: true
@@ -84,7 +82,7 @@ if name == 'old.txt':
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
 ''' + preview.replace("Style.font.subtitle", "14") + line(files, r"^  readonly property bool showsDiff: .*")
-        + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14") + '''
+        + block(files, r"^  function media\(") + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14") + '''
   Timer { interval: 0; running: true; onTriggered: {
     root.settledSel = ({name: 'large.txt', path: '/tmp/large.txt', size: 280000, isDir: false})
     if (root.previewPath || root.previewText !== root.diffText || root.shownLines < 2) {
@@ -126,7 +124,7 @@ if name == 'old.txt':
         + line(files, r"^  readonly property bool showsCode: .*")
         + segment("  property string diffText:", "  onDiffModeChanged:")
         + segment("  readonly property string previewBody:", "  onSelChanged:")
-        + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14")
+        + block(files, r"^  function media\(") + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14")
         + segment("  readonly property string previewNote:", "  // Payloads may choose")
         + block(files, r"^  FileView \{\n    id: previewFile") + '''
   function shown() {
@@ -168,13 +166,12 @@ if name == 'old.txt':
   property string query: ''
   property string order: 'name'
   property var settledSel: null
-  property bool showsImage: false
-  property bool showsVideo: false
   property bool diffMode: true
   property bool editing: false
+  property var marked: ({})
   property int stage: 0
   QtObject { id: preview; function resetScroll() {} }
-''' + files[start:end].replace('Qt.resolvedUrl("git-preview.py")', json.dumps(str(repo / "plugins/xpo.files/git-preview.py")))
+''' + block(files, r"^  function media\(") + files[start:end].replace('Qt.resolvedUrl("git-preview.py")', json.dumps(str(repo / "plugins/xpo.files/git-preview.py")))
         + "".join(line(files, p) for p in [r"^  readonly property var listedEntries: .*(?:\n    .*)*", r"^  readonly property var orderedEntries: .*",
                                            r"^  readonly property var rows: .*"])
         + block(files, r"^  FolderListModel \{\n    id: listedFolder") + block(files, r"^  readonly property bool unlisted:.*?\n  function relist\(") + '''
@@ -228,6 +225,8 @@ if name == 'old.txt':
   function checkAccess(dir) {}
   property bool diffMode: false
   property bool editing: false
+  property var menu: ({ open: false })
+  property var marked: ({})
   QtObject { id: preview; function resetScroll() {} }
   QtObject { id: list; property QtObject view: QtObject { function positionViewAtIndex(i, mode) {} } }
 ''' + files[files.index("  // A leading / or ~ enters"):files.index("  property bool showHidden:")]
@@ -267,5 +266,36 @@ if name == 'old.txt':
     }
     root.left = false
     if (++root.at === root.cases.length) { console.log('PASS'); Qt.quit() }
+  } }
+''')
+
+    # A handler of settledSel runs before the bindings that read settledSel, so what it does for an
+    # entry it asks of the entry: an image after a text file is measured and not diffed, a text file
+    # after an image is diffed, and an image giving way to nothing reads no path of nothing.
+    run("git-settle-asks-the-entry", '''
+  property var settledSel: null
+  property string settledPath: ''
+  property int shownLines: 0
+  property string diffText: ''
+  property bool diffLoading: false
+  property var changes: ({ 'a.txt': 'M', 'b.jpg': 'M' })
+  property var dirEntries: []
+  property string imageDims: ''
+  property string listedDir: '/d'
+  property string gitScript: 'git-preview.py'
+  property var events: []
+  function childEntries() { return [] }
+  QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
+  QtObject { id: measurer; function cancel() {} function start(argv) { root.events.push('measure ' + argv[argv.length - 1]) } }
+  QtObject { id: differ; function cancel() {} function start(argv) { root.events.push('diff') } }
+''' + files[files.index("  readonly property int previewLimit"):files.index("  property string imageDims")]
+        + block(files, r"^  function readDiff\(") + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14") + '''
+  Timer { interval: 0; running: true; onTriggered: {
+    var text = {name: 'a.txt', path: '/d/a.txt', size: 1, isDir: false}, image = {name: 'b.jpg', path: '/d/b.jpg', size: 1, isDir: false}
+    for (var e of [text, image, null, image, text]) { root.settledSel = e; root.events.push(e ? e.name : 'none') }
+    if (root.events.join() !== 'diff,a.txt,measure /d/b.jpg,b.jpg,none,measure /d/b.jpg,b.jpg,diff,a.txt') {
+      console.error('FAIL a selection change acted on the last entry', root.events.join()); Qt.exit(1); return
+    }
+    console.log('PASS'); Qt.quit()
   } }
 ''')

@@ -10,6 +10,18 @@ Item {
   property var operations: null
   property alias view: list
 
+  // A click selects; with Ctrl it also marks or unmarks the row, with Shift it marks from the
+  // selection to the row. Never while naming or editing, so the row being renamed or edited stays
+  // the one selected.
+  function click(i, modifiers) {
+    var p = root.panel, row = p.rows[i]
+    if (p.naming || p.editing) return
+    if (modifiers & Qt.ControlModifier) p.mark([row], !p.marked[row.path])
+    else if ((modifiers & Qt.ShiftModifier) && p.sel) p.mark(p.rows.slice(Math.min(p.index, i), Math.max(p.index, i) + 1), true)
+    p.pending = ""
+    p.index = i
+  }
+
   ListView {
     id: list
     anchors.fill: parent
@@ -23,7 +35,9 @@ Item {
       required property int index
       required property var modelData
       readonly property bool active: root.panel.index === entry.index
-      readonly property bool doomed: root.panel.doomed === entry.modelData.path
+      // What is armed is a list of paths, one to a line.
+      readonly property bool doomed: ("\n" + root.panel.doomed + "\n").indexOf("\n" + entry.modelData.path + "\n") >= 0
+      readonly property bool marked: !!root.panel.marked[entry.modelData.path]
 
       width: list.width
       height: root.panel.rowHeight
@@ -35,6 +49,7 @@ Item {
         radius: height / 2
         color: entry.doomed ? Util.alpha(root.panel.danger, 0.30)
                : entry.active ? root.panel.activeFill
+               : entry.marked ? Util.alpha(Commons.Color.accent, 0.08)
                : (pointer.containsMouse ? root.panel.hoverFill : "transparent")
         border.width: entry.active ? Style.spacing.hairline : 0
         border.color: entry.doomed ? root.panel.danger : Commons.Color.accent
@@ -46,7 +61,7 @@ Item {
         id: pointer
         anchors.fill: parent
         hoverEnabled: true
-        onClicked: if (!root.panel.naming && !root.panel.editing) { root.panel.pending = ""; root.panel.index = entry.index }
+        onClicked: mouse => root.click(entry.index, mouse.modifiers)
         onDoubleClicked: if (!root.panel.naming) root.operations.activate(entry.modelData)
       }
 
@@ -58,13 +73,13 @@ Item {
         anchors.rightMargin: Style.spacing.rowPaddingX + Style.spacing.md
         spacing: Style.spacing.controlGap
 
-        // Folder colour remains distinct in a list of files.
+        // Folder colour remains distinct in a list of files; a mark takes the glyph's place.
         Text {
           id: glyph
           anchors.verticalCenter: parent.verticalCenter
           width: Style.font.iconLarge
-          text: entry.modelData.isDir ? "󰉋" : "󰈔"
-          color: entry.active ? Commons.Color.accent
+          text: entry.marked ? "\u{F012C}" : entry.modelData.isDir ? "󰉋" : "󰈔"
+          color: entry.active || entry.marked ? Commons.Color.accent
                  : entry.modelData.isDir ? Util.alpha(Commons.Color.accent, 0.55)
                  : Util.alpha(Commons.Color.menu.text, 0.35)
           font.family: Style.font.menuFamily
@@ -106,6 +121,19 @@ Item {
           font.pixelSize: entry.modelData.isDir ? Style.font.body : Style.font.bodySmall
         }
       }
+    }
+  }
+
+  // A right-click selects its row and opens the menu there, or the folder's own menu below the
+  // rows. The right button only: left clicks, hover and the wheel go on to the rows.
+  MouseArea {
+    anchors.fill: list
+    acceptedButtons: Qt.RightButton
+    onPressed: mouse => {
+      if (root.panel.naming || root.panel.editing) return
+      var i = list.indexAt(mouse.x + list.contentX, mouse.y + list.contentY)
+      if (i >= 0) root.click(i, 0)
+      root.panel.menu.openAt(list, mouse.x, mouse.y, i >= 0 ? root.panel.sel : null)
     }
   }
 
