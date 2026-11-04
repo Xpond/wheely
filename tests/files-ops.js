@@ -21,7 +21,7 @@ try {
     calls.push({ command: [...command], status: result && result.status })
   }
   const scope = { root: ops, doomArmed: { restart() {} } }
-  for (const name of ["guarded", "inHere", "hold", "paste", "remove"])
+  for (const name of ["given", "label", "guarded", "inHere", "hold", "pasteCommand", "paste", "remove"])
     ops[name] = method(opsSource, name, scope)
   const commitName = method(panelSource, "commitName", { root: panel, ops })
   for (const move of [false, true]) {

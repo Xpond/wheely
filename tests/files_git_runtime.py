@@ -172,6 +172,7 @@ if name == 'old.txt':
   property bool showsVideo: false
   property bool diffMode: true
   property bool editing: false
+  property var marked: ({})
   property int stage: 0
   QtObject { id: preview; function resetScroll() {} }
 ''' + files[start:end].replace('Qt.resolvedUrl("git-preview.py")', json.dumps(str(repo / "plugins/xpo.files/git-preview.py")))
@@ -228,6 +229,8 @@ if name == 'old.txt':
   function checkAccess(dir) {}
   property bool diffMode: false
   property bool editing: false
+  property var menu: ({ open: false })
+  property var marked: ({})
   QtObject { id: preview; function resetScroll() {} }
   QtObject { id: list; property QtObject view: QtObject { function positionViewAtIndex(i, mode) {} } }
 ''' + files[files.index("  // A leading / or ~ enters"):files.index("  property bool showHidden:")]

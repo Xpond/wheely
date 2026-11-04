@@ -29,6 +29,14 @@ Item {
     opacity: root.caretLit ? 0.85 : 0.0
   }
 
+  // The path names the folder, so a right-click on it opens the folder's own menu.
+  MouseArea {
+    anchors.fill: parent
+    acceptedButtons: Qt.RightButton
+    enabled: !root.panel.naming && !root.panel.editing
+    onPressed: mouse => root.panel.menu.openAt(root, mouse.x, mouse.y, null)
+  }
+
   component Separator: Text {
     text: "/"
     color: Commons.Color.menu.text
@@ -141,6 +149,7 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
       text: FilesIndex.countLabel(root.panel.rows.length, root.panel.listedEntries.length,
                                   root.panel.query, root.panel.showHidden, root.panel.order)
+            + (root.panel.marks.length ? "  ·  " + root.panel.marks.length + " marked" : "")
       color: Commons.Color.menu.text
       opacity: 0.5
       font.family: Style.font.menuFamily

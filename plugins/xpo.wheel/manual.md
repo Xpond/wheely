@@ -59,6 +59,9 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 | `Ctrl+Shift+N` | new file, or folder/ |
 | `Del` | trash; press again to confirm |
 | `Ctrl+Y` | copy the path |
+| `Menu` `Shift+F10` | the menu: every action, by file type |
+| `Ctrl+Space` | mark, and step on |
+| `Ctrl+A` | mark every row |
 | `Ctrl+Enter` | terminal here |
 | `Ctrl+O` | sort: name, newest, largest |
 | `Ctrl+H` | show hidden files |
@@ -67,7 +70,7 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 | `Ctrl+T` | pop out as a window |
 | `Ctrl+U` `Ctrl+W` | clear field, delete a word |
 | `F1` | every key in the legend |
-| `Esc` | clear, then close |
+| `Esc` | unmark, clear, then close |
 
 ## Files editor
 

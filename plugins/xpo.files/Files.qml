@@ -78,6 +78,8 @@ Item {
     interval: 60
     onTriggered: root.settledSel = root.sel
   }
+  // The menu shows what the preview knows of its row, so it settles at once.
+  function settleNow() { settle.stop(); root.settledSel = root.sel }
   readonly property var crumbs: FilesIndex.crumbs(root.listedDir, root.home)
 
   readonly property color edge: Util.alpha(Commons.Color.menu.text, 0.13)
@@ -203,6 +205,8 @@ Item {
     // Only rows that are there are cleared: at startup the first read of listedDir comes from inside
     // listedEntries, which a fresh [] would re-enter.
     if (root.entries.length) root.entries = []
+    // Marks are this folder's.
+    if (Object.keys(root.marked).length) root.marked = ({})
     root.readChanges()
     root.checkAccess(root.listedDir)
   }
@@ -528,6 +532,17 @@ Item {
     root.naming = "new"
   }
 
+  // Duplicate and Make link name what they make in the same field: the name with "copy" or "link"
+  // before its extension, the caret after the word.
+  function beginCopyName(verb) {
+    if (!root.sel || root.sel.missing || root.sel.shortcut || root.editing) return
+    var name = root.sel.name, dot = root.sel.isDir ? -1 : name.lastIndexOf(".")
+    var cut = dot > 0 ? dot : name.length
+    root.renameTo = name.slice(0, cut) + " " + verb + name.slice(cut)
+    root.renameAt = cut + verb.length + 1
+    root.naming = verb
+  }
+
   function renameKey(event) {
     var at = root.renameAt
     var t = root.renameTo
@@ -585,15 +600,45 @@ Item {
     }
     var e = root.sel
     if (!e || name === e.name) return
-    ops.run(ops.guarded("mv", e.path, ops.inHere(name)),
-             { name: name, land: true, done: "renamed to " + name, fail: "rename failed" })
+    // A rename moves the entry; a duplicate copies it and a link points at it.
+    var how = { rename: ["mv", "renamed to ", "rename failed"], copy: ["cp -r", "duplicated as ", "duplicate failed"],
+                link: ["ln -s", "linked as ", "link failed"] }[verb]
+    ops.run(ops.guarded(how[0], e.path, ops.inHere(name)),
+             { name: name, land: true, done: how[1] + name, fail: how[2] })
   }
+
+  // Marks pick several entries for the verbs that take many. They are paths in the folder listed,
+  // kept through the filter and dropped with the folder; the verbs take them, or the selection.
+  property var marked: ({})
+  readonly property var marks: root.listedEntries.filter(e => !!root.marked[e.path])
+  readonly property var targets: root.marks.length ? root.marks : root.sel ? [root.sel] : []
+  function mark(list, on) {
+    var next = Object.assign({}, root.marked)
+    list.forEach(e => { if (e && !e.missing && !e.shortcut) { if (on) next[e.path] = true; else delete next[e.path] } })
+    root.marked = next
+  }
+  // Ctrl+Space marks or unmarks the selection and steps on, so a run of rows is a run of presses.
+  function toggleMark() {
+    if (!root.sel) return
+    root.mark([root.sel], !root.marked[root.sel.path])
+    root.move(1)
+  }
+  // Ctrl+A marks every row shown, or unmarks them when they all are.
+  function markAll() {
+    var free = root.rows.filter(e => !e.missing && !e.shortcut)
+    root.mark(free, !free.every(e => root.marked[e.path]))
+  }
+  function unmarkAll() { root.marked = ({}) }
+  // A Trash armed for some marks must not trash others.
+  onMarkedChanged: ops.doomed = ""
+
   FilesOps { id: ops; panel: root }
   readonly property alias held: ops.held
   readonly property alias fileNote: ops.fileNote
   readonly property alias doomed: ops.doomed
   readonly property alias doomedName: ops.doomedName
   readonly property alias danger: ops.danger
+  readonly property alias menu: menu
 
   FolderListModel {
     id: listedFolder
@@ -671,11 +716,14 @@ Item {
   }
 
   onRowsChanged: {
-    // A folder change shifts the rows; an open edit or rename stays on its file.
-    var held = (root.editing || root.naming === "rename") && root.settledSel
-      ? root.rows.findIndex(e => e.path === root.settledSel.path) : -1
+    // A folder change shifts the rows; an open edit, naming or menu stays on its file.
+    var keep = root.menu.open ? root.menu.entry
+      : root.editing || (root.naming && root.naming !== "new") ? root.settledSel : null
+    var held = keep ? root.rows.findIndex(e => e.path === keep.path) : -1
     if (held >= 0) root.index = held
     else if (root.index >= root.rows.length) root.index = 0
+    // A row gone from under its menu takes the menu with it.
+    if (held < 0 && root.menu.open && root.menu.entry) root.menu.close()
     root.claimPending()
   }
 
@@ -722,7 +770,8 @@ Item {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
 
-    MouseArea { anchors.fill: parent; onClicked: root.close() }
+    // A click off the card closes the menu if one is open, and the browser otherwise.
+    MouseArea { anchors.fill: parent; onClicked: menu.open ? menu.close() : root.close() }
 
     BorderSurface {
       id: card
@@ -733,7 +782,7 @@ Item {
       color: Util.alpha(Commons.Color.menu.background, 0.94)
       borderSpec: Border.flat(root.edge, Style.spacing.hairline)
 
-      MouseArea { anchors.fill: parent; onClicked: {} }
+      MouseArea { anchors.fill: parent; onClicked: menu.close() }
 
       Item {
         id: keys
@@ -806,6 +855,15 @@ Item {
           id: hints
           panel: root
           anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
+        }
+
+        // Last, so it draws over both panes and the legend.
+        FilesMenu {
+          id: menu
+          anchors.fill: parent
+          panel: root
+          ops: ops
+          list: list.view
         }
       }
     }

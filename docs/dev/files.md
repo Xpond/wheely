@@ -14,6 +14,8 @@ traps, wiring, and what the tests check.
       FilesPreview.qml  the scroller, and the editor inside it
       FilesVideo.qml    muted video preview, controls and native mpv handoff
       FilesHints.qml    the foot: the legend, and what a held file would do
+      FilesMenu.qml     the right-click menu, drawn inside the card
+      FilesActions.js   the menu as data: the rows an entry gets, and the commands they run
       FilesProcess.qml  a reader whose cancelled output never lands
       FilesIndex.js     snapshotting, filtering, path and text helpers
       FilesKeys.js      the key map: which verb a key means
@@ -100,6 +102,96 @@ made an edit at the foot of a file come back to the middle of it. `keepPlace()`
 stores the fraction of the way down, `takePlace()` applies it when the scroller
 re-measures (at the moment the mode flips, `contentHeight` is still the other
 mode's), and the caret lands on the line you were reading.
+
+## The menu
+
+**It is drawn in the card, not as a popup window.** An xdg-popup under a layer
+surface that holds the keyboard exclusively would need keyboard routing of its own,
+and a case each for the overlay, the window and the pinned search. As the last
+child of `keys` it is reparented with everything else, and `FilesKeys` hands it
+keys the way it hands them to naming or editing: it takes its own, and any other
+closes it and falls through to the list's map.
+
+**The rows are data.** `FilesActions.tree()` takes a context — the entry or the
+marks, what the preview knows of the entry, what the probe found — and returns
+rows with their `run`; `FilesMenu` only draws them. One table serves an entry and
+the marks, which get the rows that take a list. It finds each open menu by submenu ids each time
+rather than keeping the rows it opened, so a submenu the probe fills in refills in
+place, and the node tests read the same table the menu draws.
+
+**Submenus cascade.** Each open menu is a card of its own, and `stack` holds, for
+each submenu open, its row's id and where it opens — past the right edge of the
+menu it came from, level with that row, measured off the row's delegate when it
+opens. Nothing already open is rebuilt when a submenu opens or closes, which is
+what made moving between menus lag at first:
+
+- The cards come from a `ListModel` kept as long as the menus are; a `Repeater`
+  over an array or a count rebuilds every card whenever it changes.
+- A card's rows are a `Repeater` over their count, not over the rows: every
+  change to `stack` hands each card its rows again, and an array handed over
+  again resets whatever views it and rebuilds every row.
+- A card's rows sit in a `Column`, not a `ListView`. The card takes its height
+  from its rows, and a `ListView` builds only the rows its height shows, so it
+  started a row tall and grew a frame at a time. A `Column` places its rows when
+  the frame is drawn, so `beside()` and `reveal()` call `forceLayout()` for a key
+  that comes first.
+
+150 ms on a row opens its submenu or, in a menu further out, switches to it. The
+wait is timed from reaching the row — `soon.wait()` restarts only for another row
+— because restarting it on every move held a submenu off for as long as the
+pointer kept moving. The pointer reaching a submenu's card cancels a pending
+switch, which is what lets it cross the outer menu's rows on the way in; a submenu
+closed by a second click on its row stays closed while the pointer is on that row.
+
+**The menu holds its row.** Its rows act on the entry it opened on, but
+`beginRename()`, `beginCopyName()` and `edit()` act on the selection, so
+`onRowsChanged` keeps the selection on that entry while the menu is open, as it
+does for an edit, and closes the menu when the row is gone.
+
+**One probe per opening.** `PROBE` asks in one `sh` whether the file is executable,
+which apps gio has for its content type, and tailscale's Taildrop targets. gio runs
+under `LC_ALL=C` because its headings are translated; its app lines are not. A
+target's line carries a third field only when the device is offline.
+
+**Open with launches as Omarchy's own launcher does** (`AppLibrary.launch`): a
+terminal app through `omarchy-launch-tui`, with its command less the field codes,
+and anything else through `uwsm-app -- gtk-launch`, which resolves ids uwsm rejects.
+
+**A `Del` that trashed must not go on to arm the next row.** `menuKey` reads
+`armed` before confirming, because confirming disarms it, and a key the menu does
+not take falls through to the list's map, where `Del` arms the selection.
+
+**Extract makes its scratch folder with `mkdir`, not `mktemp -d`,** whose 0700
+would stay with the folder when it is renamed into place. **Convert checks its
+name first** because `omarchy-transcode` would overwrite with `magick`: the check
+is the process `FilesOps` runs, and its `then` starts the transcoder detached only
+once the check has passed.
+
+## Marks
+
+**Marks are paths, and `marks` is read off the listing.** `marked` maps a path to
+`true`; `marks` is `listedEntries` filtered by it. So a filter hides marks without
+dropping them, a file moved or trashed drops out of `marks` on its own, and only
+leaving the folder clears the map. `targets` — the marks, or else the selection —
+is what `Ctrl+X`/`C`/`Y` and `Del` hand to `FilesOps`, whose verbs take one entry or
+a list and fall back to the selection when given nothing.
+
+**What Trash arms is the list's paths, joined by newlines.** The second press
+trashes only when it names the same list, the rows red are the rows in that
+string, and any change to the marks disarms it (`onMarkedChanged`) — a `Ctrl`+click
+on the row already selected changes the marks without moving the selection, which
+would otherwise leave a Trash armed for a different list.
+
+**A paste is one process**, `pasteCommand()`, for one entry or many. It goes on past
+a name already taken — its own, when pasted where it already is — so `17` means some
+were, and a move of many spends the hold anyway, since the hold no longer names what
+is there to move.
+
+`node tests/files-menu.js` holds each kind of entry to its rows, the marks to theirs,
+drives the menu's and the marks' keys, and runs compress, extract, convert, duplicate,
+link, paste-into and a paste of many against disposable files; `menu-pointer` in
+`python3 tests/runtime.py` right-clicks and `Ctrl`+clicks the real list and opens its
+submenus, with gio and tailscale stood in for.
 
 ## Highlighting and Markdown
 

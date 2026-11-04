@@ -26,6 +26,7 @@ const suites = [
   "./wheel-actions.js",
   "./wheel-close.js",
   "./files-ops.js",
+  "./files-menu.js",
   "./lock-design.js",
   "./lock.js",
   "./lock-idle.js",

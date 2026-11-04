@@ -337,4 +337,12 @@ Item {
     onClicked: root.panel.pickPreview(hovered.column ? hovered.column.index : -1, hovered.line)
     onDoubleClicked: root.panel.openPicked()
   }
+
+  // The preview shows the selection, so a right-click on it is one on the selection.
+  MouseArea {
+    anchors.fill: parent
+    acceptedButtons: Qt.RightButton
+    enabled: !root.panel.editing && !root.panel.naming && !!root.panel.sel
+    onPressed: mouse => root.panel.menu.openAt(root, mouse.x, mouse.y, root.panel.sel)
+  }
 }

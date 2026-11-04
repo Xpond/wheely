@@ -22,6 +22,8 @@ Item {
     ? [["↑↓", "select"], ["enter", "open"], ["←", "up"], ["shift+↑↓", "scroll"]]
     : [["↑↓", "scroll"], ["enter", "open"], ["←", "list"]])
       .concat(panel && root.panel.showsVideo ? [["space", "play/pause"]] : [])
+  readonly property var paste: !panel || !root.panel.held ? []
+    : ["ctrl+v", (root.panel.held.move ? "move " : "copy ") + root.panel.held.name + " here"]
   // A window closes like any other, so only the overlay offers esc.
   readonly property var leave: !panel ? [] : root.panel.host ? [["esc", "search"]] : root.panel.windowed ? [] : [["esc", "close"]]
 
@@ -29,6 +31,9 @@ Item {
     !panel ? []
     : root.arming ? [["del", "again to trash " + root.panel.doomedName],
                      ["any other key", "cancel"]]
+    : root.panel.menu.open
+      ? [["↑↓", "choose"], ["enter", "do it"]].concat(root.panel.menu.stack.length ? [["←", "back"]] : [],
+                                                      [["esc", "close"]])
     : root.panel.editing
       ? [["ctrl+s", "save"], ["ctrl+c/x/v", "clipboard"],
          ["esc", root.panel.discarding ? "again to discard"
@@ -38,15 +43,20 @@ Item {
          ? [["type", "a name; a dot in it makes a file"],
             ["/ at the end", "a folder"], [". at the end", "a file"],
             ["enter", "make it"], ["esc", "cancel"]]
-         : [["type", "the new name"], ["enter", "rename"], ["esc", "cancel"]])
+         : [["type", "the new name"],
+            ["enter", { rename: "rename", copy: "duplicate", link: "make the link" }[root.panel.naming]],
+            ["esc", "cancel"]])
+    : root.panel.marks.length
+      ? root.moves.concat([["ctrl+space", "mark"], ["ctrl+a", "all"], ["ctrl+x/c", "move/copy"], ["del", "trash"]],
+         root.panel.held ? [root.paste] : [], [["shift+f10", "menu"], ["esc", "unmark " + root.panel.marks.length]])
     : root.panel.held
-      ? root.moves.concat([["ctrl+v", (root.panel.held.move ? "move " : "copy ") + root.panel.held.name + " here"],
-         ["ctrl+e", "edit"]], root.leave)
+      ? root.moves.concat([root.paste, ["ctrl+e", "edit"]], root.leave)
     // The everyday keys by default; F1 swaps in every key.
     : root.panel.allKeys
       ? root.moves.concat([["ctrl+x/c/v", "move/copy"],
          ["ctrl+e", "edit"], ["ctrl+enter", "terminal"], ["ctrl+y", "copy path"],
-         ["ctrl+o", "sort"], ["f2", "rename"], ["ctrl+shift+n", "new"], ["del", "trash"], root.listKey],
+         ["ctrl+o", "sort"], ["f2", "rename"], ["ctrl+shift+n", "new"], ["del", "trash"],
+         ["ctrl+space", "mark"], ["ctrl+a", "mark all"], ["shift+f10", "menu"], root.listKey],
          root.diffKey, [["ctrl+t", root.panel.host || root.panel.windowed ? "unpin" : "window"]], root.leave,
          [["f1", "fewer keys"]])
     : root.moves.concat([["ctrl+e", "edit"], root.listKey], root.diffKey, root.leave, [["f1", "all keys"]])

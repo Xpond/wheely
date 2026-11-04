@@ -87,12 +87,14 @@ def check(files, run, block, line):
   } }
 ''')
 
-    # A save that reorders the folder, or a file landing above, must not move an edit or rename.
+    # A save that reorders the folder, or a file landing above, must not move an edit, a naming or
+    # the menu's row; a row gone from under its menu closes the menu.
     run("files-rows-hold-edit", '''
   property int index: 0
   property var settledSel: null
   property bool editing: false
   property string naming: ""
+  property var menu: ({ open: false, entry: null, closed: 0, close() { this.open = false; this.closed++ } })
   property var entries: []
   readonly property var listedEntries: entries
   property string query: ""
@@ -115,6 +117,14 @@ def check(files, run, block, line):
     naming = ""
     entries = [file("a", 2000), file("b", 3000), file("c", 5000), file("d", 6000)]
     check(sel.path === "/d/c", "browsing rows no longer stay by position")
+    settledSel = sel; naming = "copy"
+    entries = entries.concat([file("e", 7000)])
+    check(sel.path === "/d/c", "a new file above moved a duplicate's naming to another file")
+    naming = ""; index = 3; menu.open = true; menu.entry = sel
+    entries = entries.concat([file("f", 8000)])
+    check(sel.path === "/d/b", "a new file above moved the menu's row")
+    entries = entries.filter(e => e.name !== "b")
+    check(menu.closed === 1 && !menu.open, "the menu outlived its row")
     console.log("PASS"); Qt.quit()
   } }
 ''')

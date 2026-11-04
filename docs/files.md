@@ -42,6 +42,9 @@ red, and a save is confirmed by reading the file back.
 | `Ctrl+Shift+N` | make a file or a folder here — the name says which, see [Moving files](#moving-files) |
 | `Del` | trash the selection, asked twice |
 | `Ctrl+Y` | copy the selection's path to the clipboard |
+| `Menu` `Shift+F10` | the menu for the selection: every verb here and more, by what it is — see [The menu](#the-menu) |
+| `Ctrl+Space` | mark the selection, or unmark it, and step on — see [Marking several](#marking-several) |
+| `Ctrl+A` | mark every row shown, or unmark them when they all are |
 | `Ctrl+Enter` | open a terminal in the directory you are in |
 | `Ctrl+O` | order by name, then newest, then largest — see [Ordering](#ordering) |
 | `Ctrl+H` | show hidden files |
@@ -51,7 +54,7 @@ red, and a save is confirmed by reading the file back.
 | `Ctrl+B` | slide the list out so the preview takes its width, and back |
 | `Ctrl+D` | show a changed file's diff instead of its contents, and back — see [Uncommitted changes](#uncommitted-changes) |
 | `F1` | show every key in the legend, or only the everyday ones |
-| `Esc` | clear the field, then close |
+| `Esc` | unmark, then clear the field, then close |
 
 Shift is the one modifier that means "the other pane", and while the list is
 shown it is the whole rule: every bare key drives the list, every shifted one
@@ -67,12 +70,13 @@ once the list is out: reflowing a Markdown table every frame of the slide would
 stutter. The choice holds across the overlay and its windows while the shell runs.
 
 The mouse works too — hover only tints a row, a click selects it, a double click
-opens it, a click outside the card closes it, and the wheel scrolls whichever
-pane is under the pointer. In a folder's preview, the entry under the pointer is
-tinted too; a click on it enters the folder with that entry selected, and a
-double click opens it. The click area lies over the whole preview, so the second
-click counts whatever the preview shows by then; dragging no longer scrolls the
-preview, the wheel and `Shift`+arrows do.
+opens it, a right-click opens [the menu](#the-menu), `Ctrl`+click and
+`Shift`+click [mark](#marking-several), a click outside the card closes it, and
+the wheel scrolls whichever pane is under the pointer. In a folder's preview, the
+entry under the pointer is tinted too; a click on it enters the folder with that
+entry selected, and a double click opens it. The click area lies over the whole
+preview, so the second click counts whatever the preview shows by then; dragging
+no longer scrolls the preview, the wheel and `Shift`+arrows do.
 
 ## Home is the floor
 
@@ -288,7 +292,7 @@ waiting three seconds — a second
 `Del` can never land on a row you did not aim it at.
 
 **Nothing is ever overwritten.** The destination name is tested before the
-command runs:
+command runs, as a rename runs it here and a paste for each entry it places:
 
     sh -c 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; exec mv -- "$1" "$2"' files <src> <dst>
 
@@ -322,6 +326,96 @@ so both cross the same collision test and come back as the same `17`.
 **`Ctrl+Y` copies the selection's path**, through `wl-copy` with the path as an
 argument rather than spliced into the script — the discipline the move commands
 are written with.
+
+## Marking several
+
+`Ctrl+Space` marks the selection and steps to the next row, so a run of rows is a
+run of presses; on a marked row it unmarks. `Ctrl+A` marks every row shown, or
+unmarks them when they all are, so a filter and `Ctrl+A` mark every match.
+`Ctrl`+click marks or unmarks a row, `Shift`+click marks every row from the
+selection to the one clicked. A marked row trades its icon for a check, and the
+header counts the marks.
+
+While anything is marked, `Ctrl+X`, `Ctrl+C`, `Ctrl+Y` and `Del` act on the marks
+rather than the selection: one hold carries them all, one paste places them all,
+one `Del` arms them all — the marked rows turn red — and the second trashes
+exactly those. A paste of many goes past a name already taken and says so,
+`some names were already here; the rest moved`, rather than stopping at the first.
+The selection still moves freely, and the preview follows it, so you can look at
+each file before deciding.
+
+Marks belong to the folder: walking away drops them, a filter only hides some.
+`Esc` lets them go before it clears the field. The verbs that name one file —
+Enter, `F2`, `Ctrl+E` — still act on the selection.
+
+## The menu
+
+A right-click on a row selects it and opens the menu at the pointer; `Menu` or
+`Shift+F10` opens it under the selected row. A right-click below the rows, or on
+the path, opens the folder's own menu; one on the preview opens the selection's,
+since the preview is the selection. Every verb above is in it, each with the key
+that does the same without it, and what the selection is decides the rest:
+
+| selection | adds |
+|---|---|
+| anything | Open with ▸ the apps for its type, Show in Nautilus, Share ▸, Compress ▸ `.zip` or `.tar.zst`, Duplicate…, Make link… |
+| an image | Copy image, Convert for sharing ▸, Set as wallpaper |
+| a video | Convert for sharing ▸, Set as wallpaper |
+| an archive | Extract here |
+| a script | Run in a terminal, and Make executable while it is not |
+| text the editor can write back | Edit |
+| a folder | Open in a terminal; with something held, Move or Copy it into the folder |
+| a deleted row | only Show changes and Copy path |
+
+Every row's menu ends in **Current folder ▸**, the folder's own menu — New file or
+folder, Paste, Open in a terminal, Show in Nautilus, Show hidden files, Sort ▸,
+Pop out — because a folder full of rows leaves nothing below them to click.
+
+**With marks, the menu is theirs** when it opens from the keyboard or on a marked
+row; a right-click on an unmarked row is for that row alone. It counts them and
+offers what takes many: Share ▸ (Taildrop only while they are all files), Compress
+▸ into one archive named after the folder, Cut, Copy, Unmark all, Copy paths and
+Trash.
+
+**Share is Omarchy's own.** LocalSend goes through `omarchy-menu-share`, Taildrop
+through `omarchy-tailscale-send` to each device online, and none is listed while
+Tailscale is down. **Copy to clipboard** copies the file itself, as a
+`text/uri-list`, so it pastes into a browser chat or a mail as an attachment.
+**Convert for sharing** runs `omarchy-transcode`, which writes a smaller copy
+beside the original — `photo-medium.jpg` — puts that on the clipboard, and says
+when it is done.
+
+A submenu opens beside the row that holds it, level with it, and the menu it came
+from stays open with that row lit — on the other side when there is no room on
+this one. A click opens it, and so does `Enter` or `→`, or the pointer reaching the
+row and staying on it for 150 ms, moving or not; a second click on the row closes
+it. Reaching another row of the menu further out switches to that row after the
+same moment, so the pointer can cross rows on its way into a submenu without
+closing it.
+
+Inside the menu `↑` `↓` `Tab` `Ctrl+N` `Ctrl+P` move, `Enter` runs, `←` or
+`Backspace` closes the submenu, `Esc` closes them all. Any other key closes the
+menu and does what it always does, so `F2` still renames and typing still filters:
+the menu never traps the keyboard. Hover moves the highlight only once the pointer
+moves, so the row that opens under a resting pointer is not taken for a choice.
+
+The verbs keep their rules in the menu. **Trash asks twice**: the first pick turns
+it red and keeps the menu open, and the second, or `Del`, trashes. **Nothing is
+overwritten**: Compress, Extract, Duplicate, Make link and Convert each answer
+`a … is already here` instead. Duplicate and Make link name what they make in the
+rename field, starting from `photo copy.jpg` or `photo link.jpg`, rather than
+inventing a name you never saw.
+
+**Extract here** unpacks into a folder named after the archive. An archive that
+holds a single folder of its own name, as most downloads of a repository do,
+gives that folder rather than a folder inside a folder. It unpacks aside first,
+so a broken archive leaves nothing behind.
+
+Left out: rotating or resizing an image in place, which overwrites it — Convert
+writes a new file instead; email and Bluetooth, which Omarchy ships nothing to
+send with; uploading to a web host, which hands your file to someone else; and
+mounting, the trash itself and permissions, which Show in Nautilus is one click
+from.
 
 ## Editing
 
