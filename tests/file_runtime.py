@@ -339,7 +339,7 @@ esac
   function checkAccess(dir) {}
   QtObject { id: preview; property int paneHeight: 100; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
-''' + "\n".join([block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "16"),
+''' + "\n".join([block(files, r"^  function media\("), block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "16"),
                  block(files, r"  FolderListModel \{\n    id: childFolder"),
                  block(files, r"^  readonly property bool childUnlisted:")]) + '''
   Timer { interval: 300; running: true; repeat: true; onTriggered: {

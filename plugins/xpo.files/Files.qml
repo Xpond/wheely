@@ -113,10 +113,14 @@ Item {
   readonly property int lineHeight: Math.round(Style.font.subtitle * 1.75)
 
   readonly property int previewLimit: 262144
-  readonly property bool showsImage: !!root.settledSel && !root.settledSel.isDir && !root.settledSel.missing
-                                     && FilesIndex.isImage(root.settledSel.name)
-  readonly property bool showsVideo: !!root.settledSel && !root.settledSel.isDir && !root.settledSel.missing
-                                     && FilesIndex.isVideo(root.settledSel.name)
+  // What an entry previews as: "image", "video" or "". A handler of settledSel asks it of the entry,
+  // since it runs before the bindings below and would see the last entry's answer.
+  function media(e) {
+    return !e || e.isDir || e.missing ? ""
+      : FilesIndex.isImage(e.name) ? "image" : FilesIndex.isVideo(e.name) ? "video" : ""
+  }
+  readonly property bool showsImage: root.media(root.settledSel) === "image"
+  readonly property bool showsVideo: root.media(root.settledSel) === "video"
   property string imageDims: ""
   FilesProcess {
     id: measurer
@@ -229,7 +233,7 @@ Item {
   function readDiff() {
     differ.cancel()
     var e = root.settledSel
-    root.diffLoading = !!e && !e.isDir && !root.showsImage && !root.showsVideo && !!root.changes[e.name]
+    root.diffLoading = !!e && !e.isDir && !root.media(e) && !!root.changes[e.name]
     if (!root.diffLoading) { root.diffText = ""; return }
     differ.start(FilesIndex.diffCommand(root.listedDir, e.name, root.gitScript))
   }
@@ -278,7 +282,7 @@ Item {
     root.dirEntries = root.childEntries()
     root.imageDims = ""
     measurer.cancel()
-    if (root.showsImage)
+    if (root.media(root.settledSel) === "image")
       measurer.start(["identify", "-ping", "-format", "%w×%h\n", root.settledSel.path])
   }
 

@@ -363,6 +363,13 @@ and flashed empty in between. `onCountChanged` is still needed for a file
 appearing under an open panel, which raises `count` with the model already
 `Ready`.
 
+**A change handler sees the bindings on its property still on the last value.**
+QML calls a property's handlers before the bindings that read it, which connect
+later, so `onSettledSelChanged` reading `showsImage` got the previous entry's
+answer: an image after a text file was never measured, and an image giving way to
+nothing read the path of `null`. The handler and `readDiff()` ask `media()` of the
+entry itself, and the bindings ask the same function, so the two cannot disagree.
+
 ## Wiring
 
 `bin/omarchy-open-path` is on `PATH` because a plugin directory is private to
