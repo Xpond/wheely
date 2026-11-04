@@ -165,11 +165,12 @@ assert.equal(press("Key_F10", SHIFT), "open")
 assert.equal(press("Key_F10", SHIFT), "close", "Shift+F10 does not close the menu it opened")
 open.open = true
 assert.equal(press("Key_N", CTRL | SHIFT), "close,new", "Ctrl+Shift+N stepped the menu")
-// Del is the menu's own Trash, never the selection's; a menu without one closes and Del arms the selection.
+// Del belongs to the menu even when it has no Trash action.
 open.open = true
 assert.equal(press("Key_Delete"), "trash", "Del in the menu did more than its Trash")
 open.trashes = false
-assert.equal(press("Key_Delete"), "trash,close,remove", "Del in a menu without Trash did not arm the selection")
+assert.equal(press("Key_Delete"), "trash", "Del escaped a menu without Trash")
+assert.equal(open.open, true, "Del dismissed a menu without Trash")
 open.open = true; doom.doomed = "/x"; open.current = "trash"; key("Key_Return")
 assert.equal(doom.doomed, "/x", "Enter on the armed Trash disarmed it")
 open.open = true; doom.doomed = "/x"; key("Key_Down")

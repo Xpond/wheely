@@ -44,11 +44,11 @@ Item {
   function inHere(name) { return root.panel.listedDir.replace(/\/+$/, "") + "/" + name }
 
   // Each into the folder in turn, past a name already taken, its own name included: 17 when every
-  // name was taken, 18 when only some were, 1 when any failed.
+  // name was taken, 18 when some were, 19 on partial failure, 1 on total failure.
   function pasteCommand(move, dir, paths) {
     return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; for f do t="$d/${f##*/}"; '
       + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif $v -- "$f" "$t"; then p=1; else s=1; fi; done; '
-      + '[ "$s" = 17 ] && [ "$p" = 1 ] && s=18; exit $s',
+      + 'if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',
       "files", move ? "mv" : "cp -r", dir].concat(paths)
   }
 
@@ -58,7 +58,9 @@ Item {
     if (!h) return
     root.run(root.pasteCommand(h.move, into || root.panel.listedDir.replace(/\/+$/, ""), h.items.map(i => i.path)),
              { name: h.items[0].name, land: !into, spend: h.move,
+               occupied: h.items.length > 1 ? "all " + h.items.length + " names are already here" : "a " + h.name + " is already here",
                taken: "some names were already here; the rest " + (h.move ? "moved" : "copied"),
+               partial: "some items " + (h.move ? "moved" : "copied") + "; others could not be " + (h.move ? "moved" : "copied"),
                done: (h.move ? "moved " : "copied ") + h.name + (into ? " into " + into.slice(into.lastIndexOf("/") + 1) : ""),
                fail: (h.move ? "move" : "copy") + " failed" })
   }
@@ -70,9 +72,10 @@ Item {
       root.op = null
       if (!o) return
       if (exitCode !== 0) {
-        root.note(exitCode === 17 ? "a " + o.name + " is already here" : exitCode === 18 && o.taken ? o.taken : o.fail)
+        root.note(exitCode === 17 ? o.occupied || "a " + o.name + " is already here"
+                  : exitCode === 18 && o.taken ? o.taken : exitCode === 19 && o.partial ? o.partial : o.fail)
         // Some of many went, so the hold no longer names what is there to move.
-        if (exitCode === 18 && o.spend) root.held = null
+        if ((exitCode === 18 || exitCode === 19) && o.spend) root.held = null
         return
       }
       if (o.land) root.panel.pending = o.name
@@ -107,9 +110,13 @@ Item {
   // the list's paths, joined, so the second press trashes exactly what the first showed.
   readonly property color danger: "#ff2222"
   property string doomed: ""
-  readonly property string doomedName: !root.doomed ? ""
-    : root.doomed.indexOf("\n") >= 0 ? root.doomed.split("\n").length + " items"
-    : root.doomed.slice(root.doomed.lastIndexOf("/") + 1)
+  readonly property string doomedName: {
+    if (!root.doomed) return ""
+    var paths = root.doomed.split("\n")
+    var name = paths.length > 1 ? paths.length + " items" : root.doomed.slice(root.doomed.lastIndexOf("/") + 1)
+    var hidden = root.doomed === root.panel.marks.map(e => e.path).join("\n") ? root.panel.hiddenMarks : 0
+    return name + (hidden ? " (" + hidden + " hidden)" : "")
+  }
   Timer { id: doomArmed; interval: 3000; onTriggered: root.doomed = "" }
   function remove(entries) {
     if (!entries.length || entries.some(e => e.missing || e.shortcut) || root.panel.editing) return

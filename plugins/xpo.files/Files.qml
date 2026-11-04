@@ -622,7 +622,11 @@ Item {
   // Marks pick several entries for the verbs that take many. They are paths in the folder listed,
   // kept through the filter and dropped with the folder; the verbs take them, or the selection.
   property var marked: ({})
-  readonly property var marks: root.listedEntries.filter(e => !!root.marked[e.path])
+  readonly property var marks: root.listedEntries.filter(e => !e.missing && !!root.marked[e.path])
+  readonly property int hiddenMarks: {
+    var visible = new Set(root.rows.map(e => e.path))
+    return root.marks.filter(e => !visible.has(e.path)).length
+  }
   readonly property var targets: root.marks.length ? root.marks : root.sel ? [root.sel] : []
   function mark(list, on) {
     var next = Object.assign({}, root.marked)
@@ -783,8 +787,7 @@ Item {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
 
-    // A click off the card closes the menu if one is open, and the browser otherwise.
-    MouseArea { anchors.fill: parent; onClicked: menu.open ? menu.close() : root.close() }
+    MouseArea { anchors.fill: parent; onClicked: root.close() }
 
     BorderSurface {
       id: card
@@ -795,7 +798,7 @@ Item {
       color: Util.alpha(Commons.Color.menu.background, 0.94)
       borderSpec: Border.flat(root.edge, Style.spacing.hairline)
 
-      MouseArea { anchors.fill: parent; onClicked: menu.close() }
+      MouseArea { anchors.fill: parent; onClicked: {} }
 
       Item {
         id: keys

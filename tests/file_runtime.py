@@ -130,7 +130,8 @@ esac
     for name in ["gio", "tailscale"]:
         (base / name).chmod(0o755)
     run("menu-pointer", '''
-  property var rows: ["a.txt", "b.txt", "c.txt", "d.txt"].map(n => ({ name: n, path: "/t/" + n, isDir: false, size: 1, modified: null }))
+  property var listedEntries: ["a.txt", "b.txt", "c.txt", "d.txt"].map(n => ({ name: n, path: "/t/" + n, isDir: false, size: 1, modified: null }))
+  property var rows: root.listedEntries
   property int index: 0
   readonly property var sel: root.index >= 0 && root.index < root.rows.length ? root.rows[root.index] : null
   property var settledSel: null
@@ -158,9 +159,8 @@ esac
   property var subMenu: null
   property var calls: []
   property var marked: ({})
-  readonly property var marks: root.rows.filter(e => !!root.marked[e.path])
   function settleNow() { root.settledSel = root.sel }
-''' + block(files, r"  function mark\(") + '''
+''' + re.search(r"^  readonly property var marks:.*$", files, re.M).group() + "\n" + block(files, r"  readonly property int hiddenMarks:") + block(files, r"  function mark\(") + '''
   QtObject {
     id: ops
     property string doomed: ""
@@ -303,6 +303,15 @@ esac
     menu.probe = { apps: [], preferred: "", peers: [], executable: false }
     if (menu.submenu || root.cards().length !== 1) return root.fail("an empty submenu stayed open after the probe")
     menu.close()
+    // Filtering keeps marks and names hidden targets; disappearing or unmarked targets close the menu.
+    root.rows = root.listedEntries.slice(0, 1)
+    menu.openHere()
+    if (!menu.many || menu.topRows[0].label !== "2 items (1 hidden)") return root.fail("the marks menu hid its filtered target count")
+    ops.doomed = "/t/a.txt\\n/t/b.txt"
+    root.listedEntries = root.listedEntries.filter(e => e.name !== "b.txt")
+    if (menu.open || ops.doomed || root.marks.length !== 1) return root.fail("a marks menu or armed Trash outlived its targets")
+    menu.openHere(); root.marked = ({})
+    if (menu.open) return root.fail("an unmarked target kept its marks menu open")
     console.log("PASS"); Qt.quit()
   } }
 ''', {"PATH": str(base) + ":" + os.environ["PATH"]})

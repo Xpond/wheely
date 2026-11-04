@@ -87,8 +87,8 @@ want; `--literal-pathspecs` keeps `a*b` from diffing `axb` too.
 ## Writing
 
 **One process, one contract.** Every write goes through the same `Process` and
-the same exit codes: `0` done, `17` the name is taken, `18` some of a paste's names
-were, anything else failed.
+the same exit codes: `0` done, `17` names taken with nothing pasted, `18` partial
+paste with collisions, `19` partial paste with failures, anything else failed.
 `op` carries what to say about each outcome, so move, copy, rename and delete
 share one success path and one failure path rather than three of each.
 
@@ -148,18 +148,19 @@ deleted child enters its containing folder and selects it before showing the dif
 Compress and Extract request landing only when their output is in the listed
 folder, so a preview's output cannot select an unrelated same-named entry.
 
-**One probe per opening.** `PROBE` asks in one `sh` whether the file is executable,
-which apps gio has for its content type, and tailscale's Taildrop targets. gio runs
-under `LC_ALL=C` because its headings are translated; its app lines are not. A
-target's line carries a third field only when the device is offline.
+**Probe only what the menu uses.** `probeCommand()` queries executability and
+MIME applications for a single existing entry. It asks for Taildrop targets only
+when all targets are files; a marks menu containing folders needs no probe.
+gio runs under `LC_ALL=C` because its headings are translated. A Taildrop target's
+line carries a third field only when the device is offline.
 
 **Open with launches as Omarchy's own launcher does** (`AppLibrary.launch`): a
 terminal app through `omarchy-launch-tui`, with its command less the field codes,
 and anything else through `uwsm-app -- gtk-launch`, which resolves ids uwsm rejects.
 
 **`Del` in the menu is its Trash**, armed or not, so a menu on one entry never
-arms another: the selection, or the marks. Only a menu without Trash lets it fall
-through to the list's map, where `Del` arms the selection.
+arms another: the selection, or the marks. A menu without Trash consumes `Del`
+without acting.
 
 **Extract makes its scratch folder with `mkdir`, not `mktemp -d`,** whose 0700
 would stay with the folder when it is renamed into place. **Convert checks its
@@ -170,10 +171,12 @@ once the check has passed.
 ## Marks
 
 **Marks are paths, and `marks` is read off the listing.** `marked` maps a path to
-`true`; `marks` is `listedEntries` filtered by it. So a filter hides marks without
+`true`; `marks` filters live `listedEntries` by it, excluding Git-deleted rows. So a filter hides marks without
 dropping them, a file moved or trashed drops out of `marks` on its own, and only
 leaving the folder clears the map. `targets` — the marks, or else the selection —
 is what `Ctrl+X`/`C`/`Y` and `Del` hand to `FilesOps`, whose verbs take a list.
+`hiddenMarks` counts targets absent from `rows`; the header, menu and trash
+confirmation show that count. A marks menu closes when its target paths change.
 
 **What Trash arms is the list's paths, joined by newlines.** The second press
 trashes only when it names the same list, the rows red are the rows in that
@@ -183,14 +186,17 @@ would otherwise leave a Trash armed for a different list.
 
 **A paste is one process**, `pasteCommand()`, for one entry or many. It goes on past
 a name already taken — its own, when pasted where it already is. `17` means every
-name was, so nothing went and the hold stays; `18` means only some were, and a move
-then spends the hold, since it no longer names what is there to move.
+name was, so nothing went and the hold stays. `18` means some names collided;
+`19` means some entries succeeded and others failed. Both clear a move hold,
+since it contains paths already moved. Total failure preserves the hold for retry.
 
 `node tests/files-menu.js` holds each kind of entry to its rows, the marks to theirs,
 drives the menu's and the marks' keys, and runs compress, extract, convert, duplicate,
 link, paste-into and a paste of many against disposable files; `menu-pointer` in
 `python3 tests/runtime.py` right-clicks and `Ctrl`+clicks the real list and opens its
-submenus, with gio and tailscale stood in for.
+submenus, with gio and tailscale stood in for. `tests/files-failures.js` covers
+partial operations, extraction cleanup after failed renames, hidden target counts
+and which commands each probe invokes.
 
 ## Highlighting and Markdown
 

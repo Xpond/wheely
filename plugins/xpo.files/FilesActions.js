@@ -53,7 +53,7 @@ function extractCommand(path, target) {
   return ["sh", "-c", TAKEN + 't="${2%/*}/.extract-$$"; mkdir -- "$t" || exit 1; ' +
     'bsdtar -xf "$1" -C "$t" || { rm -rf -- "$t"; exit 1; }; n=${2##*/}; ' +
     'if [ "$(ls -A -- "$t")" = "$n" ] && [ -d "$t/$n" ] && [ ! -L "$t/$n" ]; ' +
-    'then mv -T -- "$t/$n" "$2" && rmdir -- "$t"; else mv -T -- "$t" "$2"; fi',
+    'then mv -T -- "$t/$n" "$2" && rmdir -- "$t"; else mv -T -- "$t" "$2"; fi || { rm -rf -- "$t"; exit 1; }',
     "files", path, target]
 }
 
@@ -80,12 +80,18 @@ function runCommand(path) {
           "run", path]
 }
 
-// One process as a row's menu opens: whether it is executable, gio's apps for its type, and the
-// devices Taildrop can reach.
-var PROBE = '[ -f "$1" ] && [ -x "$1" ] && echo executable; ' +
+var FILE_PROBE = '[ -f "$1" ] && [ -x "$1" ] && echo executable; ' +
   't=$(gio info -a standard::content-type "$1" 2>/dev/null | sed -n "s/^ *standard::content-type: //p"); ' +
-  '[ -n "$t" ] && LC_ALL=C gio mime "$t" 2>/dev/null; echo peers; ' +
-  'command -v tailscale >/dev/null && timeout 2 tailscale file cp --targets 2>/dev/null; exit 0'
+  '[ -n "$t" ] && LC_ALL=C gio mime "$t" 2>/dev/null; '
+var PEER_PROBE = 'echo peers; command -v tailscale >/dev/null && timeout 2 tailscale file cp --targets 2>/dev/null; '
+
+// Marks only need peers; a selection containing folders cannot use Taildrop.
+function probeCommand(entry, targets) {
+  if (!targets.length || targets.some(t => t.missing)) return []
+  var script = entry ? FILE_PROBE : ""
+  if (targets.every(t => !t.isDir)) script += PEER_PROBE
+  return script ? ["sh", "-c", script + "exit 0", "files", targets[0].path] : []
+}
 
 // Apps by desktop id, the default first. A Taildrop target is an address and a name, with a third
 // field only when it is offline, and only those online can take a file.
@@ -122,7 +128,7 @@ function tree(c) {
   if (!e && !c.many) return folderRows(c)
   if (e && e.missing) return [row("open", "Show changes", "enter", function () { o.activate(e) }),
                               row("path", "Copy path", "ctrl+y", function () { o.copyPath([e]) })]
-  var list = c.many || [e], named = o.label(list), one = c.many ? null : e
+  var list = c.many || [e], named = o.label(list) + (c.hidden ? " (" + c.hidden + " hidden)" : ""), one = c.many ? null : e
   // One entry's own folder, which a folder's preview shows rather than the list; the marks' is the
   // folder listed, whose typed path keeps its trailing slash.
   var here = String(c.dir).replace(/(.)\/+$/, "$1")

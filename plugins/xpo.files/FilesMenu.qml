@@ -40,7 +40,7 @@ Item {
       apps: root.probe ? root.probe.apps.map(root.app) : null,
       preferred: root.probe ? root.probe.preferred : "",
       peers: root.probe ? root.probe.peers : [],
-      doomed: root.armed,
+      doomed: root.armed, hidden: root.many ? p.hiddenMarks : 0,
       showHidden: p.showHidden, order: p.order, popped: p.windowed || !!p.host
     }
   }
@@ -82,10 +82,9 @@ Item {
     root.open = true
     root.current = keyboard ? root.firstChoice() : ""
     gate.reset()
-    // The menu shows what the preview knows of its row, so that should not wait out the debounce.
     if (root.entry) root.panel.settleNow()
-    var first = root.targets[0]
-    if (first && !first.missing) prober.start(["sh", "-c", FilesActions.PROBE, "files", first.path])
+    var command = FilesActions.probeCommand(root.entry, root.targets)
+    if (command.length) prober.start(command)
   }
   function close() {
     if (!root.open) return
@@ -137,7 +136,6 @@ Item {
   function trash() {
     var row = root.topRows.find(r => r.id === "trash")
     if (row) root.fire(row)
-    return !!row
   }
   // Delay switches while crossing the main menu; entering the submenu cancels the switch.
   function hover(row, fromSub) {
@@ -168,6 +166,9 @@ Item {
     function onShownChanged() { if (!root.panel.shown) root.close() }
     function onListedDirChanged() { root.close() }
     function onNamingChanged() { if (root.panel.naming) root.close() }
+    function onMarksChanged() {
+      if (root.many && root.many.map(e => e.path).join("\n") !== root.panel.marks.map(e => e.path).join("\n")) root.close()
+    }
   }
   FilesProcess { id: prober; onFinished: output => root.probe = FilesActions.readProbe(output) }
   PointerMoveGate { id: gate; referenceItem: root }

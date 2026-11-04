@@ -329,93 +329,55 @@ are written with.
 
 ## Marking several
 
-`Ctrl+Space` marks the selection and steps to the next row, so a run of rows is a
-run of presses; on a marked row it unmarks. `Ctrl+A` marks every row shown, or
-unmarks them when they all are, so a filter and `Ctrl+A` mark every match.
-`Ctrl`+click marks or unmarks a row, `Shift`+click marks every row from the
-selection to the one clicked. A marked row trades its icon for a check, and the
-header counts the marks.
+`Ctrl+Space` toggles a mark and steps on; `Ctrl+A` toggles marks for every row
+shown. `Ctrl`+click toggles one row; `Shift`+click marks a range. The header counts
+the marks and how many the current filter hides.
 
-While anything is marked, `Ctrl+X`, `Ctrl+C`, `Ctrl+Y` and `Del` act on the marks
-rather than the selection: one hold carries them all, one paste places them all,
-one `Del` arms them all — the marked rows turn red — and the second trashes
-exactly those. A paste of many goes past a name already taken and says so,
-`some names were already here; the rest moved`, rather than stopping at the first.
-The selection still moves freely, and the preview follows it, so you can look at
-each file before deciding.
+`Ctrl+X`, `Ctrl+C`, `Ctrl+Y` and `Del` act on **all marks, including hidden ones**.
+Trash confirmation names the hidden count, such as `5 items (3 hidden)`.
+`Esc` unmarks first; leaving the folder drops the marks. Enter, `F2` and `Ctrl+E`
+still act on the selected row.
 
-Marks belong to the folder: walking away drops them, a filter only hides some.
-`Esc` lets them go before it clears the field. The verbs that name one file —
-Enter, `F2`, `Ctrl+E` — still act on the selection.
+Paste skips occupied names and reports collisions or failures. A move that
+partly succeeds clears its hold; select the remaining files to retry. If nothing
+moved, the hold stays.
 
 ## The menu
 
-A right-click on a row selects it and opens the menu at the pointer; `Menu` or
-`Shift+F10` opens it under the selected row. A right-click below the rows, or on
-the path, opens the folder's own menu. One on an entry in a folder's preview opens
-that entry's menu where it is, the list left as it was; anywhere else on the
-preview, the selection's. Every verb above is in it, each with the key
-that does the same without it, and what the selection is decides the rest:
+Right-click a row or an entry in a folder's preview for its actions. `Menu` or
+`Shift+F10` opens the selection's menu. Right-click the path or below the rows
+for folder actions: New, Paste, terminal, Nautilus, hidden files, sorting and Pop
+out. These are also under **Current folder** on existing entries.
 
-| selection | adds |
+| selection | actions added |
 |---|---|
-| anything | Open with ▸ the apps for its type, Show in Nautilus, Share ▸, Compress ▸ `.zip` or `.tar.zst`, Duplicate…, Make link… |
-| an image | Copy image, Convert for sharing ▸, Set as wallpaper |
-| a video | Convert for sharing ▸, Set as wallpaper |
-| an archive | Extract here |
-| a script | Run in a terminal, or Make executable while it is not |
-| text the editor can write back | Edit |
-| a folder | Open in a terminal; with something held, Move or Copy it into the folder |
-| a deleted row | only Show changes and Copy path |
+| existing entry | Open with, Show in Nautilus, Share, Compress, Duplicate, Make link |
+| image | Copy image, Convert for sharing, Set as wallpaper |
+| video | Convert for sharing, Set as wallpaper |
+| archive | Extract here |
+| script | Run in a terminal, or Make executable |
+| editable text | Edit |
+| folder | Open in a terminal; move or copy held files into it |
+| deleted entry | Show changes, Copy path |
 
-Every row's menu ends in **Current folder ▸**, the folder's own menu — New file or
-folder, Paste, Open in a terminal, Show in Nautilus, Show hidden files, Sort by
-name, newest or largest, Pop out — because a folder full of rows leaves nothing
-below them to click.
+The marks' menu opens from the keyboard or on a marked row. It offers batch
+sharing, compression, cut/copy, paths and trash, and closes if its targets change.
+Right-click an unmarked row for that entry alone.
 
-**With marks, the menu is theirs** when it opens from the keyboard or on a marked
-row; a right-click on an unmarked row is for that row alone. It counts them and
-offers what takes many: Share ▸ (Taildrop only while they are all files), Compress
-▸ into one archive named after the folder, Cut, Copy, Unmark all, Copy paths and
-Trash.
+**Share** offers LocalSend, online Taildrop devices for files, and copying files
+to the clipboard as attachments. **Convert for sharing** makes a smaller copy
+beside the original, copies it to the clipboard and notifies when done.
 
-**Share is Omarchy's own.** LocalSend goes through `omarchy-menu-share`, Taildrop
-through `omarchy-tailscale-send`, a row for each device online — `Taildrop to
-laptop` — and none while Tailscale is down. **Copy to clipboard** copies the file
-itself, as a `text/uri-list`, so it pastes into a browser chat or a mail as an
-attachment. **Convert for sharing** runs `omarchy-transcode`, which writes a
-smaller copy beside the original — `photo-medium.jpg` — puts that on the
-clipboard, and says when it is done.
+Use arrows or Tab to choose, Enter to run, Right to open a submenu, Left or
+Backspace to return, and Esc to close. Submenus also open on click or hover.
+`Del` only acts on the menu's Trash; without that action it does nothing. Other
+keys close the menu and retain their usual behavior.
 
-A submenu opens beside the row that holds it, level with it, and the menu it came
-from stays open with that row lit — on the other side when there is no room on
-this one, which over the overlay, where the menus may reach past the card, is only
-at the card's right edge. No submenu holds another, so none ever covers the menu
-it came from. A click opens it, and so does `Enter` or `→`, or the pointer
-reaching the row and staying on it for 150 ms, moving or not; a second click on
-the row closes it. Reaching another row of the menu further out switches to that
-row after the same moment, so the pointer can cross rows on its way into a submenu
-without closing it.
-
-Inside the menu `↑` `↓` `Tab` `Ctrl+N` `Ctrl+P` move, `Enter` runs, `←` or
-`Backspace` closes the submenu, `Esc` closes them all, `Del` is its Trash. Any
-other key closes the menu and does what it always does, so `F2` still renames and
-typing still filters: the menu never traps the keyboard. Hover moves the highlight
-only once the pointer moves, so the row that opens under a resting pointer is not
-taken for a choice.
-
-The verbs keep their rules in the menu. **Trash asks twice**: the first pick, or
-`Del`, turns it red and keeps the menu open, and the second trashes. **Nothing is
-overwritten**: Compress, Extract, Duplicate, Make link and Convert each answer
-`a … is already here` instead. Duplicate and Make link name what they make in the
-rename field, starting from `photo copy.jpg` or `photo link.jpg`, rather than
-inventing a name you never saw. What a row makes or renames stays beside its entry,
-so one in a folder's preview stays in that folder.
-
-**Extract here** unpacks into a folder named after the archive. An archive that
-holds a single folder of its own name, as most downloads of a repository do,
-gives that folder rather than a folder inside a folder. It unpacks aside first,
-so a broken archive leaves nothing behind.
+**Trash asks twice**, including hidden marks. Naming and archive operations refuse
+occupied destinations. Duplicate and Make link let you choose the new name;
+outputs stay beside the entry, including entries in a folder's preview.
+**Extract here** creates a folder named after the archive, avoids nesting a
+same-named folder twice, and removes scratch files after a failure.
 
 ## Editing
 

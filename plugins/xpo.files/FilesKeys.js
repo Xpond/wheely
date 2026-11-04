@@ -19,7 +19,7 @@ function menuKey(menu, event) {
   case Qt.Key_Escape: case Qt.Key_Menu: menu.close(); return true
   case Qt.Key_F10: if (event.modifiers & Qt.ShiftModifier) menu.close(); return !!(event.modifiers & Qt.ShiftModifier)
   // The menu's own Trash, asked twice as it is, never the selection's.
-  case Qt.Key_Delete: return menu.trash()
+  case Qt.Key_Delete: menu.trash(); return true
   }
   return false
 }

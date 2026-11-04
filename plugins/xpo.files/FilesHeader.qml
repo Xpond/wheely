@@ -150,6 +150,7 @@ Item {
       text: FilesIndex.countLabel(root.panel.rows.length, root.panel.listedEntries.length,
                                   root.panel.query, root.panel.showHidden, root.panel.order)
             + (root.panel.marks.length ? "  ·  " + root.panel.marks.length + " marked" : "")
+            + (root.panel.hiddenMarks ? " (" + root.panel.hiddenMarks + " hidden)" : "")
       color: Commons.Color.menu.text
       opacity: 0.5
       font.family: Style.font.menuFamily
