@@ -89,15 +89,15 @@ def check(wheel, run, block, line):
         run("refresh-file-selection-" + (listing or "files"), common + 'Component.onCompleted: root.listing = "' + listing + '"\n' + r'''
   Timer { interval: 50; running: true; onTriggered: {
     root.query = "/conf"
-    root.files = MenuIndex.parseFiles("/home/configuration\n/home/my-configuration")
-    root.files = MenuIndex.parseFiles("/home/config", root.files)
+    root.files = MenuIndex.parseFiles(JSON.stringify(["/home/configuration", "/home/my-configuration"]))
+    root.files = MenuIndex.parseFiles(JSON.stringify(["/home/config"]), root.files)
     root.expect(root.resultIndex === 0, "default followed an early match")
     root.moveResult(1)
-    root.files = MenuIndex.parseFiles("/home/conf", root.files)
+    root.files = MenuIndex.parseFiles(JSON.stringify(["/home/conf"]), root.files)
     root.expect(root.resultIndex === 2, "streaming lost a chosen result")
     var more = []
     for (var i = 0; i < 40; i++) more.push("/home/conf" + i)
-    root.files = MenuIndex.parseFiles(more.join("\n"), root.files)
+    root.files = MenuIndex.parseFiles(JSON.stringify(more), root.files)
     root.expect(root.resultIndex === 0, "displaced selection left Enter unusable")
     root.finish()
   } }

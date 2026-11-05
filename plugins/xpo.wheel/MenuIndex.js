@@ -701,7 +701,7 @@ var SKIPPED = [".cache", ".git", "node_modules", ".ssh", ".gnupg", ".password-st
 // The scan `/` has always run over home, and a second over the folders added outside it. fd anchors
 // a path only to the first folder it is given, so a skip with a slash goes to home's scan alone.
 function scanCommand(roots, skipped, home) {
-  var command = ["fd", "--hidden", "--max-depth", "6"]
+  var command = ["fd", "--hidden", "--print0", "--max-depth", "6"]
   for (var i = 0; i < skipped.length; i++) {
     // fd reads a skip as a glob, so a name holding brackets, braces or stars is escaped to mean itself.
     var skip = String(skipped[i]).replace(/[[\]{}*?!\\]/g, "\\$&")
@@ -733,14 +733,14 @@ function subfolderRows(paths, typed, home) {
 
 var NO_FILES = { paths: [], lower: [] }
 
-// fd marks directories with trailing slashes; fold case and find names once per scan.
+// A scan batch is a JSON list of exact paths; fd marks directories with trailing slashes.
+// Fold case and find names once per scan.
 function parseFiles(raw, into) {
-  var lines = String(raw || "").split("\n")
-  var paths = into ? into.paths : lines, lower = into ? into.lower : [], starts = into ? into.starts : []
+  var batch = raw ? JSON.parse(raw) : []
+  var paths = into ? into.paths : batch, lower = into ? into.lower : [], starts = into ? into.starts : []
   var count = into ? paths.length : 0
-  for (var i = 0; i < lines.length; i++) {
-    var path = lines[i].trim()
-    if (!path) continue
+  for (var i = 0; i < batch.length; i++) {
+    var path = batch[i]
     paths[count++] = path
     var low = path.toLowerCase()
     lower.push(low)

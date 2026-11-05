@@ -259,7 +259,8 @@ folders first *and* the filter's best match first *and* then alphabetical.
 
 **`FolderListModel` can list the wrong folder.** It turns its URL into a path
 and parses that as a URL again, so a `#`, `?` or `%XX` in a folder name cuts
-the path short, encoded or not: `#archive` lists its parent. A fresh model given
+the path short, encoded or not (raw, encoded and double-encoded URLs were all
+tried on Qt 6.12): `#archive` lists its parent. A fresh model given
 a folder that is not there lists the working directory. `snapshot()` drops
 every row not inside the folder asked for, so `Delete` or `F2` can never reach
 another folder's files; such a folder shows "Can't list this folder" or
@@ -319,7 +320,11 @@ did nothing.
 **`FileView` does not tell you whether a write worked.** Neither `saved` nor
 `saveFailed` fires for `setText`; a permission failure only prints a warning.
 A `reload()` in the same tick as the write is also swallowed, which is what the
-150 ms is for.
+150 ms is for. The other way round, a write started inside `onLoaded` drops the
+read that is finishing, so the save's pre-write check (`checking` against
+`editBase`, refusing undecoded a file grown past `previewLimit`) defers its
+write with `Qt.callLater`. A failed read-back ends the save as failed
+(`onLoadFailed`), or every later save would wait on it.
 
 **`TextEdit` has no `lineHeight`.** It is a `Text` property, not a
 `QQuickTextEdit` one, so an edited file is set at the font's own leading rather

@@ -49,7 +49,8 @@ It links `plugins/` into `~/.config/omarchy/plugins/` and registers them in
 blur) to `~/.config/hypr/hyprland.lua`, links four helpers into
 `~/.local/bin`, links the lock-screen designs in `lock/` into
 `~/.local/share/wheely/`, patches eight shell files, installs a post-update
-hook, and restarts the shell. Rerunning is safe, and `git pull && ./install.sh`
+hook, and restarts the shell. A file or folder of your own where a plugin's link
+goes stops it before anything changes. Rerunning is safe, and `git pull && ./install.sh`
 updates it. Keep the checkout where it is: the hook, plugins and helpers point to it.
 Run `./revert.sh` before moving or deleting it. If it goes missing anyway, the lock screen
 still locks, without its design.
@@ -69,7 +70,8 @@ original shell files, and unlinks the lock-screen designs and forgets the chosen
 after a successful restore, then restarts the shell. It also works from a TTY or over
 SSH when the desktop will not start. Originals are checked against
 pacman's checksums before they are written, and a shell file changed outside
-this project is left untouched and reported.
+this project is left untouched and reported. If restoring fails, revert says so
+and never restarts the shell into a lock screen whose two files do not match.
 Your settings stay: `wheel.json`, `wheel-blur`, `wheel-shortcut` and
 `wallpaper-pause-shortcut` in `~/.config/omarchy/`, and your picks in
 `~/.local/state/omarchy/wheel-uses.json`, so a reinstall starts where you left off.

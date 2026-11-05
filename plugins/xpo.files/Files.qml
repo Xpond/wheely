@@ -143,7 +143,7 @@ Item {
   readonly property bool previewCut: root.previewText !== root.shownText
   function showAll() { root.shownLines = root.shownText.split("\n").length }
   onPreviewPathChanged: {
-    root.fullText = ""; root.utf8 = false; root.rewrites = false; root.previewHtml = ""; root.saving = null
+    root.fullText = ""; root.utf8 = false; root.rewrites = false; root.previewHtml = ""; root.saving = root.checking = null
     root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / Style.font.subtitle))
   }
 
@@ -476,6 +476,7 @@ Item {
     if (root.rewrites) { ops.note("text the editor would change; preview only"); return }
     if (!root.editable || root.editing) return
     root.editedPath = root.previewPath
+    root.editBase = root.fullText
     ops.fileNote = ""
     preview.editorText = root.fullText
     root.dirty = false
@@ -488,14 +489,16 @@ Item {
   // FileView does not report write failure, so verify from disk after a delay.
   // null means idle; "" is a valid save in flight.
   property var saving: null
+  // A save first rereads the file: a change since the edit began is reported, not overwritten.
+  property var checking: null
+  property string editBase: ""
   function save() {
-    if (!root.editing || root.saving !== null) return
+    if (!root.editing || root.saving !== null || root.checking !== null) return
     if (root.previewPath !== root.editedPath) { ops.note("file is gone; not saved"); return }
     root.saveError = false
     ops.fileNote = ""
-    root.saving = FilesIndex.endLine(preview.editorText)
-    previewFile.setText(root.saving)
-    verifySave.restart()
+    root.checking = FilesIndex.endLine(preview.editorText)
+    previewFile.reload()
   }
 
   Timer { id: verifySave; interval: 150; onTriggered: previewFile.reload() }
@@ -714,6 +717,23 @@ Item {
     // Preserve the old file if a write stops partway.
     atomicWrites: true
     onLoaded: {
+      if (root.checking !== null) {
+        var draft = root.checking
+        root.checking = null
+        // A file grown past the limit is neither decoded nor editable: never saved over unseen.
+        var disk = data().byteLength > root.previewLimit ? null : text()
+        // Already the draft: a retry after an unverified save.
+        if (disk === root.editBase || disk === draft) {
+          root.saving = draft
+          // A write started inside this read's handler drops the read.
+          Qt.callLater(() => { if (root.saving === draft) { previewFile.setText(draft); verifySave.restart() } })
+          return
+        }
+        if (disk === null) { ops.note("file grew too large to edit; not saved"); return }
+        // Saving again overwrites the change, now shown in the preview.
+        root.editBase = disk
+        ops.note("changed on disk; save again to overwrite")
+      }
       // A file grown past the limit since it was listed is not decoded here: 200 MB blocks for seconds.
       // A save's own read-back still verifies.
       if (root.saving === null && data().byteLength > root.previewLimit) return
@@ -724,11 +744,17 @@ Item {
       if (root.saving !== null) {
         root.saveError = root.fullText !== root.saving
         root.dirty = root.saveError || FilesIndex.endLine(preview.editorText) !== root.saving
-        if (!root.saveError) savedFlash.restart()
+        if (!root.saveError) { root.editBase = root.saving; savedFlash.restart() }
         root.saving = null
       }
     }
-    onLoadFailed: root.fullText = ""
+    onLoadFailed: {
+      root.fullText = ""
+      // The draft stays, and saving again retries.
+      if (root.checking !== null) ops.note("cannot read the file; not saved")
+      if (root.saving !== null) root.saveError = root.dirty = true
+      root.checking = root.saving = null
+    }
   }
 
   onRowsChanged: {

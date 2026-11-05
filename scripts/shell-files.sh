@@ -27,6 +27,21 @@ is_ours() {
             -- "patches/shell/$1" 2>/dev/null) ]]
 }
 
+# Write $1 over the shell file $2 whole: copied beside it, then renamed in, so a copy stopped partway
+# never leaves a truncated file. The copy is not *.qml, so the shell never loads one left behind.
+replace() {
+  sudo install -m 644 "$1" "$2.wheely-new" && sudo mv -f "$2.wheely-new" "$2" ||
+    { sudo rm -f "$2.wheely-new"; return 1; }
+}
+
+# A run stopped between that copy and its rename leaves the copy; clear any before writing.
+clear_copies() {
+  local f
+  for f in "${FILES[@]}"; do
+    if [[ -e $SHELL_DIR/$f.wheely-new ]]; then sudo rm -f "$SHELL_DIR/$f.wheely-new"; fi
+  done
+}
+
 # Write verified stock bytes to $2: the checkout's merge base, the copy a rebase kept, else the cached package.
 stock_copy() {
   local archive copy

@@ -31,6 +31,14 @@ if [[ -n $PACKAGE_DB && $VERSION != dev-* ]] && (( $(vercmp "$VERSION" "$BASE") 
   alert "wheely needs Omarchy $BASE or newer; this is $VERSION"; exit 1
 fi
 
+# A file or folder of the user's in a plugin's place would get our link nested inside it.
+for p in "$REPO"/plugins/*/; do
+  dest=~/.config/omarchy/plugins/$(basename "$p")
+  if [[ -e $dest && ! -L $dest ]]; then
+    alert "Not installed: $dest is not wheely's link" "Move it aside, then rerun install.sh."; exit 1
+  fi
+done
+
 # Link the lock-screen designs before any QML can load them.
 data=~/.local/share/wheely
 mkdir -p "$data" && ln -sfn "$REPO/lock" "$data/lock" || { alert "Could not link the lock-screen designs"; exit 1; }
@@ -80,6 +88,7 @@ printf '#!/bin/bash\nexec %q\n' "$REPO/install.sh" > "$hook_dir/wheely" &&
 rm -rf "$hook_dir"
 
 # ------------------------------------------------------------------- patches
+clear_copies
 applied=()   # patch copied in
 rebased=()   # patch re-based onto a new upstream version first
 conflicts=() # merge failed; installed file left untouched
@@ -148,20 +157,20 @@ for f in "${ready[@]}"; do
     failed+=("$f"); continue
   fi
   [[ $f == plugins/lock/* ]] && lock_written+=("$f")
-  if sudo cp "$ours" "$installed" && cmp -s "$ours" "$installed" && rm -f "$written.pending"; then
+  if replace "$ours" "$installed" && cmp -s "$ours" "$installed" && rm -f "$written.pending"; then
     applied+=("$f")
   else
     failed+=("$f")
   fi
 done
 
-# A failed copy may have truncated its target after its partner was already installed.
+# A failed copy leaves its own file alone, but its lock partner may already be installed.
 if [[ " ${failed[*]}" == *" plugins/lock/"* ]]; then
   for f in "${lock_written[@]}"; do
     saved="$lock_backup/${f##*/}"
     installed="$SHELL_DIR/$f"
     written="$STATE/installed/$f"
-    if ! { { cmp -s "$saved" "$installed" || sudo cp "$saved" "$installed"; } &&
+    if ! { { cmp -s "$saved" "$installed" || replace "$saved" "$installed"; } &&
            cmp -s "$saved" "$installed" && cp "$saved" "$written" && rm -f "$written.pending"; }; then
       alert "Could not restore the lock screen; shell not restarted. Backups: $lock_backup"
       exit 1
