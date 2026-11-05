@@ -27,5 +27,6 @@ What the checks cover, what they need and how to run them is in
   the next Omarchy release harder to rebase onto.
 - Shaders are committed both as GLSL and as `.qsb`; rebuild with `scripts/build-shaders.sh`
   after editing one.
-- Images are AI-generated and shipped at 4K, JPEG quality 90 for photos; keep new ones in
-  the same range so the repository stays small to clone.
+- Wallpapers and art are AI-generated and shipped at 4K, JPEG quality 90 for photos; keep new ones in
+  the same range so the repository stays small to clone. The screenshots in `docs/images/`
+  are WebP at 1920×1080, quality 85.

@@ -6,7 +6,13 @@ bar's panels sit on a ring, and typing turns the centre into one search for anyt
 Every key is in the manual: type `help` in the wheel, or see
 [`manual.md`](../plugins/xpo.wheel/manual.md).
 
+| ![The manual sheet, Tidal theme](images/tidal/04-help.webp) | ![The manual sheet, Wheelie theme](images/wheelie/04-help.webp) |
+|---|---|
+
 ## The ring
+
+| ![The wheel, Tidal theme](images/tidal/01-wheel.webp) | ![The wheel, Wheelie theme](images/wheelie/01-wheel.webp) |
+|---|---|
 
 `↑` `↓` jump to the slice at that compass point, `←` `→` and `Tab` step around, and
 `Enter` opens it. With the mouse, flick or click toward a slice, or scroll to step.
@@ -31,11 +37,18 @@ fonts, settings and the manual. Rows you pick often rise to the top.
 On a file, `Enter` opens it in [Files](files.md), `Ctrl+Y` copies its path and
 `Ctrl+Enter` opens a terminal in its folder.
 
+| ![A search, Tidal theme](images/tidal/02-search.webp) | ![A search, Wheelie theme](images/wheelie/02-search.webp) |
+|---|---|
+| ![The calculator, Tidal theme](images/tidal/03-calc.webp) | ![The calculator, Wheelie theme](images/wheelie/03-calc.webp) |
+
 ## Pinning
 
 `Ctrl+T` turns the search into a normal window that stays open beside your others:
 each pick runs and the search is ready for the next. `Ctrl+T` again brings it back to
 the wheel.
+
+| ![The pinned search beside Files, Tidal theme](images/tidal/10-pinned-both.webp) | ![The pinned search beside Files, Wheelie theme](images/wheelie/10-pinned-both.webp) |
+|---|---|
 
 ## Settings
 
