@@ -156,20 +156,20 @@ for f in "${ready[@]}"; do
     failed+=("$f"); continue
   fi
   [[ $f == plugins/lock/* ]] && lock_written+=("$f")
-  if sudo cp "$ours" "$installed" && cmp -s "$ours" "$installed" && rm -f "$written.pending"; then
+  if replace "$ours" "$installed" && cmp -s "$ours" "$installed" && rm -f "$written.pending"; then
     applied+=("$f")
   else
     failed+=("$f")
   fi
 done
 
-# A failed copy may have truncated its target after its partner was already installed.
+# A failed copy leaves its own file alone, but its lock partner may already be installed.
 if [[ " ${failed[*]}" == *" plugins/lock/"* ]]; then
   for f in "${lock_written[@]}"; do
     saved="$lock_backup/${f##*/}"
     installed="$SHELL_DIR/$f"
     written="$STATE/installed/$f"
-    if ! { { cmp -s "$saved" "$installed" || sudo cp "$saved" "$installed"; } &&
+    if ! { { cmp -s "$saved" "$installed" || replace "$saved" "$installed"; } &&
            cmp -s "$saved" "$installed" && cp "$saved" "$written" && rm -f "$written.pending"; }; then
       alert "Could not restore the lock screen; shell not restarted. Backups: $lock_backup"
       exit 1

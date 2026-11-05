@@ -42,7 +42,6 @@ done
 
 # Only bytes matching pacman's checksum are written, and only over files that are ours.
 failed=0
-unsafe=()  # a copy failed, maybe partway
 stock=$(mktemp)
 backup=$(mktemp -d)
 trap 'rm -rf "$stock" "$backup"' EXIT
@@ -67,9 +66,9 @@ for f in "${FILES[@]}"; do
       echo "Not restored: $f — could not back it up first" >&2
       failed=1; continue
     fi
-    if ! touch "$written.pending" || ! sudo cp "$stock" "$installed" || ! is_stock "$f" "$installed"; then
+    if ! touch "$written.pending" || ! replace "$stock" "$installed" || ! is_stock "$f" "$installed"; then
       echo "Could not restore $f; rerun revert.sh" >&2
-      failed=1; unsafe+=("$f"); continue
+      failed=1; continue
     fi
     echo "restored $f"
   fi
@@ -81,19 +80,18 @@ find "$STATE" -depth -type d -empty -delete 2>/dev/null || true
 lock=(plugins/lock/{LockView,Service}.qml)
 mixed() { is_stock "$1" "$SHELL_DIR/$1" && ! is_stock "$2" "$SHELL_DIR/$2" && is_ours "$2" "$SHELL_DIR/$2"; }
 mixed_lock() { mixed "${lock[0]}" "${lock[1]}" || mixed "${lock[1]}" "${lock[0]}"; }
-# A failed copy may have truncated its file, and a lock file left unrestored strands its partner: put
-# back what was installed, so the shell restarts into files that load. Each file this run wrote has a backup.
-undo=("${unsafe[@]}")
-if [[ " ${unsafe[*]}" == *" plugins/lock/"* ]] || mixed_lock; then undo+=("${lock[@]}"); fi
-for f in "${undo[@]}"; do
-  [[ -f $backup/$f ]] || continue
-  if ! { sudo cp "$backup/$f" "$SHELL_DIR/$f" && cmp -s "$backup/$f" "$SHELL_DIR/$f"; }; then
-    echo "Could not put back $f; shell not restarted. Backups: $backup" >&2
-    echo "Rerun revert.sh, or reinstall the omarchy package." >&2
-    trap 'rm -f "$stock"' EXIT
-    exit 1
-  fi
-done
+# A lock file left unrestored strands its partner: put back what this run replaced, from its backup.
+if mixed_lock; then
+  for f in "${lock[@]}"; do
+    [[ -f $backup/$f ]] && ! cmp -s "$backup/$f" "$SHELL_DIR/$f" || continue
+    if ! { replace "$backup/$f" "$SHELL_DIR/$f" && cmp -s "$backup/$f" "$SHELL_DIR/$f"; }; then
+      echo "Could not put back $f; shell not restarted. Backups: $backup" >&2
+      echo "Rerun revert.sh, or reinstall the omarchy package." >&2
+      trap 'rm -f "$stock"' EXIT
+      exit 1
+    fi
+  done
+fi
 # A backup covers only this run: an earlier revert stopped between the two can still leave them mixed.
 if mixed_lock; then
   echo "The lock screen's two files do not match; shell not restarted." >&2

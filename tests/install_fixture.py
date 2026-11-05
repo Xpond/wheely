@@ -38,13 +38,17 @@ class Installer:
         helper.write_text(patch(text, "PACKAGE_CACHE=/var/cache/pacman/pkg",
                                 "PACKAGE_CACHE=" + shlex.quote(str(self.package / "cache"))))
         commands = {
-            "sudo": '''if [[ "$*" == *shell.qml ]]; then
-  if [[ "${CHECK_FAIL:-}" == partial ]]; then head -c -4 "${@: -2:1}" > "${@: -1}"; exit 1; fi
-fi
-# once:NAME or always:NAME truncates a copy to NAME and fails, the first time or every time.
-if [[ "${CHECK_FAIL:-}" == *:* && "${@: -1}" == *"${CHECK_FAIL#*:}" ]] &&
-   [[ "${CHECK_FAIL:-}" == always:* || ! -e "$HOME/failed-once" ]]; then
-  touch "$HOME/failed-once"; head -c 20 "${@: -2:1}" > "${@: -1}"; exit 1
+            # Each rule stops a copy into a shell file partway: partial for shell.qml, and once:, again: or
+            # always: NAME for that file's first copy in a run, its later ones, or all of them.
+            "sudo": '''if [[ $1 == install && "${@: -1}" == *.wheely-new ]]; then
+  name=$(basename "${@: -1}" .wheely-new)
+  count=$(( $(cat "$HOME/copies-$name" 2>/dev/null || echo 0) + 1 )); echo "$count" > "$HOME/copies-$name"
+  for rule in ${CHECK_FAIL:-}; do
+    case $rule in
+      partial) [[ $name == shell.qml ]] ;; "once:$name") (( count == 1 )) ;;
+      "again:$name") (( count > 1 )) ;; "always:$name") true ;; *) false ;;
+    esac && { head -c 20 "${@: -2:1}" > "${@: -1}"; exit 1; }
+  done
 fi
 exec "$@"''',
             "notify-send": "exit 0",
@@ -64,7 +68,7 @@ echo '[{"pid": 424242}]' ''',
   *) exec /usr/bin/grep "$@" ;;
 esac''',
             "sleep": "exit 0",
-            "mv": '[ "${CHECK_FAIL:-}" = mv ] && exit 1\nexec /usr/bin/mv "$@"',
+            "mv": '[[ "${CHECK_FAIL:-}" == mv && "$*" == *shell.json* ]] && exit 1\nexec /usr/bin/mv "$@"',
             "omarchy": '''[[ "$1 $2" == "restart shell" ]] && echo restart >> "$HOME/restarts"
 if [[ "$1 $2" == "hook install" ]]; then
   [[ "${CHECK_FAIL:-}" == hook ]] && exit 1
@@ -117,6 +121,7 @@ exit 0''',
                                *args], check=True, capture_output=True)
 
     def run(self, script="install.sh", failure=""):
+        for count in self.user.glob("copies-*"): count.unlink()
         return subprocess.run([str(self.repo / script)], cwd=self.base,
                               env=dict(self.env, CHECK_FAIL=failure),
                               text=True, capture_output=True, timeout=15)

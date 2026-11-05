@@ -90,6 +90,8 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert json.loads(conf.read_text()) == {"plugins": [{"id": "other", "enabled": False}],
                                           "idle": {"lock": 30}}
     assert fixture.all_stock()
+    # Restored from a private temporary copy, a shell file is still readable by everyone.
+    assert all((fixture.shell / f).stat().st_mode & 0o777 == 0o644 for f in fixture.files)
     assert not asset_dir.exists()
     assert fixture.run("revert.sh").returncode == 0
     print("ok: revert removes the hook and plugins, restores QML, and preserves other settings")
@@ -187,11 +189,15 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.all_stock()
     print("ok: files edited outside this project are neither patched over nor restored over")
 
+    # A copy stopped partway leaves the file it was replacing whole, and nothing beside it.
     relative = "shell.qml"
-    assert fixture.run(failure="partial").returncode == 1
+    leftovers = lambda: list(fixture.shell.rglob("*.wheely-new"))
+    assert fixture.run(failure="partial").returncode == 1 and fixture.installed(relative) == fixture.stock[relative]
+    assert not leftovers()
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     assert fixture.run().returncode == 0 and fixture.installed(relative) == fixture.patched(relative)
-    assert fixture.run("revert.sh", "partial").returncode == 1 and fixture.installed(relative) != fixture.stock[relative]
+    assert fixture.run("revert.sh", "partial").returncode == 1 and fixture.installed(relative) == fixture.patched(relative)
+    assert not leftovers()
     assert designs.is_symlink(), "a failed revert must keep the lock screen's designs"
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: interrupted installs and restores are recognised as ours and recover on retry")
@@ -200,8 +206,8 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     restarts = fixture.user / "restarts"
     for failing in lock:
         assert fixture.run().returncode == 0
-        (fixture.user / "failed-once").unlink(missing_ok=True); restarts.unlink(missing_ok=True)
-        result = fixture.run("revert.sh", "once:" + failing)
+        restarts.unlink(missing_ok=True)
+        result = fixture.run("revert.sh", "once:" + Path(failing).name)
         assert result.returncode == 1 and restarts.exists(), result.stderr
         assert all(fixture.installed(f) == fixture.patched(f) for f in lock), failing
         assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
@@ -209,7 +215,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
 
     assert fixture.run().returncode == 0
     restarts.unlink(missing_ok=True)
-    result = fixture.run("revert.sh", "always:" + lock[1])
+    result = fixture.run("revert.sh", f"always:{Path(lock[1]).name} again:{Path(lock[0]).name}")
     assert result.returncode == 1 and "shell not restarted" in result.stderr and not restarts.exists(), result.stderr
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: a lock pair that cannot be put back is never restarted into, and a retry recovers")
@@ -217,8 +223,8 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     # An earlier revert, stopped between the two lock files, left a mixed pair this run cannot finish.
     assert fixture.run().returncode == 0
     (fixture.shell / lock[0]).write_bytes(fixture.stock[lock[0]])
-    (fixture.user / "failed-once").unlink(missing_ok=True); restarts.unlink(missing_ok=True)
-    result = fixture.run("revert.sh", "once:" + lock[1])
+    restarts.unlink(missing_ok=True)
+    result = fixture.run("revert.sh", "once:" + Path(lock[1]).name)
     assert result.returncode == 1 and "shell not restarted" in result.stderr and not restarts.exists(), result.stderr
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: a mixed lock pair left by an earlier revert is never restarted into")
