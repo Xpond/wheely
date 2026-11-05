@@ -1,29 +1,23 @@
 # Centered shell panels
 
-Makes Omarchy's bar panels (Display, Audio, Network, Power…) open centered on
-screen over a blurred desktop, instead of tucked against the bar edge beside
-their widget. The wheel's **Centered panels** setting turns this off.
+Omarchy's bar panels (Display, Audio, Network, Power…) open centered on screen over a
+blurred desktop, instead of beside their widget on the bar. Switching panels with
+`Ctrl+←` `Ctrl+→` keeps the backdrop.
 
-**Working:** centering, blur, Ctrl+Left/Right panel switching, and the
-shared backdrop across handoffs. The motion is Omarchy's own since 4.5: a
-centred card grows from its centre, and one switching within a bar section
-morphs into the next.
+| ![A centered panel, Tidal theme](images/tidal/07-panel.webp) | ![A centered panel, Wheelie theme](images/wheelie/07-panel.webp) |
+|---|---|
 
 ## Settings
 
-The wheel's **Centered panels** setting (type `wheely settings`) switches between centred
-panels over the backdrop and Omarchy's own placement beside the bar.
-
-Installed blur strength comes from `config/hyprland.lua` (`size 4, passes 2`);
-the wheel's **Backdrop** setting turns it off at 0% ([`wheel.md`](wheel.md#settings), Settings).
-Put personal overrides after the managed block in your main Hyprland config.
-`passes` has the most effect; `passes 1` for a lighter frost.
+- **Centered panels** in the wheel (type `wheely settings`) switches between centered
+  panels and Omarchy's own placement beside the bar.
+- **Backdrop** sets how much the backdrop blurs and dims; 0% turns the blur off.
+- For a different blur strength, set `decoration.blur` after wheely's block in your
+  Hyprland config; `passes` has the most effect.
 
 ## Known limits
 
-**Latency before the first frame**, which is sluggishness rather than judder:
-monitor 152ms, bluetooth 74ms, clock 44ms, network 37ms. Only `monitor` is bad
-enough to notice, and it is the 4 processes `refresh()` spawns on open. Fixing it means
-deferring that work until after the entry animation, in another package-owned file.
+- The Display panel takes a moment longer than the others to appear.
 
-How it works, how the patches are maintained, and what was measured: [`dev/centered-panels.md`](dev/centered-panels.md).
+How it works, how the patches are maintained, and what was measured:
+[`dev/centered-panels.md`](dev/centered-panels.md).

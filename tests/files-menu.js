@@ -181,19 +181,19 @@ browser.naming = ""; browser.editing = true
 assert.equal(press("Key_Menu"), "", "the menu opened over an edit")
 console.log("ok: the menu's keys move, run, go back and close; other keys close it and do their own")
 
-// Ctrl+Space marks and Ctrl+A marks all; the verbs take the marks, and Esc lets them go first.
+// Ctrl+M marks and Ctrl+A marks all; the verbs take the marks, and Esc lets them go first.
 browser.editing = false; browser.filter = "typed"
 Object.assign(browser, { marks: [{ path: "/m" }], targets: ["the targets"], toggleMark: () => seen.push("mark"),
   markAll: () => seen.push("all"), unmarkAll() { this.marks = []; seen.push("unmark") } })
 Object.assign(doom, { hold: (list, move) => seen.push("hold " + list + " " + move), copyPath: list => seen.push("path " + list),
   remove: list => seen.push("remove " + list) })
-for (const [k, m, want] of [["Key_Space", CTRL, "mark"], ["Key_A", CTRL, "all"], ["Key_C", CTRL, "hold the targets false"],
+for (const [k, m, want] of [["Key_M", CTRL, "mark"], ["Key_A", CTRL, "all"], ["Key_C", CTRL, "hold the targets false"],
     ["Key_X", CTRL, "hold the targets true"], ["Key_Y", CTRL, "path the targets"], ["Key_Delete", 0, "remove the targets"],
     ["Key_Escape", 0, "unmark"]])
   assert.equal(press(k, m), want, k)
 press("Key_Escape")
 assert.equal(browser.filter, "", "Esc with no marks left did not clear the field")
-console.log("ok: ctrl+space and ctrl+a mark, the verbs take the marks, and esc lets them go before the field")
+console.log("ok: ctrl+m and ctrl+a mark, the verbs take the marks, and esc lets them go before the field")
 
 // Duplicate and Make link start from the name with a word before its extension.
 for (const [name, isDir, verb, want, caret] of [["photo.jpg", false, "copy", "photo copy.jpg", "photo copy"],

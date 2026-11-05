@@ -30,6 +30,20 @@ scrolling and its editor and exposes verbs — `scrollBy`, `keepPlace`,
 
 ## The floor
 
+**Home is the floor.** The browser opens at `$HOME` every time and cannot go above
+it, or above the folders the wheel searches outside home (`folders` in
+`~/.config/omarchy/wheel.json`), so the wheel's results there open here too.
+Anything resolving outside those roots resolves *to* home rather than being refused,
+so there is no state the panel can be left holding that it cannot get out of. Each
+root outside home is listed at home as a folder named by its full path (`/mnt`); its
+row stands for the root itself, so it cannot be held, renamed or trashed.
+
+**It does not remember where you were.** A remembered directory is only valid until
+something moves, renames, unmounts or deletes it, and then the panel opens onto a
+path that no longer exists, an empty list with no hint of why. A caller passes
+`{"dir": "...", "select": "..."}` instead, which is how the wheel hands a file over:
+the browser opens where the file lives with the file selected.
+
 `FilesIndex.within()` is applied on every path change — arrow navigation, `←`,
 `Backspace`, and typed paths alike — after `cleanPath()` has collapsed `.` and `..`
 segments, so a typed `..` cannot step over the jail; a symlink inside home that
@@ -40,6 +54,59 @@ with `/home/alex` and is not inside it. `display()` tildes only home
 itself or a path under `home + "/"` for the same reason.
 
 ## Layout, preview and git status
+
+**Both columns are sized in characters of the font they render**, not in fractions of
+the display: the list 28 characters plus icon and padding, the preview 100, the card
+their sum plus gaps, capped at 92% of the screen. A percentage split gives the preview
+a wider box than any line of code fills. `TextMetrics` measures the real font, so this
+holds under any `[font] size` or family the theme sets.
+
+The card carries **one ground colour**; the columns are told apart by the space
+between them and the rule under their headings, since a second fill or frame turns
+one card into two. The header is one line: the breadcrumb (leaf at full strength,
+trail dimmed), whatever narrows the list, then the count, flowing left, with the
+preview's own heading right-aligned on the same line. The count sits with the path
+because right-aligned it stacked above the preview's size and date and read as a fact
+about the file. The foot carries the keys in key-and-word pairs, above a hairline.
+
+**A typed path is written into the trail, not beside it.** With a leading `/` or `~`
+the listed directory is whatever complete directory has been typed, and the tail
+still being typed is drawn as the next breadcrumb segment, accent-coloured with the
+caret at its end. Showing the trail and a path chip both put the same place on the
+header twice. The count reads off the same tail (`root.query`). `/` starts from the
+folder you are in; both forms are rooted at `$HOME`.
+
+**Ordering** is folders first then names, or newest, or largest (`Ctrl+O`). Where the
+filter landed ranks only under name, since under newest a prefix match jumping the
+queue would be the sort lying. Folders are never ordered by size, which for a
+directory counts its listing block rather than its contents.
+
+**Reading a file.** The preview follows the selection only once it has stopped moving
+(60 ms, the highlighter's wait), so held arrows do not read and lay out every file
+they pass. Files over 256 KiB are never read; one that grew past that since listing
+is loaded off the UI thread but never decoded on it (200 MB blocked the shell for
+seconds). A NUL byte in the first kilobyte marks a binary, rather than an extension
+list. Video previews decode in software: Qt picks hardware decoding even for codecs
+the GPU lacks (AV1 on older cards) and shows black, so an `Env` pragma in the shell's
+`shell.qml` sets `QT_FFMPEG_DECODING_HW_DEVICE_TYPES=,`.
+
+**The diff view** (`Ctrl+D`) shows staged and unstaged changes against `HEAD` in the
+highlighter's One Dark. git's header goes, each `@@` becomes a `⋯` break, and instead
+of git's removed-block-then-added-block each old line sits above its most alike new
+line, with what changed in bold (a whole word, or only the edge of one; past ASCII
+every character counts as a word's, so bold never splits an emoji). A missing final
+newline is a circle-slash (U+F468) that counts for nothing when lines are compared.
+Lines sharing under half their length at their ends stay plain removals and additions,
+and pairing has a fixed work budget past which git's order is kept. The gutter numbers
+lines as the file now has them. A changed file's preview waits blank for its diff
+rather than flash the file. The choice holds while the shell runs and is lit in the
+legend, since the browser reopens in it and an unexplained diff looks like a broken
+file. Untracked files and repositories without a first commit compare against an
+empty file; a small diff stays readable past the 256 KiB limit.
+
+The git marks in a folder's preview are a second text laid over room the rows keep
+for them, placed by the row glyph's measured width, because a plain text takes one
+colour.
 
 A folder previews in the same scroller a file does, rather than in a second
 `ListView` with its own delegate and its own way of being navigated. Its rows
@@ -95,6 +162,47 @@ share one success path and one failure path rather than three of each.
 The pasted row arrives on its own: `FolderListModel` watches the directory, so
 the paste only has to name what to land on — `pending`, the same mechanism the
 wheel uses to hand a file over.
+
+**Nothing is ever overwritten.** The destination is tested before the command runs:
+
+    sh -c 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; exec mv -- "$1" "$2"' files <src> <dst>
+
+Paths go as arguments, never spliced into the script, so a space, a dash or a `$` is
+just part of a name. `17` is nothing `mv` or `cp` return on their own; it comes back as
+`a wheel.md is already here` rather than an invented `(copy)` name, since a file
+manager that renames your file for you cannot be predicted. Directories go with
+`cp -r`. `mkdir` and `touch` go through the same script with the verb as an argument,
+and `Ctrl+Y` hands paths to `wl-copy` as arguments too.
+
+**Delete trashes, and asks twice.** `gio trash` records the original path, so the entry
+can be got back. The question is asked where you are looking: the row fills red and the
+foot reads `del  again to trash <name>`. Any other key, a selection move, or three
+seconds cancels it, so a second `Del` never lands on a row you did not aim at.
+
+**Rename types into the filter chip**, already a text box sitting where the name
+reads, with a different fill so it cannot pass for a filter. It is a real field
+(caret keys, `Ctrl+U`/`Ctrl+K`, paste with separators stripped), opening with the caret
+before the extension; the chip draws the name in two halves around the caret. A `/`
+is refused: that is a move asked for in the wrong field.
+
+**New file or folder: the name says which.** A dot makes a file, a trailing `/` a
+folder and a trailing `.` a file, so `archive` and `v1.2/` are folders while
+`notes.md`, `.gitignore` and `Makefile.` are files. A second binding would have been a
+second thing to learn for a difference the name already spells out.
+
+**The editor is modal**, because the keyboard is a filter: every printable key
+otherwise lands in the search field. It edits plain source, not the rendering, since
+saving a rendering would save pygments markup into the file; colour drops away while
+editing. It edits only what it can write back whole: `fullText`, never the preview's
+lines, and not a file over 256 KiB, binary, invalid UTF-8 (the bytes are checked, so a
+real U+FFFD still edits), or one holding CR line endings, no-break spaces or a BOM,
+which Qt's editor or `FileView` would change. Writes go out `atomicWrites`, are
+confirmed by reading the file back (see Traps), and `endLine()` adds the trailing
+newline vim would. A save rereads the file first: if it changed since the edit began,
+the preview shows the new version, the draft stays, and saving again overwrites; a
+file gone, unreadable or grown past 256 KiB is not saved over. `close()` routes to
+`leaveEdit()` while there are unsaved changes, so a click outside arms the discard
+rather than throwing the edit away.
 
 **Your place is kept, as a fraction.** The editor sets its lines at the font's
 own leading and the rendered preview does not, so a Markdown file is a wholly
@@ -207,7 +315,10 @@ Colour comes from pygments, one process per settled selection:
 One interpreter does the lexer lookup and the formatting together; naming the
 lexer with `pygmentize -N` would cost a second Python start and a shell to pipe
 them. A 60 ms debounce means arrowing through a directory does not spawn a
-process per row.
+process per row. Colour is a nicety: without `python3` or pygments the escaped plain
+text stays. It lands a beat after the text (debounce plus interpreter start); caching
+recent results or one long-lived process would be the next step. An image's pixel size
+comes from ImageMagick's `identify`, also optional.
 
 **The uncoloured file travels through the same markup the coloured one does.**
 Swapping a plain-text item for a marked-up one steps the whole file down the
@@ -375,6 +486,15 @@ nothing read the path of `null`. The handler and `readDiff()` ask `media()` of t
 entry itself, and the bindings ask the same function, so the two cannot disagree.
 
 ## Wiring
+
+**Popping out.** `Ctrl+T` sets `windowed` before clearing `opened`, so the panel stays
+shown and the folder, selection and preview carry into a plain `FloatingWindow` that
+Hyprland tiles like any other. To the shell the browser is then closed: opening the
+wheel or a panel leaves the window alone, `SUPER+W` closes it, and `Esc` only clears the
+field. A file picked in the wheel sends the window there; a summon without a path only
+focuses it. A file picked in the pinned search opens the browser inside that search's
+window as its `guest` instead. A window close cannot ask twice, so an unsaved edit
+brings the overlay back holding the edit.
 
 `bin/omarchy-open-path` is on `PATH` because a plugin directory is private to
 its owner. It routes by handler rather than calling `xdg-open` blindly:

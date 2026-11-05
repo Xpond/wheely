@@ -636,7 +636,7 @@ Item {
     list.forEach(e => { if (e && !e.missing && !e.shortcut) { if (on) next[e.path] = true; else delete next[e.path] } })
     root.marked = next
   }
-  // Ctrl+Space marks or unmarks the selection and steps on, so a run of rows is a run of presses.
+  // Ctrl+M marks or unmarks the selection and steps on, so a run of rows is a run of presses.
   function toggleMark() {
     if (!root.sel) return
     root.mark([root.sel], !root.marked[root.sel.path])

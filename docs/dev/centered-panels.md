@@ -63,7 +63,7 @@ both stay stock, with a note, until `orig/` catches up. An Omarchy older than
 `revert.sh` writes stock back only over files that are ours, and only bytes
 matching pacman's checksum: `orig/` or a rebase's kept stock when one matches,
 otherwise the file from the cached package. Anything else stays in place and
-produces an error. See the [install and revert summary](../../README.md#revert).
+produces an error. See the [install and revert summary](../install.md#revert).
 
 ## 2. What changed
 
@@ -259,6 +259,11 @@ panel opens, and printing it when the animation stops, shows what the compositor
 displayed. Drive the panel over IPC (`omarchy-shell -q omarchy.monitor open`) so runs repeat.
 A healthy trace on a 144Hz display is a wall of ~6.9ms; a wall of ~16ms means the render
 loop is wrong (§3), not the animation. A single large value is real latency.
+
+Measured latency before the first frame: monitor 152ms, bluetooth 74ms, clock 44ms,
+network 37ms. Only `monitor` is noticeable: it is the 4 processes `refresh()` spawns on
+open, and fixing it means deferring that work until after the entry animation, in another
+package-owned file.
 
 ## 5. Tunables
 

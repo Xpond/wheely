@@ -255,7 +255,70 @@ comes back and every press takes the fallback. Plain `omarchy-shell` still
 writes failures to stderr, so redirecting stderr keeps the fail-open
 behaviour.
 
+## Input
+
+The query is a Qt `TextInput`, which types, deletes, moves and selects on its own;
+`MenuKeys.js` sees every key before it does. Until you type, the field reads
+`Search · / files · = calc`, and a lone `/` lists the files you have picked or names
+`Ctrl+Y` and `Ctrl+Enter`.
+
+`Backspace` inside a panel the wheel opened brings the wheel back. A panel cannot tell
+the wheel from its own bar button, so it calls `xpo.wheel back` and the wheel returns
+`none` for a panel it did not open; switching bar panels with Tab or Ctrl+←/→ carries
+the return along.
+
+The whole screen is a compass around the centre, so a mouse flick selects that slice
+and releasing the key commits it; the scroll wheel steps the ring, or the results.
+Clicking the field or the result stack does nothing rather than closing the wheel:
+they are the surfaces most often hit by accident, and the field always holds the
+keyboard, so a click there could do nothing a keystroke cannot. Rows are the
+exception: hover selects, a click runs.
+
 ## Search internals
+
+**Every menu entry is a row.** Entries with an `action` run it; entries without are
+submenus and still rows, since `install` has to find Install itself. Picking one
+turns the ring into its children. A `provider` entry, whose rows Omarchy generates at
+runtime, hands its route to `omarchy-menu summon <id>`, which also covers providers a
+later Omarchy adds. `when:` and `checked:` are re-evaluated on every open, as
+Omarchy's menu does: a failing `when` hides the row, a submenu whose children all
+failed is hidden, and a holding `checked` appends ✓. A submenu's slices run clockwise
+from north, except a ring of only Top, Right, Bottom and Left, which puts each where
+it points.
+
+Windows come from `Hyprland.toplevels`, labelled `Workspace <n> · <app id>` from the
+live workspace, so `workspace 2` lists the windows on 2. Themes and fonts are
+`omarchy theme list` and `omarchy font list`, re-read on every open with the current
+ones ✓, fired as `omarchy theme set '<name>'`. Lock designs come from
+`omarchy-lock-design list` under one Style › Lockscreen Designs submenu, the designs
+marked `search: false` so they show only inside it. A binding that runs what a row
+already runs is no second row: it lends that row its description as search words, so
+`idle` finds Stay Awake. The wheel's own bindings are no rows, and no row shows keys.
+A window action acts on Hyprland's active window, which stays put behind the wheel
+though `Hyprland.activeToplevel` reads null meanwhile.
+
+When rows refresh, the selection follows its action to the new position and clears
+if the action is gone or changed, so a refresh cannot turn a selected Logout into
+Reboot. App and window text matches substrings; other rows need each term to start a
+word. Rows sort on **rank** (label prefix, label word, then anywhere), **uses**,
+**kind** (slice, window, app, theme/font, menu, keybinding), an **exact label**,
+**recency** (windows only, by focus order) and **label length**. A window whose words
+match counts as rank 0, since its title is written by the program and a query lands
+mid-string; a term found only inside a word ranks it like any other row.
+
+**File search** (`/`) has too many matches to sort: it buckets them by rank and name
+length as it scans, keeping the first 40 of each tie. A file opened before leads its
+rank, never climbing into a better one. Home and the added folders scan apart in
+batches (`scan.py`) that a background worker ranks as they arrive, home's ties first,
+so results show before either walk finishes; keyboard actions wait for the current
+query's results, and closing cancels both scans. `Enter` on a path opens Files there;
+a path outside the browser's folders opens through `omarchy-open-path`.
+
+**The calculator** (`=`, `Calc.js`) takes `+ - * / ^` and parentheses, `^` binding
+tighter than a leading minus (`=-2^2` is -4). Answers show fifteen significant digits,
+which hides float noise (`=0.1+0.2` is 0.3), and `Enter` copies exactly that. A
+half-typed sum, unit or letter shows "No answer"; units would need `qalc`, which
+Omarchy does not ship.
 
 `MenuIndex.js` reads both menu definitions —
 `$OMARCHY_PATH/default/omarchy/omarchy-menu.jsonc` and
@@ -366,15 +429,72 @@ placeholder (`Search · / files · = calc`).
 
 ## Pinning, manual, memory and ring internals
 
+**Pinning.** `Ctrl+T` moves the field and its results (up to eight rows) into a plain
+window, with no ring, sky or fades. Hyprland does not blur windows, so the window's
+ground is the menu colour at 94%. A pick runs and the window stays, cleared; a panel
+opens over it and gives the keyboard back. `SUPER+A` focuses the window instead of
+opening the wheel, and the two share one query. Each new `/` search scans again.
+
 `Pinned.js` hands the window to Files. Both plugins import it, and a plugin
 reload reloads both, so they always share one copy; Files therefore needs the
 wheel installed.
 
-`tests/wheel-manual.js` fails when a key in this file's or Files' key tables is
-missing from the manual, other than the few its two rules cover.
+**The manual.** `manual.md`'s table rows are search rows (`manualRows()`): `help` lists
+them, `help rename` finds the Files row for `F2`, and they have no key of their own, so
+they are never counted or pinned. Enter on one shows the whole manual as one sheet,
+`WheelManual.qml`, drawn from the parsed rows, never the file. A row is a few words, and
+keys any text field has are one "text keys" row. The sheet never scrolls:
+`manualColumns()` packs the rows into the shortest columns, a long section continuing
+under its name in the next, and the sheet picks up to four columns, whichever shrinks
+it least, then scales to fit. The field moves into its header on an empty query, so
+typing fades rows; `Esc` restores the search.
+
+`tests/wheel-manual.js` checks that the manual's Files menu keys match the menu's key
+map both ways, that every fixed menu action without a key is named, and that columns
+stay ordered and balanced; `tests/wheel-manual-fit.py` renders the sheet at 1080p,
+1440p and in a window and fails if it leaves the screen or shrinks past readable.
+
+**Settings** are search rows whose Enter changes them in place. Wheely shortcut records
+a combo with SUPER, since Hyprland takes a bound combo from every app and apps leave
+SUPER alone; Hyprland's bindings pause while it records, so a taken combo can be chosen
+and the row names what it replaces. Saved to `~/.config/omarchy/wheel-shortcut`, then
+Hyprland reloads. Wallpaper pause is recorded the same way, needs CTRL, ALT or SUPER,
+refuses the wheel's own keys, is bound only while Wheelie or Tidal is the active theme,
+and is saved to `wallpaper-pause-shortcut`. Backdrop steps in tenths into `wheel-blur`
+(0% is no blur); the dim is `[menu] scrim-alpha` in `shell.toml`, which Omarchy's own
+menus use too. Centered panels off writes `[wheely] panels = native`. Searched and
+Skipped folders live in `wheel.json` as `"folders"` and `"skipped"`; by default `/`
+searches home six levels deep, hidden files included, skipping every `.cache`, `.git`,
+`node_modules`, `.ssh`, `.gnupg`, `.password-store` and what a repository's
+`.gitignore` lists. A skipped name skips every folder called that; an emptied list is
+its default again.
+
+**What it remembers.** Every pick is counted under `MenuIndex.keyOf`: a panel's plugin
+id, a menu entry's dotted id, `app:` plus a desktop id, a theme/font or keybinding
+command (so a binding keeps its count when its keys change), or `file:` plus a path.
+The count sorts right under how well a row matches, so `loc` puts a picked Lock over a
+never-picked LocalSend while `br` keeps Files, matching only by keyword, under rows
+starting with `br`. Windows are uncounted, since their address is new on every launch
+and they already sort by focus; opening a setting is no pick. Counts live in
+`~/.local/state/omarchy/wheel-uses.json`, written through on each pick because a
+restarted shell gives no orderly shutdown. There is no decay: what you reach for is
+stable for months, and a half-life is a second knob to be wrong about.
 
 `tests/wheel-live.js` holds both invariants of the use counts: every counted row has a key,
 and no two share one.
+
+**The ring.** By default it is the panels your bar carries, bare ids or objects with an
+`id` as Omarchy reads either, in a fixed order, plus the clipboard overlay. Adding a
+widget to the bar adds it to the wheel. A machine that never edited its bar has no user
+config, so Omarchy's shipped `shell.json` is read instead. Search does not follow the
+ring: each open asks the shell's facade for every bar widget and enabled third-party
+panel, so a panel is searchable with or without a disc. A custom ring is a list of the
+same keys picks are counted under, in `wheel.json` as `"slices"`, so it takes anything
+search finds except windows, files, answers and settings. A key that names nothing
+today is not drawn but keeps its place. The file is watched; the editor writes it back
+without comments, keeping other keys. The ring keeps a constant arc per slice and grows
+its radius to pay for it, until labels would leave the screen; only then do discs
+shrink to fit between their neighbours.
 
 Every icon in `PANELS` is one the widget itself already draws. Tailscale
 and Dropbox have no Nerd Font glyph — Omarchy renders each as a QML shape of
