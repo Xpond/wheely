@@ -1091,8 +1091,8 @@ Item {
     property var guest: null
     visible: root.windowed
     title: "Search"
-    // The backdrop's tint, which Hyprland blurs as it blurs the backdrop; Files brings its own ground.
-    color: guest ? guest.ground : Commons.Color.menu.scrim
+    // Nearly solid, as Hyprland does not blur windows; Files brings its own ground.
+    color: guest ? guest.ground : Util.alpha(Commons.Color.menu.background, 0.94)
     implicitWidth: Style.space(700)
     implicitHeight: Style.space(700)
     Component.onCompleted: Pinned.window = pinned

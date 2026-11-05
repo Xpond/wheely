@@ -828,8 +828,8 @@ Item {
 
       Item {
         id: keys
-        // A window's ground, nearly solid, so the blurred backdrop barely shows through.
-        readonly property color ground: Util.alpha(Commons.Color.menu.background, 0.88)
+        // A window's ground, as solid as the overlay's card: Hyprland does not blur windows.
+        readonly property color ground: Util.alpha(Commons.Color.menu.background, 0.94)
         // The window has its own border, so it takes the content without the card.
         parent: root.host ? root.host.contentItem : root.windowed ? window.contentItem : card
         anchors.fill: parent
