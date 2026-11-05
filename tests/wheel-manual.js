@@ -13,24 +13,11 @@ for (const [query, trail] of [["rename", "F2 · Files"], ["help trash", "Del · 
 assert.ok(rows.every(r => r.manual && !M.keyOf(r) && !M.pinnable(r)), "a manual row is counted or pinned")
 assert.ok(rows.every(r => !/[`|]/.test(r.label + r.trail) && r.label !== "What it does"), "markdown leaked into a row")
 
-// Every key the feature docs list is in the manual, but for those its rules cover: "text keys"
-// edit the query or the file as any text field does, and "Shift + move keys" scroll the preview.
-const RULED = new Set(["Ctrl+Backspace", "Ctrl+A", "Ctrl+K", "Shift+←", "Shift+→", "Shift+Home", "Shift+End",
-  "Shift+↑", "Shift+↓", "Shift+PageUp", "Shift+PageDown", "Shift+Space"])
+// The keys a manual section lists, from the first cell of its table rows.
 const keys = (md, ...sections) => new Set(sections.flatMap(name =>
   (md.split(/^## /m).find(s => s.startsWith(name + "\n")) || "").split("\n")
     .flatMap(line => line.startsWith("|") ? [...line.split("|")[1].matchAll(/`([^`]+)`/g)].map(m => m[1]) : [])))
-assert.ok(rows.some(r => r.keys === "text keys") && rows.some(r => r.keys === "Shift + move keys"), "a rule the exemptions lean on is gone")
-// Each doc's keys under the manual's sections for that same feature, not anywhere in the manual;
-// the wheel's query editing is Search's "text keys".
-for (const [doc, sections, under, ruled] of [
-     ["docs/wheel.md", ["Keys"], ["Wheel", "Search"], ["Del", "Ctrl+W", "Home", "End", "Ctrl+U", "Ctrl+V"]],
-     ["docs/files.md", ["Keys", "Editing"], ["Files", "Files editor"], []]]) {
-  const want = keys(read(doc), ...sections), have = keys(manual, ...under)
-  assert.ok(want.size > 10, doc + " lost its key table")
-  assert.deepEqual([...want].filter(k => !have.has(k) && !RULED.has(k) && !ruled.includes(k)), [],
-    doc + " lists keys the manual's " + under + " does not")
-}
+assert.ok(rows.some(r => r.keys === "text keys") && rows.some(r => r.keys === "Shift + move keys"), "a rule the manual leans on is gone")
 
 // The Files menu: every key its key map takes is in the manual's Files menu, and every key there is taken.
 // A key counts with a modifier only when it is not taken bare.
@@ -48,6 +35,27 @@ const taken = new Set(Object.keys(Qt).filter(k => k.startsWith("Key_")).flatMap(
 const menuHas = keys(manual, "Files menu")
 assert.deepEqual([...taken].filter(k => !menuHas.has(k)), [], "the Files menu takes keys the manual does not list")
 assert.deepEqual([...menuHas].filter(k => !taken.has(k)), [], "the manual lists Files menu keys the menu does not take")
+
+// The manual is the one list of keys: every Ctrl or F key the browser's key map takes, that its bare key
+// does not, is in its Files sections. Ctrl+Backspace is a text key, as in any field.
+const idle = { editing: false, menu: null, naming: "", showsVideo: false, listShown: true, filter: "", marks: [],
+  pathMode: false, doomed: "", host: null, dir: "/h", home: "/h" }
+const browser = new Proxy(idle, { get: (state, name) => name in state ? state[name] : () => {} })
+const onKey = new Function("Qt", menuSource + "\nreturn onKey")(Qt)
+const handles = (k, modifiers) => {
+  const event = { key: Qt[k], modifiers, text: "", accepted: false }
+  onKey(browser, browser, browser, event)
+  return event.accepted
+}
+const shortcuts = Object.keys(Qt).filter(k => k.startsWith("Key_")).flatMap(k => [
+  ...(/^Key_F\d+$/.test(k) && handles(k, 0) ? [k.slice(4)] : []),
+  ...(handles(k, Qt.ControlModifier) && !handles(k, 0) ? ["Ctrl+" + (CAPS[k] || k.slice(4))] : [])])
+assert.ok(shortcuts.length > 15, "the browser's shortcuts were not found")
+const filesHas = keys(manual, "Files", "Files editor")
+assert.deepEqual(shortcuts.filter(k => !filesHas.has(k) && k !== "Ctrl+Backspace"), [], "Files takes keys the manual does not list")
+// Hyprland takes the wallpaper pause key before Files sees it, so no Files key may be its default.
+assert.equal(M.PAUSE_KEY, "CTRL + SPACE")
+assert.ok(!handles("Key_Space", Qt.ControlModifier), "Files takes Ctrl+Space, the wallpaper pause key")
 
 // Every fixed menu action without a key of its own is named, word for word, by a Files menu actions row.
 const actionRows = rows.filter(r => r.section === "Files menu actions").map(r => (r.keys + " " + r.label).toLowerCase())
@@ -100,4 +108,4 @@ assert.deepEqual(calls, ["pin"], "the sheet did not pin")
 key("Key_Escape")
 assert.equal(root.reading, false)
 assert.equal(root.query, "help rename", "Esc lost the search the sheet was opened from")
-console.log("ok: the manual is search rows, covers every documented key, and shows on one sheet")
+console.log("ok: the manual is search rows, lists every key Files takes, and shows on one sheet")

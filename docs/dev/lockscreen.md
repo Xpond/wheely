@@ -5,6 +5,14 @@ processes involved, the unlock timing, and verification.
 
 ## Writing a design
 
+The patched `LockView.qml` is the host: it keeps the password field, the connection to
+`Service.qml` and the wake handling, and loads a design's `Scene.qml` from this checkout's
+`lock/`. That is outside the shell directory the patches replace, so a design can span any
+number of files. The choice is one word in `~/.config/wheely/lock-design` (`wallpaper`
+when absent), read each time the lock or its preview shows, so a switch needs no install
+or restart. Designs are not Omarchy plugins: only this host loads them onto the lock
+surface, so an installed plugin cannot draw where the password is typed.
+
 A design is a folder in `lock/` holding a `Scene.qml`, plus whatever QML, JavaScript,
 shaders and images it loads relative to itself. The scene fills the screen behind the field,
 which is frosted glass: the scene blurred under a dark tint, edged in the design's accent with a
@@ -53,6 +61,19 @@ command. This releases the renderer's native and graphics caches. The worker sta
 while locked, including while blanked, and survives a desktop-shell restart. Only lock,
 preview and hide-preview commands cross the private runtime socket; passwords stay in the worker.
 Its normal startup also runs the existing stranded-lock recovery check before retiring.
+
+## Wake timing
+
+The service blanks the display after five seconds of inactivity, starting on lock and
+restarting on input. After waking a blank display, a ten-second minimum lets the physical
+monitor recover (one 4K display took about 4.2 seconds to show a picture after DPMS
+returned); input never shortens it, and afterwards the normal five seconds apply. A display
+lit by a resume with no input is blanked again after five seconds. These rules hold for
+every design, whatever its animation is doing. One wake starts the animation. The
+countdown pauses while the wake command runs, and an in-flight blank finishes before a
+queued wake starts. Input after a quiet second runs the wake scripts; steady typing or a
+moving mouse only restarts the timeout. The allowance is a margin, not a signal that the
+monitor has finished waking.
 
 ## Unlock timing
 

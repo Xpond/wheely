@@ -61,7 +61,7 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 | `Del` | trash; press again to confirm |
 | `Ctrl+Y` | copy the path |
 | `Menu` `Shift+F10` | the right-click menu |
-| `Ctrl+Space` | mark, and step on |
+| `Ctrl+M` | mark, and step on |
 | `Ctrl+A` | mark every row |
 | `Ctrl+Click` `Shift+Click` | mark a row, or a range |
 | `Ctrl+Enter` | terminal here |

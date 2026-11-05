@@ -72,7 +72,7 @@ function onKey(panel, ops, preview, event) {
     case Qt.Key_H: panel.showHidden = !panel.showHidden; event.accepted = true; return
     case Qt.Key_U: panel.filter = ""; event.accepted = true; return
     case Qt.Key_Y: ops.copyPath(panel.targets); event.accepted = true; return
-    case Qt.Key_Space: panel.toggleMark(); event.accepted = true; return
+    case Qt.Key_M: panel.toggleMark(); event.accepted = true; return
     case Qt.Key_A: panel.markAll(); event.accepted = true; return
     case Qt.Key_Return:
     case Qt.Key_Enter: ops.terminal(); event.accepted = true; return

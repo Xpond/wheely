@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory(prefix="wheely-markdown-") as temporary:
     # The preview references this type even when no video is loaded; video playback is not this test.
     (base / "FilesVideo.qml").write_text("import QtQuick\nItem {\n"
         "  signal fullsize(string path, real position)\n  function toggle() {}\n}\n")
-    documents = [(repo / name).read_text() for name in ("docs/files.md", "docs/wheel.md")]
+    documents = [(repo / name).read_text() for name in ("docs/dev/files.md", "docs/dev/wheel.md")]
     (base / "shell.qml").write_text('''import QtQuick
 import Quickshell
 import qs.Commons

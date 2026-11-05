@@ -47,7 +47,7 @@ Item {
             ["enter", { rename: "rename", copy: "duplicate", link: "make the link" }[root.panel.naming]],
             ["esc", "cancel"]])
     : root.panel.marks.length
-      ? root.moves.concat([["ctrl+space", "mark"], ["ctrl+a", "all"], ["ctrl+x/c", "move/copy"], ["del", "trash"]],
+      ? root.moves.concat([["ctrl+m", "mark"], ["ctrl+a", "all"], ["ctrl+x/c", "move/copy"], ["del", "trash"]],
          root.panel.held ? [root.paste] : [], [["shift+f10", "menu"], ["esc", "unmark " + root.panel.marks.length]])
     : root.panel.held
       ? root.moves.concat([root.paste, ["ctrl+e", "edit"]], root.leave)
@@ -56,7 +56,7 @@ Item {
       ? root.moves.concat([["ctrl+x/c/v", "move/copy"],
          ["ctrl+e", "edit"], ["ctrl+enter", "terminal"], ["ctrl+y", "copy path"],
          ["ctrl+o", "sort"], ["f2", "rename"], ["ctrl+shift+n", "new"], ["del", "trash"],
-         ["ctrl+space", "mark"], ["ctrl+a", "mark all"], ["shift+f10", "menu"], root.listKey],
+         ["ctrl+m", "mark"], ["ctrl+a", "mark all"], ["shift+f10", "menu"], root.listKey],
          root.diffKey, [["ctrl+t", root.panel.host || root.panel.windowed ? "unpin" : "window"]], root.leave,
          [["f1", "fewer keys"]])
     : root.moves.concat([["ctrl+e", "edit"], root.listKey], root.diffKey, root.leave, [["f1", "all keys"]])
