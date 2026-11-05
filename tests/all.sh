@@ -14,7 +14,7 @@ done
 
 node tests/check.js
 for test in install desktop open-path wheelie-install wallpaper-toggle runtime files-preview files-markdown \
-            lock-process wheelie-lifecycle wheelie-dust wheelie-clock theme-dpr; do
+            lock-process wheelie-lifecycle wheelie-dust wheelie-clock theme-dpr wheel-manual-fit; do
   printf '\nRunning %s\n' "$test"
   python3 "tests/$test.py"
 done
