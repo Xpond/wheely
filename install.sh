@@ -31,6 +31,14 @@ if [[ -n $PACKAGE_DB && $VERSION != dev-* ]] && (( $(vercmp "$VERSION" "$BASE") 
   alert "wheely needs Omarchy $BASE or newer; this is $VERSION"; exit 1
 fi
 
+# A file or folder of the user's in a plugin's place would get our link nested inside it.
+for p in "$REPO"/plugins/*/; do
+  dest=~/.config/omarchy/plugins/$(basename "$p")
+  if [[ -e $dest && ! -L $dest ]]; then
+    alert "Not installed: $dest is not wheely's link" "Move it aside, then rerun install.sh."; exit 1
+  fi
+done
+
 # Link the lock-screen designs before any QML can load them.
 data=~/.local/share/wheely
 mkdir -p "$data" && ln -sfn "$REPO/lock" "$data/lock" || { alert "Could not link the lock-screen designs"; exit 1; }

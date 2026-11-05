@@ -9,6 +9,8 @@ ShaderEffect {
   readonly property vector2d resolution: Qt.vector2d(width, height)
   readonly property real time: seconds % 3600
   property double previous: Date.now()
+  // A fractional output's true ratio comes from its window: Screen's is rounded up, 1.5 to 2.
+  property real dpr: Screen.devicePixelRatio || 1
   blending: false
   // Wave geometry and old tide marks depend only on the horizontal position.
   property var surgeData: ShaderEffectSource {
@@ -19,7 +21,7 @@ ShaderEffect {
       blending: false
       fragmentShader: Qt.resolvedUrl("geometry.frag.qsb")
     }
-    textureSize: Qt.size(Math.ceil(root.width * Screen.devicePixelRatio), 4)
+    textureSize: Qt.size(Math.ceil(root.width * root.dpr), 4)
     format: ShaderEffectSource.RGBA32F
     hideSource: true
     smooth: false
@@ -54,7 +56,8 @@ ShaderEffect {
     running: root.running && root.visible
     onTriggered: {
       var now = Date.now()
-      root.seconds += Math.min(0.1, (now - root.previous) / 1000) * 0.25
+      // A clock stepped backward must not run the sea backward.
+      root.seconds += Math.max(0, Math.min(0.1, (now - root.previous) / 1000)) * 0.25
       root.previous = now
     }
   }

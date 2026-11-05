@@ -413,6 +413,11 @@ UTF-8 is not editable -- the bytes are what get checked, so a file that
 genuinely contains U+FFFD still edits. Nor is one holding CR line endings or
 no-break spaces, which Qt's editor turns into LF and spaces, or a BOM, which
 `FileView` drops. Writes go out `atomicWrites`.
+
+**It never saves over someone else's change.** A save rereads the file first; if
+it changed since the edit began, the preview shows the new version, your draft
+stays, and the heading says `changed on disk; save again to overwrite`. A file
+that is gone or unreadable is not saved; once it is readable again, save again.
 A save is then confirmed by reading the file back, because `FileView` will not
 tell you (see [Traps](dev/files.md#traps)), and `endLine()` adds the trailing newline `vim`
 would, since a file saved without one is a file `git` calls damaged.
@@ -475,6 +480,12 @@ overlay comes back holding the edit, where `Esc` asks as usual.
   taken back, out of the trash. Use `yazi` for the rest.
 - A key legend of more than ten keys takes two lines. Where the card or the
   window is narrower than a line, it shrinks to fit.
+- **A folder whose path holds `#`, `?` or `%` followed by two hex digits cannot be
+  browsed.** Qt's folder model misreads such a path however it is written, so the
+  folder shows `Can't list this folder` or `Empty`, and nothing in it can be selected
+  or acted on: no key ever reaches another folder's files. Spaces, accents and other
+  punctuation are fine. Open it in `yazi` or Nautilus instead; search still finds
+  the files inside it.
 - An image's pixel size comes from `identify`. Colour and dimensions are both
   niceties rather than dependencies: without ImageMagick there are no numbers,
   and the size and the date still stand.

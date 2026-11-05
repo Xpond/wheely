@@ -93,7 +93,7 @@ Scope {
       WlrLayershell.layer: WlrLayer.Bottom
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-      Surface { anchors.fill: parent; running: !root.paused && !wallpaper.suspended }
+      Surface { anchors.fill: parent; dpr: wallpaper.devicePixelRatio; running: !root.paused && !wallpaper.suspended }
     }
   }
 }

@@ -1,4 +1,5 @@
 """Frame fd output in bounded, UTF-8-safe batches for Quickshell's SplitParser."""
+import json
 import os
 import select
 import signal
@@ -30,11 +31,13 @@ try:
         chunk = os.read(read_fd, 65536) if ready else None
         if chunk:
             pending += chunk
-        # A NUL cannot occur in a path. Decode only after a complete batch arrives.
+        # fd ends each path with a NUL, which no path holds; any other byte, newlines and trailing
+        # spaces too, is part of a name. A batch is a JSON list of whole paths, ended by a NUL.
         if len(pending) >= 65536 or not chunk or time.monotonic() - flushed >= 0.016:
-            end = len(pending) if chunk == b"" else pending.rfind(b"\n") + 1
+            end = len(pending) if chunk == b"" else pending.rfind(b"\0") + 1
             if end:
-                sys.stdout.buffer.write(pending[:end] + b"\0")
+                paths = [os.fsdecode(path) for path in pending[:end].split(b"\0") if path]
+                sys.stdout.buffer.write(json.dumps(paths).encode() + b"\0")
                 sys.stdout.buffer.flush()
                 pending = pending[end:]
                 flushed = time.monotonic()

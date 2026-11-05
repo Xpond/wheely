@@ -76,6 +76,7 @@ if name == 'old.txt':
   property string imageDims: ''
   property var dirEntries: []
   property var saving: null
+  property var checking: null
   property string previewHtml: ''
   function childEntries() { return [] }
   function readDiff() { diffText = '@@ -1 +1 @@\\n-old\\n+new\\n' }
@@ -113,6 +114,7 @@ if name == 'old.txt':
   property string imageDims: ''
   property var dirEntries: []
   property var saving: null
+  property var checking: null
   property string previewHtml: ''
   property var seen: []
   function childEntries() { return [] }

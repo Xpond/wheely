@@ -22,19 +22,30 @@ python3 "$REPO/scripts/user-config.py" revert ~/.config/hypr/hyprland.lua "$STAT
 ids=()
 for p in "$REPO"/plugins/*/; do ids+=("$(basename "$p")"); done
 # A missing config must not prevent restoring package files.
-if [[ -f $CONF ]]; then
-  jq '.plugins = [.plugins[]? | select(.id | IN($ARGS.positional[]) | not)]' "$CONF" --args "${ids[@]}" \
-     > "$CONF.new" && mv "$CONF.new" "$CONF"
+if [[ -f $CONF ]] && ! { jq '.plugins = [.plugins[]? | select(.id | IN($ARGS.positional[]) | not)]' "$CONF" \
+                           --args "${ids[@]}" > "$CONF.new" && mv "$CONF.new" "$CONF"; }; then
+  rm -f "$CONF.new"
+  echo "Could not unregister ${ids[*]} from $CONF; remove them from its plugins by hand" >&2
+  config_failed=1
 fi
+# Only our links go; a file or folder in their place is the user's.
 for id in "${ids[@]}"; do
-  rm -f ~/.config/omarchy/plugins/"$id"
-  echo "removed $id"
+  dest=~/.config/omarchy/plugins/$id
+  if [[ -L $dest ]]; then
+    rm -f "$dest"
+    echo "removed $id"
+  elif [[ -e $dest ]]; then
+    echo "Left $dest: not wheely's link" >&2
+    config_failed=1
+  fi
 done
 
 # Only bytes matching pacman's checksum are written, and only over files that are ours.
 failed=0
+unsafe=()  # a copy failed, maybe partway
 stock=$(mktemp)
-trap 'rm -f "$stock"' EXIT
+backup=$(mktemp -d)
+trap 'rm -rf "$stock" "$backup"' EXIT
 for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
   written="$STATE/installed/$f"
@@ -51,16 +62,35 @@ for f in "${FILES[@]}"; do
       echo "Not restored: $f — no verified stock copy in patches/orig or the package cache" >&2
       failed=1; continue
     fi
-    mkdir -p "$(dirname "$written")"
+    mkdir -p "$(dirname "$written")" "$(dirname "$backup/$f")"
+    if ! cp "$installed" "$backup/$f"; then
+      echo "Not restored: $f — could not back it up first" >&2
+      failed=1; continue
+    fi
     if ! touch "$written.pending" || ! sudo cp "$stock" "$installed" || ! is_stock "$f" "$installed"; then
       echo "Could not restore $f; rerun revert.sh" >&2
-      failed=1; continue
+      failed=1; unsafe+=("$f"); continue
     fi
     echo "restored $f"
   fi
   rm -f "$written" "$written.pending" "$STATE/rebased/orig/$f" "$STATE/rebased/shell/$f"
 done
 find "$STATE" -depth -type d -empty -delete 2>/dev/null || true
+
+# A failed copy may have truncated its file, and the lock's view and service only load as a pair:
+# put back what was installed, so the shell restarts into files that load. Each file this run
+# wrote has a backup.
+undo=("${unsafe[@]}")
+[[ " ${unsafe[*]}" != *" plugins/lock/"* ]] || undo+=(plugins/lock/{LockView,Service}.qml)
+for f in "${undo[@]}"; do
+  [[ -f $backup/$f ]] || continue
+  if ! { sudo cp "$backup/$f" "$SHELL_DIR/$f" && cmp -s "$backup/$f" "$SHELL_DIR/$f"; }; then
+    echo "Could not put back $f; shell not restarted. Backups: $backup" >&2
+    echo "Rerun revert.sh, or reinstall the omarchy package." >&2
+    trap 'rm -f "$stock"' EXIT
+    exit 1
+  fi
+done
 
 # A failed restore may leave the custom lock screen in use; keep its designs then.
 if (( failed == 0 )); then

@@ -76,7 +76,7 @@ def check(source, base, run, block):
       preview.editorText = ""
       root.check(root.dirty, "editing text did not mark the editor dirty")
       root.save()
-      root.check(root.saving === "", "empty save was not tracked")
+      root.check(root.checking === "", "empty save was not tracked")
     } catch (error) { console.error(String(error)); Qt.exit(1) }
   } }
   Timer { interval: 500; running: true; onTriggered: {
@@ -85,10 +85,10 @@ def check(source, base, run, block):
                  "clean empty save did not settle cleanly")
       preview.editorText = "saved edit"
       root.save()
-      root.check(root.saving === "saved edit\\n", "second save was not tracked")
+      root.check(root.checking === "saved edit\\n", "second save was not tracked")
       preview.editorText = "newer edit"
       root.save()
-      root.check(root.saving === "saved edit\\n", "pending save accepted a second write")
+      root.check(root.checking === "saved edit\\n", "pending save accepted a second write")
     } catch (error) { console.error(String(error)); Qt.exit(1) }
   } }
   Timer { interval: 900; running: true; onTriggered: {
@@ -180,3 +180,62 @@ def check(source, base, run, block):
         assert target.read_bytes() == b"original\n"
     finally:
         locked.chmod(0o755)
+
+    # Another writer's change since the edit began is shown and kept; saving again overwrites it.
+    target = base / "shared.txt"
+    for name, change, note, disk in [
+            ("save-conflict-edited", "printf 'theirs\\n' > \"$1\"", "changed on disk; save again to overwrite", b"mine\n"),
+            ("save-conflict-replaced", "printf 'theirs\\n' > \"$1.new\" && mv \"$1.new\" \"$1\"",
+             "changed on disk; save again to overwrite", b"mine\n"),
+            ("save-conflict-removed", "rm \"$1\"", "cannot read the file; not saved", None)]:
+        target.write_bytes(b"original\n")
+        run(name, common + '''
+  Component.onCompleted: root.previewPath = ''' + json.dumps(str(target)) + '''
+  Process { id: other; command: ["sh", "-c", ''' + json.dumps(change) + ''', "sh", ''' + json.dumps(str(target)) + '''] }
+  Timer { interval: 200; running: true; onTriggered: { root.edit(); preview.editorText = "mine"; other.running = true } }
+  Timer { interval: 400; running: true; onTriggered: root.save() }
+  Timer { interval: 700; running: true; onTriggered: {
+    try {
+      root.check(root.saving === null && root.checking === null && root.dirty && root.editing && root.flashes === 0,
+                 "a changed file was overwritten or reported saved")
+      root.check(ops.fileNote === ''' + json.dumps(note) + ''' && preview.editorText === "mine", "conflict lost the draft or its note")
+      ''' + ("root.save()" if disk else "") + '''
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+  Timer { interval: 1100; running: true; onTriggered: {
+    try {
+      root.check(''' + ("!root.dirty && root.flashes === 1" if disk else "root.flashes === 0") + ''', "saving again did not settle")
+      console.log("PASS"); Qt.quit()
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+''')
+        assert target.read_bytes() == disk if disk else not target.exists(), name
+
+    # A read-back denied after the write ends the save as failed, and saving again once readable succeeds.
+    target = base / "denied.txt"
+    target.write_bytes(b"original\n")
+    run("save-readback-denied", common.replace("id: verifySave; interval: 150", "id: verifySave; interval: 400") + '''
+  Component.onCompleted: root.previewPath = ''' + json.dumps(str(target)) + '''
+  Process { id: deny; command: ["chmod", "000", ''' + json.dumps(str(target)) + '''] }
+  Process { id: allow; command: ["chmod", "644", ''' + json.dumps(str(target)) + '''] }
+  Timer { id: denyLater; interval: 100; onTriggered: deny.running = true }
+  property bool denied: false
+  onSavingChanged: if (saving !== null && !denied) { denied = true; denyLater.start() }
+  Timer { interval: 200; running: true; onTriggered: { root.edit(); preview.editorText = "edited"; root.save() } }
+  Timer { interval: 900; running: true; onTriggered: {
+    try {
+      root.check(root.saving === null && root.checking === null && root.saveError && root.dirty && root.editing,
+                 "a failed read-back left the save pending or reported it clean")
+      root.check(preview.editorText === "edited", "a failed read-back lost the draft")
+      allow.running = true
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+  Timer { interval: 1100; running: true; onTriggered: root.save() }
+  Timer { interval: 1800; running: true; onTriggered: {
+    try {
+      root.check(!root.saveError && !root.dirty && root.flashes === 1, "saving again after access returned failed")
+      console.log("PASS"); Qt.quit()
+    } catch (error) { console.error(String(error)); Qt.exit(1) }
+  } }
+''')
+    assert target.read_bytes() == b"edited\n"

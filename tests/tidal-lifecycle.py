@@ -31,7 +31,7 @@ shell = config / "shell.qml"
 source = qslog.patch(shell.read_text(), 'Quickshell.env("HOME") + "/.local/state/omarchy/current"', json.dumps(str(state)))
 # One windowless surface stands for the displays, and the compositor's monitor state comes from a file.
 source = qslog.patch(source, "model: root.animated ? Quickshell.screens : []", "model: root.animated ? [0] : []")
-source = qslog.patch(source, "PanelWindow {", "Item {")
+source = qslog.patch(source, "PanelWindow {", "Item {\n      readonly property real devicePixelRatio: 1")
 source, removed = re.subn(r"^      (screen:|anchors \{|color:|exclusionMode:|mask:|WlrLayershell\.).*\n", "", source, flags=re.M)
 assert removed == 8, removed
 source = qslog.patch(source, "monitor: Hyprland.monitorFor(screen)", "monitor: null")

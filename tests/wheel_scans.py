@@ -36,7 +36,7 @@ def check(wheel, run_case, block):
         out += wheel[wheel.index("  property var fileResults:"):wheel.index("  component FileScan:")]
         out += block(wheel, r"  component FileScan: Process \{") + "\n"
         for name, wait in [("home", seconds), ("folder", folder_seconds)]:
-            command = ["sh", "-c", "sleep " + wait + '; printf "/epoch-%s/' + name + '\\n" "$1"', "scan"]
+            command = ["sh", "-c", "sleep " + wait + '; printf "/epoch-%s/' + name + '\\0" "$1"', "scan"]
             out += "  FileScan { id: " + name + "Scan; source: " + json.dumps("home" if name == "home" else "folders")
             out += "; walk: " + json.dumps(command)[:-1] + ", String(epoch)] }\n"
         return out + handlers
@@ -53,7 +53,7 @@ def check(wheel, run_case, block):
 """)
     run("scan-close", scan("5") + r'''
   Component.onCompleted: {
-    homeScan.walk = ["sh", "-c", "printf '/pending\\n'; sleep 5"]
+    homeScan.walk = ["sh", "-c", "printf '/pending\\0'; sleep 5"]
     root.mode = "file"
   }
   Timer { interval: 30; running: true; onTriggered: root.opened = false }
@@ -68,7 +68,7 @@ def check(wheel, run_case, block):
     run("scan-streaming", scan("5") + r'''
   property int stage: 0
   Component.onCompleted: {
-    homeScan.walk = ["python3", "-c", "import os,sys,time; from pathlib import Path; p=Path(os.environ['XDG_RUNTIME_DIR'])/'next'; os.write(1,b'/first path\\n/caf\\xc3');\nwhile not p.exists(): time.sleep(.01)\nos.write(1,b'\\xa9\\n'); time.sleep(5)"]
+    homeScan.walk = ["python3", "-c", "import os,sys,time; from pathlib import Path; p=Path(os.environ['XDG_RUNTIME_DIR'])/'next'; os.write(1,b'/first path\\0/caf\\xc3');\nwhile not p.exists(): time.sleep(.01)\nos.write(1,b'\\xa9\\0'); time.sleep(5)"]
     root.mode = "file"
   }
   onFileResultsChanged: {
@@ -152,7 +152,7 @@ def check(wheel, run_case, block):
     }
   }
   Component.onCompleted: {
-    homeScan.walk = ["python3", "-c", "print('/home/alpha' + chr(10), end=''); print(('/home/beta' + chr(10)) * 50000, end=''); print('/home/gamma')"]
+    homeScan.walk = ["python3", "-c", "print('/home/alpha' + chr(0), end=''); print(('/home/beta' + chr(0)) * 50000, end=''); print('/home/gamma', end=chr(0))"]
     root.mode = "file"
   }
   Timer { interval: 800; running: true; onTriggered: {

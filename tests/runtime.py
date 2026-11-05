@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-runtime-") as temporary:
                 "python3", "-S", "-E", "-c",
                 "import os,time; from pathlib import Path; "
                 f"Path({str(pidfile)!r}).write_text(str(os.getpid())); "
-                f"print('/closed\\n' * {count}, end='', flush=True); time.sleep(30)"
+                f"print('/closed\\0' * {count}, end='', flush=True); time.sleep(30)"
             ], stdout=write_fd, stderr=subprocess.PIPE, timeout=3)
         finally:
             os.close(write_fd)

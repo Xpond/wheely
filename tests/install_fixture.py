@@ -41,6 +41,11 @@ class Installer:
             "sudo": '''if [[ "$*" == *shell.qml ]]; then
   if [[ "${CHECK_FAIL:-}" == partial ]]; then head -c -4 "${@: -2:1}" > "${@: -1}"; exit 1; fi
 fi
+# once:NAME or always:NAME truncates a copy to NAME and fails, the first time or every time.
+if [[ "${CHECK_FAIL:-}" == *:* && "${@: -1}" == *"${CHECK_FAIL#*:}" ]] &&
+   [[ "${CHECK_FAIL:-}" == always:* || ! -e "$HOME/failed-once" ]]; then
+  touch "$HOME/failed-once"; head -c 20 "${@: -2:1}" > "${@: -1}"; exit 1
+fi
 exec "$@"''',
             "notify-send": "exit 0",
             # install.sh finds the shell with quickshell, never pgrep. A fallback to pgrep would find
@@ -60,7 +65,8 @@ echo '[{"pid": 424242}]' ''',
 esac''',
             "sleep": "exit 0",
             "mv": '[ "${CHECK_FAIL:-}" = mv ] && exit 1\nexec /usr/bin/mv "$@"',
-            "omarchy": '''if [[ "$1 $2" == "hook install" ]]; then
+            "omarchy": '''[[ "$1 $2" == "restart shell" ]] && echo restart >> "$HOME/restarts"
+if [[ "$1 $2" == "hook install" ]]; then
   [[ "${CHECK_FAIL:-}" == hook ]] && exit 1
   dest="$HOME/.config/omarchy/hooks/post-update.d"
   mkdir -p "$dest"

@@ -196,6 +196,54 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: interrupted installs and restores are recognised as ours and recover on retry")
 
+    # A copy failing partway through either lock file leaves the patched pair, never half a pair.
+    restarts = fixture.user / "restarts"
+    for failing in lock:
+        assert fixture.run().returncode == 0
+        (fixture.user / "failed-once").unlink(missing_ok=True); restarts.unlink(missing_ok=True)
+        result = fixture.run("revert.sh", "once:" + failing)
+        assert result.returncode == 1 and restarts.exists(), result.stderr
+        assert all(fixture.installed(f) == fixture.patched(f) for f in lock), failing
+        assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: a failed lock-file restore puts the patched pair back before the shell restarts")
+
+    assert fixture.run().returncode == 0
+    restarts.unlink(missing_ok=True)
+    result = fixture.run("revert.sh", "always:" + lock[1])
+    assert result.returncode == 1 and "shell not restarted" in result.stderr and not restarts.exists(), result.stderr
+    assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: a lock pair that cannot be put back is never restarted into, and a retry recovers")
+
+    # A file or folder in a plugin's place is the user's: install refuses it, revert keeps it and still recovers.
+    plugin = fixture.user / ".config/omarchy/plugins/xpo.files"
+    for make in [lambda: (plugin.mkdir(), (plugin / "mine").write_text("keep")), lambda: plugin.write_text("keep")]:
+        conf.write_text(json.dumps(config))
+        make()
+        result = fixture.run()
+        assert result.returncode == 1 and "not wheely's link" in result.stderr, result.stderr
+        assert fixture.all_stock() and not hook.exists() and json.loads(conf.read_text()) == config
+        shutil.rmtree(plugin) if plugin.is_dir() else plugin.unlink()
+    assert fixture.run().returncode == 0
+    plugin.unlink(); plugin.mkdir(); (plugin / "mine").write_text("keep")
+    result = fixture.run("revert.sh")
+    assert result.returncode == 1 and "not wheely's link" in result.stderr, result.stderr
+    assert (plugin / "mine").read_text() == "keep" and fixture.all_stock()
+    assert not (fixture.user / ".config/omarchy/plugins/xpo.wheel").exists()
+    shutil.rmtree(plugin)
+    print("ok: a plugin path the user owns is refused by install, kept by revert, and recovery continues")
+
+    # A shell.json revert cannot rewrite is reported, after the shell's files are restored.
+    for failure, original in [("", "{bad"), ("mv", json.dumps(config))]:
+        conf.write_text(json.dumps(config))
+        assert fixture.run().returncode == 0
+        conf.write_text(original)
+        result = fixture.run("revert.sh", failure)
+        assert result.returncode == 1 and "Could not unregister" in result.stderr, result.stderr
+        assert conf.read_text() == original and not Path(str(conf) + ".new").exists() and fixture.all_stock()
+    conf.write_text(json.dumps(config))
+    assert fixture.run("revert.sh").returncode == 0
+    print("ok: malformed or unwritable shell.json fails revert without stopping recovery")
+
     assert fixture.run().returncode == 0
     (fixture.repo / "patches/orig" / relative).write_bytes(b"a different repository baseline\n")
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
