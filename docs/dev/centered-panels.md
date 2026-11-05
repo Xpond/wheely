@@ -260,6 +260,11 @@ displayed. Drive the panel over IPC (`omarchy-shell -q omarchy.monitor open`) so
 A healthy trace on a 144Hz display is a wall of ~6.9ms; a wall of ~16ms means the render
 loop is wrong (§3), not the animation. A single large value is real latency.
 
+Measured latency before the first frame: monitor 152ms, bluetooth 74ms, clock 44ms,
+network 37ms. Only `monitor` is noticeable: it is the 4 processes `refresh()` spawns on
+open, and fixing it means deferring that work until after the entry animation, in another
+package-owned file.
+
 ## 5. Tunables
 
 `patches/shell/plugins/bar/Bar.qml`:
