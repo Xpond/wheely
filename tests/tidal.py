@@ -102,7 +102,7 @@ Window {
       root.frame++
       if (root.frame < root.frames.length) {
         sea.seconds = root.frames[root.frame]; capture.restart()
-      } else { sea.width = 3840; sea.height = 2160; ultra.start() }
+      } else { sea.seconds = 148; sea.width = 3840; sea.height = 2160; ultra.start() }
     })
   }
   Timer { id: ultra; interval: 180; onTriggered: {
@@ -144,6 +144,13 @@ for variant in ["colorful", "muted"]:
     frames = {n: subprocess.check_output(["magick", str(capture / f"animated-{n}.png"), "-depth", "8", "RGB:-"])
               for n in [148, 152]}
     assert struct.unpack(">II", (capture / "animated-4k.png").read_bytes()[16:24]) == (3840, 2160)
+    # Setting the theme wipes in the poster, then the live coast takes over from 148s: a stale poster jumps.
+    poster = theme / "backgrounds" / f"00-{'muted' if variant == 'muted' else 'living'}-coast-animated.png"
+    compare = subprocess.run(["magick", "compare", "-metric", "RMSE", str(poster), str(capture / "animated-4k.png"),
+                              "null:"], capture_output=True, text=True)
+    mismatch = float(compare.stderr.split("(")[1].split(")")[0])
+    assert mismatch < 0.005, (f"{poster.name} is not the coast's first frame ({mismatch:.4f}); refresh it with "
+                              f"magick {capture / 'animated-4k.png'} -alpha off {poster}")
     change = sum(abs(a - b) for a, b in zip(frames[148], frames[152])) / len(frames[148])
     assert change > 0.67, "the water does not move"
     pixel = lambda x, y: frames[148][(y * 1920 + x) * 3:(y * 1920 + x) * 3 + 3]
