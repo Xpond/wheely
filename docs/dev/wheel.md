@@ -215,8 +215,11 @@ for the frames in between. See [`centered-panels.md`](centered-panels.md) for th
 so a plain `killactive` with the wheel up closes whatever window sits behind
 the scrim. `bin/omarchy-wheel-close` asks the wheel to close first and falls
 through to close-window only when nothing of ours was on screen. It fails
-*open*: any unreachable shell still closes the window, on a 0.5s timeout,
-because this runs on every window close.
+*open* for a shell that is not running, which still closes the window, because
+this runs on every window close. A shell that took the request but did not
+answer within 0.5s is left alone: the wheel may be closing itself, and closing
+the window too would take one the user never meant. A hung shell therefore
+costs `SUPER+W` until it recovers.
 
 Two things about that script are load-bearing:
 

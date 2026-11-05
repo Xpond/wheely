@@ -1,9 +1,12 @@
 #!/bin/bash
 # Close an open wheel surface, otherwise fall through to the active window.
 # Keep stdout enabled because the IPC result decides whether to fall through.
-if [[ $(OMARCHY_SHELL_IPC_TIMEOUT=0.5s omarchy-shell shell call xpo.wheel closeAll '' 2>/dev/null) == "closed" ]]; then
-  exit 0
-fi
+reply=$(OMARCHY_SHELL_IPC_TIMEOUT=0.5s omarchy-shell shell call xpo.wheel closeAll '' 2>&1)
+case $reply in
+  closed) exit 0 ;;
+  # Out of time once the request went out: the wheel may be closing itself, so the window stays.
+  *"not responding"*) exit 0 ;;
+esac
 
 # Omarchy 4 requires the Lua dispatcher form.
 exec hyprctl dispatch 'hl.dsp.window.close()'
