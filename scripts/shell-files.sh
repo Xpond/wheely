@@ -34,6 +34,14 @@ replace() {
     { sudo rm -f "$2.wheely-new"; return 1; }
 }
 
+# A run stopped between that copy and its rename leaves the copy; clear any before writing.
+clear_copies() {
+  local f
+  for f in "${FILES[@]}"; do
+    if [[ -e $SHELL_DIR/$f.wheely-new ]]; then sudo rm -f "$SHELL_DIR/$f.wheely-new"; fi
+  done
+}
+
 # Write verified stock bytes to $2: the checkout's merge base, the copy a rebase kept, else the cached package.
 stock_copy() {
   local archive copy

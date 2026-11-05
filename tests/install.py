@@ -198,6 +198,13 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.run().returncode == 0 and fixture.installed(relative) == fixture.patched(relative)
     assert fixture.run("revert.sh", "partial").returncode == 1 and fixture.installed(relative) == fixture.patched(relative)
     assert not leftovers()
+    # A run stopped between copy and rename leaves its copy; the next run clears it, even with nothing to write.
+    for script in ["install.sh", "revert.sh"]:
+        (fixture.shell / "shell.qml.wheely-new").write_bytes(b"stranded copy\n")
+        fixture.run(script)
+        assert not leftovers(), script
+    assert fixture.run().returncode == 0
+    assert fixture.run("revert.sh", "partial").returncode == 1
     assert designs.is_symlink(), "a failed revert must keep the lock screen's designs"
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: interrupted installs and restores are recognised as ours and recover on retry")

@@ -88,6 +88,7 @@ printf '#!/bin/bash\nexec %q\n' "$REPO/install.sh" > "$hook_dir/wheely" &&
 rm -rf "$hook_dir"
 
 # ------------------------------------------------------------------- patches
+clear_copies
 applied=()   # patch copied in
 rebased=()   # patch re-based onto a new upstream version first
 conflicts=() # merge failed; installed file left untouched

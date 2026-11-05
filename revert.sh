@@ -43,8 +43,9 @@ done
 # Only bytes matching pacman's checksum are written, and only over files that are ours.
 failed=0
 stock=$(mktemp)
-backup=$(mktemp -d)
+backup=$(mktemp -d)  # the lock files this run replaces
 trap 'rm -rf "$stock" "$backup"' EXIT
+clear_copies
 for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
   written="$STATE/installed/$f"
@@ -62,7 +63,7 @@ for f in "${FILES[@]}"; do
       failed=1; continue
     fi
     mkdir -p "$(dirname "$written")" "$(dirname "$backup/$f")"
-    if ! cp "$installed" "$backup/$f"; then
+    if [[ $f == plugins/lock/* ]] && ! cp "$installed" "$backup/$f"; then
       echo "Not restored: $f — could not back it up first" >&2
       failed=1; continue
     fi
