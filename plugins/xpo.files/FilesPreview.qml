@@ -122,6 +122,9 @@ Item {
   // Keep code unwrapped so line numbers stay aligned.
   Flickable {
     id: scroller
+    // Isolate Markdown batches to avoid the Qt 6.12 scrolling crash.
+    // Layer the viewport so the texture stays bounded by the visible pane.
+    layer.enabled: root.panel.showsMarkdown && !root.panel.editing
     anchors {
       top: parent.top; bottom: parent.bottom
       left: parent.left; leftMargin: Style.spacing.lg
