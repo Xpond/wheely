@@ -61,12 +61,11 @@ function onKey(wheel, event) {
   // The manual shares query editing with search, but keeps actions on hidden results disabled.
   if (wheel.reading) {
     var k = event.key
-    var lines = k === Qt.Key_Down ? 1 : k === Qt.Key_Up ? -1 : k === Qt.Key_PageDown ? 10 : k === Qt.Key_PageUp ? -10 : 0
     if (k === Qt.Key_Escape || k === Qt.Key_Backspace && !wheel.query) wheel.leaveManual()
     else if (control && k === Qt.Key_T) wheel.popOut()
-    else if (lines) wheel.scrollManual(lines)
     else {
       event.accepted = k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Tab || k === Qt.Key_Backtab
+        || k === Qt.Key_Up || k === Qt.Key_Down || k === Qt.Key_PageUp || k === Qt.Key_PageDown
         || !!control && (k === Qt.Key_Y || k === Qt.Key_N || k === Qt.Key_P)
       return
     }

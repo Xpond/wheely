@@ -556,8 +556,6 @@ Item {
     root.query = ""
   }
 
-  function scrollManual(lines) { manualSheet.scroll(lines) }
-
   function leaveManual() {
     root.query = root.readFrom
     root.queryAt = root.query.length

@@ -20,19 +20,58 @@ const RULED = new Set(["Ctrl+Backspace", "Ctrl+A", "Ctrl+K", "Shift+←", "Shift
 const keys = (md, ...sections) => new Set(sections.flatMap(name =>
   (md.split(/^## /m).find(s => s.startsWith(name + "\n")) || "").split("\n")
     .flatMap(line => line.startsWith("|") ? [...line.split("|")[1].matchAll(/`([^`]+)`/g)].map(m => m[1]) : [])))
-const have = keys(manual, "Wheel", "Search", "Files", "Files editor")
 assert.ok(rows.some(r => r.keys === "text keys") && rows.some(r => r.keys === "Shift + move keys"), "a rule the exemptions lean on is gone")
-for (const [doc, sections] of [["docs/wheel.md", ["Keys"]], ["docs/files.md", ["Keys", "Editing"]]]) {
-  const want = keys(read(doc), ...sections)
+// Each doc's keys under the manual's sections for that same feature, not anywhere in the manual;
+// the wheel's query editing is Search's "text keys".
+for (const [doc, sections, under, ruled] of [
+     ["docs/wheel.md", ["Keys"], ["Wheel", "Search"], ["Del", "Ctrl+W", "Home", "End", "Ctrl+U", "Ctrl+V"]],
+     ["docs/files.md", ["Keys", "Editing"], ["Files", "Files editor"], []]]) {
+  const want = keys(read(doc), ...sections), have = keys(manual, ...under)
   assert.ok(want.size > 10, doc + " lost its key table")
-  assert.deepEqual([...want].filter(k => !have.has(k) && !RULED.has(k)), [], doc + " lists keys the manual does not")
+  assert.deepEqual([...want].filter(k => !have.has(k) && !RULED.has(k) && !ruled.includes(k)), [],
+    doc + " lists keys the manual's " + under + " does not")
 }
 
-// The sheet keeps every section, in order, in three columns; a combo's keys are drawn one cap each.
-const columns = M.manualColumns(rows, 3)
-assert.equal(columns.length, 3)
-assert.deepEqual(columns.flat().map(c => c.name), [...new Set(rows.filter(r => r.section).map(r => r.section))])
-assert.equal(columns.flat().reduce((n, c) => n + c.rows.length, 0), rows.length - 1, "a row fell off the sheet")
+// The Files menu: every key its key map takes is in the manual's Files menu, and every key there is taken.
+// A key counts with a modifier only when it is not taken bare.
+const menuSource = read("plugins/xpo.files/FilesKeys.js").replace(/^\.pragma library/m, "")
+const Qt = { ShiftModifier: 1 << 25, ControlModifier: 1 << 26 }
+let id = 1
+for (const [, k] of menuSource.matchAll(/Qt\.(Key_\w+)/g)) Qt[k] = Qt[k] || id++
+const menuKey = new Function("Qt", menuSource + "\nreturn menuKey")(Qt)
+const takes = (k, modifiers) => menuKey({ step() {}, fire() {}, back() {}, close() {}, trash() {} }, { key: Qt[k], modifiers })
+const CAPS = { Key_Down: "↓", Key_Up: "↑", Key_Backtab: "Shift+Tab", Key_Return: "Enter", Key_Enter: "Enter",
+  Key_Right: "→", Key_Left: "←", Key_Escape: "Esc", Key_Delete: "Del" }
+const taken = new Set(Object.keys(Qt).filter(k => k.startsWith("Key_")).flatMap(k =>
+  takes(k, 0) ? [CAPS[k] || k.slice(4)] : takes(k, Qt.ControlModifier) ? ["Ctrl+" + k.slice(4)]
+  : takes(k, Qt.ShiftModifier) ? ["Shift+" + k.slice(4)] : []))
+const menuHas = keys(manual, "Files menu")
+assert.deepEqual([...taken].filter(k => !menuHas.has(k)), [], "the Files menu takes keys the manual does not list")
+assert.deepEqual([...menuHas].filter(k => !taken.has(k)), [], "the manual lists Files menu keys the menu does not take")
+
+// Every fixed menu action without a key of its own is named, word for word, by a Files menu actions row.
+const actionRows = rows.filter(r => r.section === "Files menu actions").map(r => (r.keys + " " + r.label).toLowerCase())
+const words = text => text.toLowerCase().split(/[^a-z]+/).filter(w => w && !["a", "an", "the", "in", "to", "for", "as"].includes(w))
+const actions = [...read("plugins/xpo.files/FilesActions.js").matchAll(/(?:row\("\w+", "([^"]+)", "", function|sub\("\w+", "([^"]+)")/g)]
+  .map(m => m[1] || m[2])
+assert.ok(actions.length > 15, "the menu's actions were not found")
+assert.deepEqual(actions.filter(a => !actionRows.some(r => words(a).every(w => words(r).includes(w)))), [],
+  "menu actions the manual does not name")
+
+// The sheet keeps every row, in order, in at most N columns of about equal length. A section carried
+// into the next column opens with three rows, and never leaves one behind.
+const listed = rows.filter(r => r.section)
+const total = listed.length + new Set(listed.map(r => r.section)).size * M.MANUAL_HEAD
+for (let count = 1; count <= 4; count++) {
+  const columns = M.manualColumns(rows, count), cards = columns.flat()
+  assert.ok(columns.length <= count, count + " columns overflowed")
+  assert.deepEqual(cards.flatMap(c => c.rows), listed, "a row fell off or moved on the sheet")
+  assert.ok(M.manualLength(columns) <= total / count + 3 + M.MANUAL_HEAD, count + " columns are uneven")
+  cards.forEach((c, i) => {
+    const next = cards[i + 1]
+    if (next && next.name === c.name) assert.ok(c.rows.length >= 3 && next.rows.length >= 2, c.name + " splits badly")
+  })
+}
 const combos = keys => M.combosOf(rows.find(r => r.keys === keys)).map(c => c.plain || c.caps.join(" "))
 assert.deepEqual(combos("Ctrl+Shift+N"), ["Ctrl Shift N"])
 assert.deepEqual(combos("Ctrl+U Ctrl+W"), ["Ctrl U", "Ctrl W"])
@@ -53,10 +92,11 @@ assert.equal(key("Key_A", 0, "a").accepted, false, "typing did not reach the fie
 root.query = "a"
 assert.equal(key("Key_Backspace", 0, "\b").accepted, false, "Backspace did not reach the field")
 const calls = []
-Object.assign(root, { popOut: () => calls.push("pin"), scrollManual: lines => calls.push(lines) })
+Object.assign(root, { popOut: () => calls.push("pin") })
+// The sheet always fits, so the arrows and page keys only wait.
 for (const [name, mods] of [["Key_Return", 0], ["Key_Down", 0], ["Key_PageUp", 0], ["Key_T", 1 << 26], ["Key_Y", 1 << 26]])
   assert.equal(key(name, mods).accepted, true, name + " acted on the hidden results")
-assert.deepEqual(calls, [1, -10, "pin"], "the sheet did not scroll or pin")
+assert.deepEqual(calls, ["pin"], "the sheet did not pin")
 key("Key_Escape")
 assert.equal(root.reading, false)
 assert.equal(root.query, "help rename", "Esc lost the search the sheet was opened from")

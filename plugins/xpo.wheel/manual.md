@@ -46,6 +46,7 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 | type anything | filter this folder |
 | `/` `~` | type a path from here or home |
 | `↑` `↓` `Tab` `Shift+Tab` | move the selection |
+| `Ctrl+N` `Ctrl+P` | next or previous row |
 | `Home` `End` | first or last row |
 | `PageUp` `PageDown` | a page of rows |
 | `Enter` | open folder or file |
@@ -59,18 +60,52 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 | `Ctrl+Shift+N` | new file, or folder/ |
 | `Del` | trash; press again to confirm |
 | `Ctrl+Y` | copy the path |
-| `Menu` `Shift+F10` | the menu: every action, by file type |
+| `Menu` `Shift+F10` | the right-click menu |
 | `Ctrl+Space` | mark, and step on |
 | `Ctrl+A` | mark every row |
+| `Ctrl+Click` `Shift+Click` | mark a row, or a range |
 | `Ctrl+Enter` | terminal here |
 | `Ctrl+O` | sort: name, newest, largest |
 | `Ctrl+H` | show hidden files |
-| `Ctrl+B` | hide the list |
+| `Ctrl+B` | hide the list; arrows scroll the preview |
 | `Ctrl+D` | show the git diff |
 | `Ctrl+T` | pop out as a window |
 | `Ctrl+U` `Ctrl+W` | clear field, delete a word |
 | `F1` | every key in the legend |
-| `Esc` | unmark, clear, then close |
+| `Esc` | unmark, clear, then back or close |
+
+## Files menu
+
+Right-click a row, or the path for the folder. With marks, it acts on them all.
+
+| Key | What it does |
+|---|---|
+| `Menu` `Shift+F10` | open or close it; or right-click |
+| `↑` `↓` `Tab` `Shift+Tab` | choose |
+| `Ctrl+N` `Ctrl+P` | next or previous item |
+| `Home` `End` | first or last item |
+| `Enter` | run it |
+| `→` | open a submenu |
+| `←` `Backspace` | back from a submenu |
+| `Del` | trash; press again to confirm |
+| `Esc` | close |
+| other keys | close it, then act as usual |
+
+## Files menu actions
+
+| Action | What it does |
+|---|---|
+| Open with | pick the app |
+| Share | LocalSend, Taildrop, or copy file/image to clipboard |
+| Convert for sharing | a smaller image or video copy |
+| Set as wallpaper | an image or video |
+| Extract here | unpack an archive |
+| Compress | into .zip or .tar.zst |
+| Run in a terminal | run a script, or make it executable |
+| Open in a terminal | a terminal in that folder |
+| Duplicate… Make link… | a copy or link beside it |
+| Show in Nautilus | open it in Nautilus |
+| Current folder | new, paste, sort, hidden, terminal |
 
 ## Files editor
 
@@ -97,6 +132,7 @@ Esc or Backspace with an empty filter returns from a setting.
 | Skipped folders | folders / never searches |
 | Wheely history | your past picks |
 | Forget picks | Enter twice to reset picks |
+| `Del` | remove an entry from a list |
 
 ## Ring editor
 

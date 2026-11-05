@@ -540,26 +540,41 @@ function manualRows(raw) {
   return out
 }
 
-// The manual's sections in order, in columns of about equal length: a section moves to the next
-// column once more than half of it would pass that column's share.
+// The manual's rows in order, in the shortest columns that hold them. A section too long for
+// what is left of its column carries on under its name at the top of the next, opening with three
+// rows and never leaving one behind. Each heading counts as MANUAL_HEAD rows.
+var MANUAL_HEAD = 2.5
+
 function manualColumns(rows, count) {
-  var sections = [], total = 0
-  for (var i = 0; i < rows.length; i++) {
-    if (!rows[i].section) continue
-    var last = sections[sections.length - 1]
-    if (!last || last.name !== rows[i].section) sections.push(last = { name: rows[i].section, rows: [] })
-    last.rows.push(rows[i])
-    total++
+  rows = rows.filter(function (r) { return !!r.section })
+  var rest = [], total = 0
+  for (var i = rows.length - 1; i >= 0; i--) {
+    var same = i + 1 < rows.length && rows[i + 1].section === rows[i].section
+    rest[i] = same ? rest[i + 1] + 1 : 1
+    total += same ? 1 : 1 + MANUAL_HEAD
   }
-  var columns = [[]], filled = 0
-  for (var j = 0; j < sections.length; j++) {
-    var n = sections[j].rows.length
-    if (columns[columns.length - 1].length && columns.length < count && filled + n / 2 > total / count * columns.length)
-      columns.push([])
-    columns[columns.length - 1].push(sections[j])
-    filled += n
+  function pack(cap) {
+    var columns = [[]], used = 0, card = null
+    rows.forEach(function (r, i) {
+      var fresh = !card || card.name !== r.section
+      var need = fresh ? MANUAL_HEAD + Math.min(3, rest[i]) : rest[i] === 2 ? 2 : 1
+      if (used && used + need > cap) { columns.push([]); used = 0; fresh = true }
+      if (fresh) { columns[columns.length - 1].push(card = { name: r.section, rows: [] }); used += MANUAL_HEAD }
+      card.rows.push(r)
+      used++
+    })
+    return columns
   }
-  return columns
+  for (var cap = Math.ceil(total / count); ; cap++) {
+    var columns = pack(cap)
+    if (columns.length <= count) return columns
+  }
+}
+
+// The longest column, in rows, counting each card's heading as MANUAL_HEAD rows.
+function manualLength(columns) {
+  return Math.max.apply(null, columns.map(function (c) {
+    return c.reduce(function (n, card) { return n + card.rows.length + MANUAL_HEAD }, 0) }))
 }
 
 // A key cell as combos of keycaps, a combo split at its +; plain words are one combo of none.
