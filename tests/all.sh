@@ -13,7 +13,7 @@ for shader in $(git ls-files '*.frag' '*.vert'); do
 done
 
 node tests/check.js
-for test in install desktop open-path wheelie-install wallpaper-toggle runtime files-preview \
+for test in install desktop open-path wheelie-install wallpaper-toggle runtime files-preview files-markdown \
             lock-process wheelie-lifecycle wheelie-dust wheelie-clock; do
   printf '\nRunning %s\n' "$test"
   python3 "tests/$test.py"
