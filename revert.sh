@@ -77,11 +77,14 @@ for f in "${FILES[@]}"; do
 done
 find "$STATE" -depth -type d -empty -delete 2>/dev/null || true
 
-# A failed copy may have truncated its file, and the lock's view and service only load as a pair:
-# put back what was installed, so the shell restarts into files that load. Each file this run
-# wrote has a backup.
+# The lock's view and service only load as a pair: ours beside stock cannot lock.
+lock=(plugins/lock/{LockView,Service}.qml)
+mixed() { is_stock "$1" "$SHELL_DIR/$1" && ! is_stock "$2" "$SHELL_DIR/$2" && is_ours "$2" "$SHELL_DIR/$2"; }
+mixed_lock() { mixed "${lock[0]}" "${lock[1]}" || mixed "${lock[1]}" "${lock[0]}"; }
+# A failed copy may have truncated its file, and a lock file left unrestored strands its partner: put
+# back what was installed, so the shell restarts into files that load. Each file this run wrote has a backup.
 undo=("${unsafe[@]}")
-[[ " ${unsafe[*]}" != *" plugins/lock/"* ]] || undo+=(plugins/lock/{LockView,Service}.qml)
+if [[ " ${unsafe[*]}" == *" plugins/lock/"* ]] || mixed_lock; then undo+=("${lock[@]}"); fi
 for f in "${undo[@]}"; do
   [[ -f $backup/$f ]] || continue
   if ! { sudo cp "$backup/$f" "$SHELL_DIR/$f" && cmp -s "$backup/$f" "$SHELL_DIR/$f"; }; then
@@ -91,10 +94,10 @@ for f in "${undo[@]}"; do
     exit 1
   fi
 done
-# A backup covers only this run: an earlier revert stopped between the two can leave ours beside stock.
-mixed() { is_stock "$1" "$SHELL_DIR/$1" && ! is_stock "$2" "$SHELL_DIR/$2" && is_ours "$2" "$SHELL_DIR/$2"; }
-if mixed plugins/lock/{LockView,Service}.qml || mixed plugins/lock/{Service,LockView}.qml; then
-  echo "The lock screen's two files do not match; shell not restarted. Rerun revert.sh." >&2
+# A backup covers only this run: an earlier revert stopped between the two can still leave them mixed.
+if mixed_lock; then
+  echo "The lock screen's two files do not match; shell not restarted." >&2
+  echo "Fix what is reported above, then rerun revert.sh." >&2
   exit 1
 fi
 

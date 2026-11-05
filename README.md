@@ -49,7 +49,8 @@ It links `plugins/` into `~/.config/omarchy/plugins/` and registers them in
 blur) to `~/.config/hypr/hyprland.lua`, links four helpers into
 `~/.local/bin`, links the lock-screen designs in `lock/` into
 `~/.local/share/wheely/`, patches eight shell files, installs a post-update
-hook, and restarts the shell. Rerunning is safe, and `git pull && ./install.sh`
+hook, and restarts the shell. A file or folder of your own where a plugin's link
+goes stops it before anything changes. Rerunning is safe, and `git pull && ./install.sh`
 updates it. Keep the checkout where it is: the hook, plugins and helpers point to it.
 Run `./revert.sh` before moving or deleting it. If it goes missing anyway, the lock screen
 still locks, without its design.

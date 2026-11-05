@@ -322,8 +322,9 @@ did nothing.
 A `reload()` in the same tick as the write is also swallowed, which is what the
 150 ms is for. The other way round, a write started inside `onLoaded` drops the
 read that is finishing, so the save's pre-write check (`checking` against
-`editBase`, refusing undecoded a file grown past `previewLimit`) defers its write with `Qt.callLater`. A failed read-back ends the
-save as failed (`onLoadFailed`), or every later save would wait on it.
+`editBase`, refusing undecoded a file grown past `previewLimit`) defers its
+write with `Qt.callLater`. A failed read-back ends the save as failed
+(`onLoadFailed`), or every later save would wait on it.
 
 **`TextEdit` has no `lineHeight`.** It is a `Text` property, not a
 `QQuickTextEdit` one, so an edited file is set at the font's own leading rather

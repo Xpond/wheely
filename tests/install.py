@@ -223,6 +223,19 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: a mixed lock pair left by an earlier revert is never restarted into")
 
+    # A lock file with no verified stock copy keeps its partner patched too, so the pair still matches.
+    assert fixture.run().returncode == 0
+    orig = fixture.repo / "patches/orig" / lock[1]
+    orig.write_bytes(b"not stock\n")
+    (fixture.package / "cache").rename(fixture.package / "away")
+    result = fixture.run("revert.sh")
+    assert result.returncode == 1 and "no verified stock copy" in result.stderr, result.stderr
+    assert all(fixture.installed(f) == fixture.patched(f) for f in lock), result.stderr
+    orig.write_bytes(fixture.stock[lock[1]])
+    (fixture.package / "away").rename(fixture.package / "cache")
+    assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: a lock file that cannot be restored keeps its partner patched")
+
     # A file or folder in a plugin's place is the user's: install refuses it, revert keeps it and still recovers.
     plugin = fixture.user / ".config/omarchy/plugins/xpo.files"
     for make in [lambda: (plugin.mkdir(), (plugin / "mine").write_text("keep")), lambda: plugin.write_text("keep")]:
