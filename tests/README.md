@@ -17,6 +17,7 @@ For focused checks, run these entry points from the repository root:
 | `python3 tests/runtime.py` | Offscreen QML behavior, after compiling each plugin whole, which needs a Wayland session. Calls `plugin_shell.py`, `wheel_refresh.py`, `wheel_scans.py`, `wheel_menu.py`, `file_runtime.py` (including `file_edits.py`), `files_lifecycle.py`, `files_git_runtime.py`, and `wheel_settings.py`. |
 | `python3 tests/install.py` | Install/revert, package updates and failure recovery using temporary paths. `install_fixture.py` supplies the isolated system and command stubs. |
 | `python3 tests/files-preview.py` | Offscreen Files previews: plain and highlighted text keep the same layout, with Pygments. |
+| `python3 tests/wheel-manual-fit.py [dir]` | Offscreen renders of the manual sheet at 1080p, 1440p and in a pinned window: whole on screen and not shrunk past readable. A directory keeps the captures. |
 | `python3 tests/files-markdown.py` | Native Wayland/threaded OpenGL: Markdown scrolling, incremental layout, resize, editing/code transitions, rendered frames and viewport-sized layers using the tracked Files and Wheel docs. |
 | `python3 tests/lock-process.py` | The lock worker against a simulated compositor and authentication: locking, status, designs, wake and fallback. |
 | `python3 tests/mycelium-render.py`, `python3 tests/meadow-render.py` | Offscreen renders of those two designs, checked pixel by pixel; `lock-render.py` renders every design natively. |
