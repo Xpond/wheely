@@ -63,7 +63,7 @@ Changes save as you make them.
 ## Known limits
 
 - The pinned search has no ring, so submenus, the ring editor and recording a shortcut
-  work from the wheel only.
+  work from the wheel only. Its results do not scroll with the mouse wheel.
 - A window is found by its title or app id, not by what runs inside it: search `kitty`
   to list every kitty window.
 

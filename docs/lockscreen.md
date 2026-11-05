@@ -21,6 +21,7 @@ at least ten seconds so the monitor can recover.
 ## Known limits
 
 - Multi-monitor and fingerprint unlock are untested.
+- Typing right after a wake can start before the monitor shows a picture again.
 
 If the real lock gets stuck, switch to a TTY with `Ctrl+Alt+F2`, log in, and run
 `./revert.sh` from this checkout to restore Omarchy's own lock, then restart the session.

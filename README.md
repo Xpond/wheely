@@ -6,9 +6,11 @@ themes, fonts and files. It works alongside Omarchy's own menu and Walker.
 
 <!-- screenshot: the wheel -->
 
-> **Early release.** Tested on Omarchy 4.5 with Quickshell 0.3.2, one NVIDIA GPU and one
-> monitor. It patches Omarchy's shell files with `sudo`, so `omarchy plugin add` cannot
-> install it. It takes over `SUPER+A` and `SUPER+W`. The lock screen is a work in progress.
+> **Early release.** Tested only on Omarchy 4.5.0rc3 with Quickshell 0.3.2.r7, one NVIDIA
+> GPU and one monitor, without fingerprint unlock. It patches Omarchy's shell files with
+> `sudo`, so `omarchy plugin add` cannot install it. It takes over `SUPER+A` and `SUPER+W`,
+> and `Ctrl+Space` while Tidal or Wheelie is the active theme. The lock screen is a work in
+> progress.
 
 ## Features
 
@@ -46,8 +48,9 @@ reports any conflict. What the install changes, and why it needs `sudo`:
 ./revert.sh
 ```
 
-Puts back Omarchy's original files and removes everything else. Your settings are kept for a
-reinstall. It also works from a TTY or over SSH.
+Puts back Omarchy's original files and removes the plugins, keybinds, helpers and hook.
+Your settings are kept for a reinstall ([what stays](docs/install.md#what-stays-after-revert)).
+It also works from a TTY or over SSH.
 
 ## Also in this repo
 
@@ -65,4 +68,5 @@ on wheely.
 MIT, see [LICENSE](LICENSE). Files derived from Omarchy are under
 [LICENSE.omarchy](LICENSE.omarchy). The fluid animation in the wheel's easter egg is adapted
 from hyprglaze's `fluid.frag` shader, under [LICENSE.hyprglaze](plugins/xpo.wheel/LICENSE.hyprglaze).
-The wallpapers and lock-screen art are AI-generated; their READMEs name the model.
+The theme wallpapers and the rally lock screen's backdrop are AI-generated; each theme's
+README and [`lock/rally/README.md`](lock/rally/README.md) name the model.

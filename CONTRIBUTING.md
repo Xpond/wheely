@@ -15,8 +15,9 @@ quickshell log -p ~/.local/share/wheely/lock-session -t 50
 ## Working on it
 
 wheely patches Omarchy's packaged shell, so most of it can only be exercised on an
-Omarchy desktop. `install.sh` links the plugins from your checkout, so edits there are the
-ones the shell runs. What the checks cover, what they need and how to run them is in
+Omarchy desktop. `install.sh` links `plugins/` and `lock/` from your checkout, so edits there
+are the ones the shell runs; `patches/shell/` is copied in, so rerun it after editing a patch.
+What the checks cover, what they need and how to run them is in
 [`tests/README.md`](tests/README.md); `./tests/all.sh` is what a release runs.
 
 - The user docs are `docs/*.md`; maintenance notes, measurements and the traps that cost a

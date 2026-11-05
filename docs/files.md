@@ -23,7 +23,7 @@ double-click to open, right-click for the menu, `Ctrl`/`Shift`+click to mark.
 |---|---|
 | folder | its contents, with sizes and dates |
 | image | the image, with its pixel size |
-| video | plays muted; `Space` pauses, the fullsize button opens mpv |
+| video | plays muted; `Space` pauses (`Shift+Space` types a space), the fullsize button opens mpv |
 | Markdown | rendered |
 | other text | syntax highlighted, with line numbers |
 | anything else | its size |
@@ -40,7 +40,9 @@ rest. `Ctrl+D` shows a changed file's diff instead of its contents.
 ## Moving, renaming and making files
 
 - `Ctrl+X` or `Ctrl+C` takes the selection; go to another folder and `Ctrl+V` puts it
-  there. A move releases what it held, a copy can be pasted again.
+  there. A move releases what it held, a copy can be pasted again. A paste skips names
+  already taken and reports them; a move that only partly succeeds still releases what it
+  held, so select the rest to retry.
 - `F2` renames in place. `Ctrl+Shift+N` makes a new file or folder: a name with a dot,
   or ending in `.`, is a file; one ending in `/` is a folder.
 - `Del` moves to the trash, so it can be restored. It asks twice.
@@ -48,9 +50,11 @@ rest. `Ctrl+D` shows a changed file's diff instead of its contents.
 
 ## Marking several
 
-`Ctrl+Space` marks a row and steps on, `Ctrl+A` marks every row, and `Ctrl`+click or
+`Ctrl+M` marks a row and steps on, `Ctrl+A` marks every row, and `Ctrl`+click or
 `Shift`+click marks with the mouse. Cut, copy, copy path, trash and the menu then act on
-all marks, including ones the filter hides; the header counts them. `Esc` unmarks.
+all marks, including ones the filter hides; the header counts them. `Enter`, `F2` and
+`Ctrl+E` still act on the selected row. `Esc` unmarks, and leaving the folder drops the
+marks.
 
 ## The menu
 
@@ -60,12 +64,13 @@ the path or the empty space below the rows for the folder itself.
 | selection | adds |
 |---|---|
 | any entry | Open with, Show in Nautilus, Share, Compress, Duplicate, Make link |
-| image | Copy image, Convert for sharing, Set as wallpaper |
+| image | Convert for sharing, Set as wallpaper, and Copy image under Share |
 | video | Convert for sharing, Set as wallpaper |
 | archive | Extract here |
 | script | Run in a terminal, or Make executable |
 | text | Edit |
 | folder | Open in a terminal, paste into it |
+| deleted file (git) | only Show changes and Copy path |
 
 **Share** sends with LocalSend, to online Taildrop devices, or copies the files for
 pasting into another app. **Convert for sharing** makes a smaller copy beside the
@@ -76,8 +81,10 @@ original and copies it.
 `Ctrl+E` edits the previewed text file in place and `Ctrl+S` saves. `Esc` leaves; with
 unsaved changes, press it twice to discard. A save never overwrites a change made
 elsewhere meanwhile: the new version is shown, your draft is kept, and saving again
-overwrites. Files over 256 KiB, binary files and a few encodings Qt would alter are
-preview only.
+overwrites. Files over 256 KiB, binary files, files that are not UTF-8, and files with
+CR line endings, no-break spaces or a BOM (which Qt's editor would change) are preview
+only. Picking a file in the wheel while an edit is unsaved keeps you on the edit until
+you save or discard it.
 
 ## Popping out
 

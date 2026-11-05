@@ -53,6 +53,9 @@ const shortcuts = Object.keys(Qt).filter(k => k.startsWith("Key_")).flatMap(k =>
 assert.ok(shortcuts.length > 15, "the browser's shortcuts were not found")
 const filesHas = keys(manual, "Files", "Files editor")
 assert.deepEqual(shortcuts.filter(k => !filesHas.has(k) && k !== "Ctrl+Backspace"), [], "Files takes keys the manual does not list")
+// Hyprland takes the wallpaper pause key before Files sees it, so no Files key may be its default.
+assert.equal(M.PAUSE_KEY, "CTRL + SPACE")
+assert.ok(!handles("Key_Space", Qt.ControlModifier), "Files takes Ctrl+Space, the wallpaper pause key")
 
 // Every fixed menu action without a key of its own is named, word for word, by a Files menu actions row.
 const actionRows = rows.filter(r => r.section === "Files menu actions").map(r => (r.keys + " " + r.label).toLowerCase())
@@ -105,4 +108,4 @@ assert.deepEqual(calls, ["pin"], "the sheet did not pin")
 key("Key_Escape")
 assert.equal(root.reading, false)
 assert.equal(root.query, "help rename", "Esc lost the search the sheet was opened from")
-console.log("ok: the manual is search rows, covers every documented key, and shows on one sheet")
+console.log("ok: the manual is search rows, lists every key Files takes, and shows on one sheet")
