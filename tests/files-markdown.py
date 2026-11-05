@@ -139,6 +139,9 @@ Scope {
                QSG_RENDER_LOOP="threaded", QSG_RHI_BACKEND="opengl", QSG_INFO="1",
                QS_DISABLE_CRASH_HANDLER="1", QT_SCALE_FACTOR="1", XDG_CACHE_HOME=str(base / "cache"))
     env.pop("QT_QUICK_BACKEND", None)
+    # Off Hyprland's socket: Commons connects to it, and the window opening before its workspaces load
+    # is a warning that fails the log check. Nothing rendered here reads Hyprland.
+    env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
 
     def no_core():
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
@@ -147,7 +150,7 @@ Scope {
                             env=env, capture_output=True, text=True, timeout=35, preexec_fn=no_core)
     log = result.stdout + result.stderr
     assert result.returncode == 0 and "DEBUG qml: PASS" in log, f"exit {result.returncode}\n{log}"
-    qslog.check(log)
+    qslog.check(log, r"\$HYPRLAND_INSTANCE_SIGNATURE is unset")
     assert "threaded render loop" in log and "backend OpenGL" in log, log
     captures = [line.split("CAPTURE ", 1)[1].split() for line in log.splitlines() if "CAPTURE " in line]
     assert len(captures) == 4, log
