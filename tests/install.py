@@ -90,6 +90,8 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert json.loads(conf.read_text()) == {"plugins": [{"id": "other", "enabled": False}],
                                           "idle": {"lock": 30}}
     assert fixture.all_stock()
+    # Restored from a private temporary copy, a shell file is still readable by everyone.
+    assert all((fixture.shell / f).stat().st_mode & 0o777 == 0o644 for f in fixture.files)
     assert not asset_dir.exists()
     assert fixture.run("revert.sh").returncode == 0
     print("ok: revert removes the hook and plugins, restores QML, and preserves other settings")
@@ -187,14 +189,95 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.all_stock()
     print("ok: files edited outside this project are neither patched over nor restored over")
 
+    # A copy stopped partway leaves the file it was replacing whole, and nothing beside it.
     relative = "shell.qml"
-    assert fixture.run(failure="partial").returncode == 1
+    leftovers = lambda: list(fixture.shell.rglob("*.wheely-new"))
+    assert fixture.run(failure="partial").returncode == 1 and fixture.installed(relative) == fixture.stock[relative]
+    assert not leftovers()
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     assert fixture.run().returncode == 0 and fixture.installed(relative) == fixture.patched(relative)
-    assert fixture.run("revert.sh", "partial").returncode == 1 and fixture.installed(relative) != fixture.stock[relative]
+    assert fixture.run("revert.sh", "partial").returncode == 1 and fixture.installed(relative) == fixture.patched(relative)
+    assert not leftovers()
+    # A run stopped between copy and rename leaves its copy; the next run clears it, even with nothing to write.
+    for script in ["install.sh", "revert.sh"]:
+        (fixture.shell / "shell.qml.wheely-new").write_bytes(b"stranded copy\n")
+        fixture.run(script)
+        assert not leftovers(), script
+    assert fixture.run().returncode == 0
+    assert fixture.run("revert.sh", "partial").returncode == 1
     assert designs.is_symlink(), "a failed revert must keep the lock screen's designs"
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: interrupted installs and restores are recognised as ours and recover on retry")
+
+    # A copy failing partway through either lock file leaves the patched pair, never half a pair.
+    restarts = fixture.user / "restarts"
+    for failing in lock:
+        assert fixture.run().returncode == 0
+        restarts.unlink(missing_ok=True)
+        result = fixture.run("revert.sh", "once:" + Path(failing).name)
+        assert result.returncode == 1 and restarts.exists(), result.stderr
+        assert all(fixture.installed(f) == fixture.patched(f) for f in lock), failing
+        assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: a failed lock-file restore puts the patched pair back before the shell restarts")
+
+    assert fixture.run().returncode == 0
+    restarts.unlink(missing_ok=True)
+    result = fixture.run("revert.sh", f"always:{Path(lock[1]).name} again:{Path(lock[0]).name}")
+    assert result.returncode == 1 and "shell not restarted" in result.stderr and not restarts.exists(), result.stderr
+    assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: a lock pair that cannot be put back is never restarted into, and a retry recovers")
+
+    # An earlier revert, stopped between the two lock files, left a mixed pair this run cannot finish.
+    assert fixture.run().returncode == 0
+    (fixture.shell / lock[0]).write_bytes(fixture.stock[lock[0]])
+    restarts.unlink(missing_ok=True)
+    result = fixture.run("revert.sh", "once:" + Path(lock[1]).name)
+    assert result.returncode == 1 and "shell not restarted" in result.stderr and not restarts.exists(), result.stderr
+    assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: a mixed lock pair left by an earlier revert is never restarted into")
+
+    # A lock file with no verified stock copy keeps its partner patched too, so the pair still matches.
+    assert fixture.run().returncode == 0
+    orig = fixture.repo / "patches/orig" / lock[1]
+    orig.write_bytes(b"not stock\n")
+    (fixture.package / "cache").rename(fixture.package / "away")
+    result = fixture.run("revert.sh")
+    assert result.returncode == 1 and "no verified stock copy" in result.stderr, result.stderr
+    assert all(fixture.installed(f) == fixture.patched(f) for f in lock), result.stderr
+    orig.write_bytes(fixture.stock[lock[1]])
+    (fixture.package / "away").rename(fixture.package / "cache")
+    assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: a lock file that cannot be restored keeps its partner patched")
+
+    # A file or folder in a plugin's place is the user's: install refuses it, revert keeps it and still recovers.
+    plugin = fixture.user / ".config/omarchy/plugins/xpo.files"
+    for make in [lambda: (plugin.mkdir(), (plugin / "mine").write_text("keep")), lambda: plugin.write_text("keep")]:
+        conf.write_text(json.dumps(config))
+        make()
+        result = fixture.run()
+        assert result.returncode == 1 and "not wheely's link" in result.stderr, result.stderr
+        assert fixture.all_stock() and not hook.exists() and json.loads(conf.read_text()) == config
+        shutil.rmtree(plugin) if plugin.is_dir() else plugin.unlink()
+    assert fixture.run().returncode == 0
+    plugin.unlink(); plugin.mkdir(); (plugin / "mine").write_text("keep")
+    result = fixture.run("revert.sh")
+    assert result.returncode == 1 and "not wheely's link" in result.stderr, result.stderr
+    assert (plugin / "mine").read_text() == "keep" and fixture.all_stock()
+    assert not (fixture.user / ".config/omarchy/plugins/xpo.wheel").exists()
+    shutil.rmtree(plugin)
+    print("ok: a plugin path the user owns is refused by install, kept by revert, and recovery continues")
+
+    # A shell.json revert cannot rewrite is reported, after the shell's files are restored.
+    for failure, original in [("", "{bad"), ("mv", json.dumps(config))]:
+        conf.write_text(json.dumps(config))
+        assert fixture.run().returncode == 0
+        conf.write_text(original)
+        result = fixture.run("revert.sh", failure)
+        assert result.returncode == 1 and "Could not unregister" in result.stderr, result.stderr
+        assert conf.read_text() == original and not Path(str(conf) + ".new").exists() and fixture.all_stock()
+    conf.write_text(json.dumps(config))
+    assert fixture.run("revert.sh").returncode == 0
+    print("ok: malformed or unwritable shell.json fails revert without stopping recovery")
 
     assert fixture.run().returncode == 0
     (fixture.repo / "patches/orig" / relative).write_bytes(b"a different repository baseline\n")

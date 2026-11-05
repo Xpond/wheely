@@ -86,7 +86,12 @@ Window {
   property real stopped: 0
   property int updates: 0
   Surface { id: sea; width: 1920; height: 1080; running: false; seconds: 148; muted: MUTED }
-  Connections { target: sea; function onSecondsChanged() { if (sea.running) root.updates++ } }
+  property real latest: 0
+  Connections { target: sea; function onSecondsChanged() {
+    if (!sea.running) return
+    if (sea.seconds < root.latest) { console.error("FAIL clock ran backward"); Qt.exit(1) }
+    root.latest = sea.seconds; root.updates++
+  } }
   Timer { interval: 20000; running: true; onTriggered: { console.error("FAIL timeout"); Qt.exit(1) } }
   Timer {
     id: capture; interval: 180; running: true
@@ -107,7 +112,8 @@ Window {
     sea.grabToImage(function(result) {
       result.saveToFile(OUTPUT + "/animated-4k.png")
       sea.width = 1920; sea.height = 1080
-      sea.seconds = 148; sea.running = true; advancing.start()
+      sea.seconds = root.latest = 148; sea.running = true; advancing.start()
+      sea.previous += 3600000  // the system clock steps back an hour
     })
   } }
   Timer { id: advancing; interval: 1000; onTriggered: {

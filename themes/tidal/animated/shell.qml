@@ -101,6 +101,7 @@ Scope {
 
       Surface {
         anchors.fill: parent
+        dpr: wallpaper.devicePixelRatio
         muted: root.muted ? 1 : 0
         running: !root.paused && !wallpaper.suspended
       }

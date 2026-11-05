@@ -14,7 +14,8 @@ Item {
   property double previous: Date.now()
   readonly property real wheelTurn: (seconds * 1000 / revolution) % 1
   property var layout: ({ size: [1, 1], wheels: {} })
-  readonly property real dpr: Screen.devicePixelRatio || 1
+  // A fractional output's true ratio comes from its window: Screen's is rounded up, 1.5 to 2.
+  property real dpr: Screen.devicePixelRatio || 1
 
   // One 16 ms clock: an animation would redraw at the display's own rate.
   onRunningChanged: previous = Date.now()

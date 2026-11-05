@@ -27,7 +27,7 @@ traps, how search is built, and what the tests check.
       MenuKeys.js      the key map: which verb a key means
       Calc.js          the calculator behind a leading `=`
       Pinned.js        the pinned search's window and focus helpers, shared with Files
-      scan.py          the file scan's output, in bounded UTF-8-safe batches
+      scan.py          fd's NUL-ended paths as JSON-list batches: names keep their newlines and spaces
 
 The ring and the results take the dial as `wheel`, the way the browser's own
 components take their panel, so each one's single dependency is visible at the
