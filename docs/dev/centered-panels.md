@@ -63,7 +63,7 @@ both stay stock, with a note, until `orig/` catches up. An Omarchy older than
 `revert.sh` writes stock back only over files that are ours, and only bytes
 matching pacman's checksum: `orig/` or a rebase's kept stock when one matches,
 otherwise the file from the cached package. Anything else stays in place and
-produces an error. See the [install and revert summary](../../README.md#revert).
+produces an error. See the [install and revert summary](../install.md#revert).
 
 ## 2. What changed
 
