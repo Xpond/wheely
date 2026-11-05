@@ -1,4 +1,4 @@
-"""Frame fd output in bounded, UTF-8-safe batches for Quickshell's SplitParser."""
+"""Frame fd's NUL-ended paths in bounded JSON-list batches for Quickshell's SplitParser."""
 import json
 import os
 import select

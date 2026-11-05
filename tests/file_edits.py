@@ -181,17 +181,21 @@ def check(source, base, run, block):
     finally:
         locked.chmod(0o755)
 
-    # Another writer's change since the edit began is shown and kept; saving again overwrites it.
+    # Another writer's change since the edit began is shown and kept; saving again overwrites it. A file
+    # gone, unreadable or grown past the limit is never saved over.
     target = base / "shared.txt"
+    grown = b"x" * 99 + b"\n"
     for name, change, note, disk in [
             ("save-conflict-edited", "printf 'theirs\\n' > \"$1\"", "changed on disk; save again to overwrite", b"mine\n"),
             ("save-conflict-replaced", "printf 'theirs\\n' > \"$1.new\" && mv \"$1.new\" \"$1\"",
              "changed on disk; save again to overwrite", b"mine\n"),
+            ("save-conflict-grown", "printf '%s' \"$2\" > \"$1\"", "file grew too large to edit; not saved", grown),
             ("save-conflict-removed", "rm \"$1\"", "cannot read the file; not saved", None)]:
+        overwrites = disk == b"mine\n"
         target.write_bytes(b"original\n")
         run(name, common + '''
   Component.onCompleted: root.previewPath = ''' + json.dumps(str(target)) + '''
-  Process { id: other; command: ["sh", "-c", ''' + json.dumps(change) + ''', "sh", ''' + json.dumps(str(target)) + '''] }
+  Process { id: other; command: ["sh", "-c", ''' + json.dumps(change) + ''', "sh", ''' + json.dumps(str(target)) + ", " + json.dumps(grown.decode()) + '''] }
   Timer { interval: 200; running: true; onTriggered: { root.edit(); preview.editorText = "mine"; other.running = true } }
   Timer { interval: 400; running: true; onTriggered: root.save() }
   Timer { interval: 700; running: true; onTriggered: {
@@ -199,12 +203,13 @@ def check(source, base, run, block):
       root.check(root.saving === null && root.checking === null && root.dirty && root.editing && root.flashes === 0,
                  "a changed file was overwritten or reported saved")
       root.check(ops.fileNote === ''' + json.dumps(note) + ''' && preview.editorText === "mine", "conflict lost the draft or its note")
-      ''' + ("root.save()" if disk else "") + '''
+      root.save()
     } catch (error) { console.error(String(error)); Qt.exit(1) }
   } }
   Timer { interval: 1100; running: true; onTriggered: {
     try {
-      root.check(''' + ("!root.dirty && root.flashes === 1" if disk else "root.flashes === 0") + ''', "saving again did not settle")
+      root.check(''' + ("!root.dirty && root.flashes === 1" if overwrites else "root.dirty && root.flashes === 0") + ''',
+                 "saving again did not overwrite, or overwrote a file it must not")
       console.log("PASS"); Qt.quit()
     } catch (error) { console.error(String(error)); Qt.exit(1) }
   } }

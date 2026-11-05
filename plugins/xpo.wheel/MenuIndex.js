@@ -736,11 +736,11 @@ var NO_FILES = { paths: [], lower: [] }
 // A scan batch is a JSON list of exact paths; fd marks directories with trailing slashes.
 // Fold case and find names once per scan.
 function parseFiles(raw, into) {
-  var lines = raw ? JSON.parse(raw) : []
-  var paths = into ? into.paths : lines, lower = into ? into.lower : [], starts = into ? into.starts : []
+  var batch = raw ? JSON.parse(raw) : []
+  var paths = into ? into.paths : batch, lower = into ? into.lower : [], starts = into ? into.starts : []
   var count = into ? paths.length : 0
-  for (var i = 0; i < lines.length; i++) {
-    var path = lines[i]
+  for (var i = 0; i < batch.length; i++) {
+    var path = batch[i]
     paths[count++] = path
     var low = path.toLowerCase()
     lower.push(low)

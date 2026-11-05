@@ -214,6 +214,15 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     print("ok: a lock pair that cannot be put back is never restarted into, and a retry recovers")
 
+    # An earlier revert, stopped between the two lock files, left a mixed pair this run cannot finish.
+    assert fixture.run().returncode == 0
+    (fixture.shell / lock[0]).write_bytes(fixture.stock[lock[0]])
+    (fixture.user / "failed-once").unlink(missing_ok=True); restarts.unlink(missing_ok=True)
+    result = fixture.run("revert.sh", "once:" + lock[1])
+    assert result.returncode == 1 and "shell not restarted" in result.stderr and not restarts.exists(), result.stderr
+    assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
+    print("ok: a mixed lock pair left by an earlier revert is never restarted into")
+
     # A file or folder in a plugin's place is the user's: install refuses it, revert keeps it and still recovers.
     plugin = fixture.user / ".config/omarchy/plugins/xpo.files"
     for make in [lambda: (plugin.mkdir(), (plugin / "mine").write_text("keep")), lambda: plugin.write_text("keep")]:

@@ -91,6 +91,12 @@ for f in "${undo[@]}"; do
     exit 1
   fi
 done
+# A backup covers only this run: an earlier revert stopped between the two can leave ours beside stock.
+mixed() { is_stock "$1" "$SHELL_DIR/$1" && ! is_stock "$2" "$SHELL_DIR/$2" && is_ours "$2" "$SHELL_DIR/$2"; }
+if mixed plugins/lock/{LockView,Service}.qml || mixed plugins/lock/{Service,LockView}.qml; then
+  echo "The lock screen's two files do not match; shell not restarted. Rerun revert.sh." >&2
+  exit 1
+fi
 
 # A failed restore may leave the custom lock screen in use; keep its designs then.
 if (( failed == 0 )); then

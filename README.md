@@ -69,11 +69,8 @@ original shell files, and unlinks the lock-screen designs and forgets the chosen
 after a successful restore, then restarts the shell. It also works from a TTY or over
 SSH when the desktop will not start. Originals are checked against
 pacman's checksums before they are written, and a shell file changed outside
-this project is left untouched and reported. If a copy fails partway, what was
-installed is put back first, so the lock screen's two files always match; if even
-that fails, the shell is not restarted and revert says so. A file or folder of
-your own where a plugin's link belongs is left alone and reported; install
-refuses to start over one.
+this project is left untouched and reported. If restoring fails, revert says so
+and never restarts the shell into a lock screen whose two files do not match.
 Your settings stay: `wheel.json`, `wheel-blur`, `wheel-shortcut` and
 `wallpaper-pause-shortcut` in `~/.config/omarchy/`, and your picks in
 `~/.local/state/omarchy/wheel-uses.json`, so a reinstall starts where you left off.

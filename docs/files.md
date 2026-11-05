@@ -413,14 +413,15 @@ UTF-8 is not editable -- the bytes are what get checked, so a file that
 genuinely contains U+FFFD still edits. Nor is one holding CR line endings or
 no-break spaces, which Qt's editor turns into LF and spaces, or a BOM, which
 `FileView` drops. Writes go out `atomicWrites`.
+A save is then confirmed by reading the file back, because `FileView` will not
+tell you (see [Traps](dev/files.md#traps)), and `endLine()` adds the trailing newline `vim`
+would, since a file saved without one is a file `git` calls damaged.
 
 **It never saves over someone else's change.** A save rereads the file first; if
 it changed since the edit began, the preview shows the new version, your draft
 stays, and the heading says `changed on disk; save again to overwrite`. A file
-that is gone or unreadable is not saved; once it is readable again, save again.
-A save is then confirmed by reading the file back, because `FileView` will not
-tell you (see [Traps](dev/files.md#traps)), and `endLine()` adds the trailing newline `vim`
-would, since a file saved without one is a file `git` calls damaged.
+that is gone, unreadable or grown past 256 KiB is not saved over; once it is
+readable again, save again.
 
 Closing is refused while there are unsaved changes — `close()` routes to
 `leaveEdit()` instead, so a click outside arms the discard rather than throwing

@@ -720,15 +720,18 @@ Item {
       if (root.checking !== null) {
         var draft = root.checking
         root.checking = null
+        // A file grown past the limit is neither decoded nor editable: never saved over unseen.
+        var disk = data().byteLength > root.previewLimit ? null : text()
         // Already the draft: a retry after an unverified save.
-        if (text() === root.editBase || text() === draft) {
+        if (disk === root.editBase || disk === draft) {
           root.saving = draft
           // A write started inside this read's handler drops the read.
           Qt.callLater(() => { if (root.saving === draft) { previewFile.setText(draft); verifySave.restart() } })
           return
         }
+        if (disk === null) { ops.note("file grew too large to edit; not saved"); return }
         // Saving again overwrites the change, now shown in the preview.
-        root.editBase = text()
+        root.editBase = disk
         ops.note("changed on disk; save again to overwrite")
       }
       // A file grown past the limit since it was listed is not decoded here: 200 MB blocks for seconds.

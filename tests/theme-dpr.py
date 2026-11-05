@@ -16,20 +16,33 @@ for host in ["themes/wheelie/scene/wallpaper.qml", "themes/tidal/animated/shell.
 
 qml = '''import QtQuick
 import Quickshell
+import Quickshell.Wayland
 import "scene" as Wheelie
 import "animated" as Tidal
-Window {
-  width: 640; height: 360; visible: true
-  Wheelie.Surface { id: scene; anchors.fill: parent; running: false; dpr: 1.5 }
-  Tidal.Surface { id: sea; anchors.fill: parent; running: false; dpr: 1.5 }
-  Timer { interval: 1500; running: true; onTriggered: {
-    var loader = scene.children.find(c => c.item)
-    var size = loader.item.children[0].layer.textureSize
-    var surge = sea.surgeData.textureSize
-    console.log("SIZES", JSON.stringify([size.width, size.height, surge.width, scene.Screen.devicePixelRatio,
-                                         Math.ceil(scene.width * 1.5), Math.ceil(scene.height * 1.5)]))
-    Qt.quit()
-  } }
+Scope {
+  // The hosts' own binding, on the installed Quickshell's PanelWindow.
+  PanelWindow {
+    id: panel
+    implicitWidth: 64; implicitHeight: 64
+    exclusionMode: ExclusionMode.Ignore
+    mask: Region {}
+    WlrLayershell.layer: WlrLayer.Background
+    Wheelie.Surface { id: hosted; anchors.fill: parent; running: false; dpr: panel.devicePixelRatio }
+  }
+  Window {
+    width: 640; height: 360; visible: true
+    Wheelie.Surface { id: scene; anchors.fill: parent; running: false; dpr: 1.5 }
+    Tidal.Surface { id: sea; anchors.fill: parent; running: false; dpr: 1.5 }
+    Timer { interval: 1500; running: true; onTriggered: {
+      var loader = scene.children.find(c => c.item)
+      var size = loader.item.children[0].layer.textureSize
+      var surge = sea.surgeData.textureSize
+      console.log("SIZES", JSON.stringify([size.width, size.height, surge.width, scene.Screen.devicePixelRatio,
+                                           Math.ceil(scene.width * 1.5), Math.ceil(scene.height * 1.5)]))
+      console.log("PANEL", JSON.stringify([typeof panel.devicePixelRatio, hosted.dpr === panel.devicePixelRatio && hosted.dpr > 0]))
+      Qt.quit()
+    } }
+  }
 }
 '''
 with tempfile.TemporaryDirectory(prefix="theme-dpr-") as temporary:
@@ -47,4 +60,5 @@ with tempfile.TemporaryDirectory(prefix="theme-dpr-") as temporary:
     sizes = json.loads(re.search(r"SIZES (\[.*\])", log)[1])
     width, height = sizes[4:]
     assert sizes[:4] == [width, height, width, 2], sizes
-print("ok: Wheelie's layer and Tidal's geometry follow the window's 1.5x, not Screen's rounded 2x")
+    assert re.search(r"PANEL (\[.*\])", log)[1] == '["number",true]', log
+print("ok: Wheelie's layer and Tidal's geometry follow the window's 1.5x, not Screen's rounded 2x; PanelWindow supplies it")
