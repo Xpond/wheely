@@ -468,6 +468,8 @@ esac
 ''' + block(files, r"  FolderListModel \{\n    id: listedFolder") + block(files, r"^  readonly property bool unlisted:.*?\n  function reread\(") + '''
   onShownChanged: if (root.shown) {
 ''' + re.search(r"^ *if \(root\.relistDue\) root\.relist\(\)\n", files, re.M).group() + '''
+  } else {
+''' + "".join(re.findall(r"^ *if \(relistSoon\.running\).*\n", files, re.M)) + '''
   }
   Process { id: touching; command: ["sh", "-c", 'for i in $(seq $2); do touch "$1/$3$i"; sleep 0.01; done', "t", root.listedDir, "30", "n"] }
   function fail(why) { console.error("FAIL", why); Qt.exit(1) }
@@ -479,13 +481,16 @@ esac
   } }
   Timer { id: burst; interval: 1200; onTriggered: {
     if (root.entries.length !== 32 || root.relists > 8) return root.fail("a burst of 30 listed " + root.entries.length + " in " + root.relists)
+    root.reread()
+    if (!relistSoon.running) return root.fail("no reload queued before closing")
     root.shown = false
+    root.relists = 0
     touching.command = ["sh", "-c", 'touch "$1/h1" "$1/h2"', "t", root.listedDir]
     touching.running = true
     hidden.start()
   } }
   Timer { id: hidden; interval: 500; onTriggered: {
-    if (root.entries.length !== 32) return root.fail("a hidden panel listed again")
+    if (root.entries.length !== 32 || root.relists) return root.fail("a hidden panel listed again")
     root.shown = true
     if (root.entries.length !== 34) return root.fail("showing did not catch up: " + root.entries.length)
     console.log("PASS"); Qt.quit()

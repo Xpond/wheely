@@ -4,7 +4,7 @@ import os
 import re
 import sys
 
-from pygments import highlight
+from pygments import format
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import find_lexer_class, get_lexer_for_filename
 from pygments.lexers._mapping import LEXERS
@@ -12,7 +12,7 @@ from pygments.lexers.special import TextLexer
 
 # Lines split as Qt splits them, at \n alone; Pygments reads a lone \r as a line end itself.
 path, lines = sys.argv[1], int(sys.argv[2])
-src = "\n".join(open(path, errors="replace", newline="").read().split("\n")[:lines])
+src = open(path, errors="replace", newline="").read()
 
 
 # Pygments' own choice by file name, without compiling all of its ~900 name patterns: a plain
@@ -23,7 +23,19 @@ def lexer_for(name):
              if (name.endswith(glob[1:]) if glob.startswith("*.") and not any(c in glob[2:] for c in "*?[")
                  else fnmatchcase(name, glob))
              for cls in [find_lexer_class(lexer)]]
-    return max(found)[2](stripnl=False) if found else TextLexer()
+    return max(found)[2](stripnl=False) if found else TextLexer(stripnl=False)
+
+
+def first_tokens(lexer):
+    # Keep lookahead past the cut for comments and heredocs; stop consuming tokens at the cut.
+    # Match Pygments' CR/BOM normalization without treating lone CRs as Qt line boundaries.
+    prefix = "\n".join(src.split("\n", lines)[:lines])
+    left = len(prefix.replace("\r\n", "\n").replace("\r", "\n").removeprefix("\ufeff"))
+    for token, text in lexer.get_tokens(src):
+        yield token, text[:left]
+        left -= len(text)
+        if left <= 0:
+            break
 
 
 try:
@@ -31,7 +43,7 @@ try:
 except Exception:
     # pygments' table changed shape: its own, slower lookup. Failing that, the preview stays plain.
     lexer = get_lexer_for_filename(path, stripnl=False)
-html = highlight(src, lexer, HtmlFormatter(nowrap=True, noclasses=True, style="one-dark"))
+html = format(first_tokens(lexer), HtmlFormatter(nowrap=True, noclasses=True, style="one-dark"))
 
 # The same rules as FilesIndex.styledCode(), which shows the file until this answers.
 if html.startswith("\n"):

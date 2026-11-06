@@ -22,6 +22,7 @@ def check(files, run, block, line):
   function readChanges() {}
   QtObject { id: gitStatus; function cancel() {} }
   QtObject { id: statusSoon; function stop() {} }
+  Timer { id: relistSoon }
   function check(ok, message) {
     if (!ok) { console.error("FAIL", message); Qt.exit(1) }
   }

@@ -130,6 +130,7 @@ the first file in the preview floats above the first file in the list.
 After that, each change to the folder's count would snapshot and sort it whole, ninety
 times over a 1k-file move, so changes are read at most every 150 ms, and not at all
 while the panel is hidden: it reads the folder once when it shows (`relistDue`).
+Closing also stops a queued reload and keeps it due for reopening.
 `hiddenMarks` counts with an object rather than a `Set`, which V4 builds in quadratic
 time (a second for 20k paths). `withDeleted` hands back the same list when git deleted
 nothing, so a status landing does not sort the folder again.
@@ -404,9 +405,11 @@ old rendering pixel for pixel.
 
 `highlight.py` colours the file's first `2 × shownLines` lines, split at `\n` alone as
 Qt splits them, and is asked again once more than half of those show, so a longer
-preview stays coloured while the next lot is read. pygments lexes from the top, so
-those lines colour as they would in the whole file: a 200 KB file colours in 50 ms
-rather than 425. The preview shows its first `shownLines`: the gutter numbers `head()` of the text, and the markup is cut by
+preview stays coloured while the next lot is read. The lexer sees the whole source,
+including closing delimiters past the cut; token consumption and formatting stop
+at the prefix. Those lines colour as they would in the whole file: a 200 KB file
+colours in 50 ms rather than 425. The preview shows its first `shownLines`: the
+gutter numbers `head()` of the text, and the markup is cut by
 the same `head()` at its `<br>`s, appending the same `…` line, for the same
 reason: if the two disagree the numbers stop naming the lines beside them.
 

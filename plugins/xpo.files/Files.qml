@@ -416,6 +416,7 @@ Item {
       if (root.relistDue) root.relist()
       root.readChanges()
     } else {
+      if (relistSoon.running) { root.relistDue = true; relistSoon.stop() }
       gitStatus.cancel()
       statusSoon.stop()
       settle.stop()

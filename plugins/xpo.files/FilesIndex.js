@@ -51,7 +51,7 @@ function ordered(entries, order) {
 // V4's sort slows badly on input already in another order, as FolderListModel's code-point
 // order is to localeCompare: 100k names took seconds. A bottom-up merge never does, and is stable.
 function mergeSort(list, compare) {
-  var n = list.length, from = list.slice(), to = new Array(n)
+  var n = list.length, from = list, to = new Array(n)
   for (var width = 1; width < n; width *= 2) {
     for (var start = 0, k = 0; start < n; start += 2 * width) {
       var a = start, mid = Math.min(start + width, n), b = mid, end = Math.min(start + 2 * width, n)

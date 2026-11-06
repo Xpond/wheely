@@ -72,6 +72,16 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
     def run(*command):
         return subprocess.run(command, capture_output=True, text=True, check=True).stdout
 
+    # Closing delimiters beyond the requested lines must still inform the lexer.
+    for name, opening, closing in [("comment.js", "/*", "*/"), ("comment.html", "<!--", "-->"),
+                                    ("heredoc.sh", "cat <<EOF", "EOF")]:
+        for newline in ["\n", "\r\n"]:
+            path = base / name
+            path.write_text(newline.join([opening] + ["inside"] * 12 + [closing, "after"]), newline="")
+            whole = run("python3", str(plugin / "highlight.py"), str(path), "100")
+            first = run("python3", str(plugin / "highlight.py"), str(path), "6")
+            assert first == "<br>".join(whole.split("<br>")[:6]), (name, repr(newline), first)
+
     cases = []
     for name, text in list(samples.items()) + [(f.name, f.read_text()) for f in files]:
         path = base / "cases" / name
