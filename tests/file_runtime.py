@@ -330,8 +330,11 @@ esac
   property var sel: ({path: ''' + json.dumps(selected) + '''})
   property var op: null
   property string fileNote: ""
+  property bool cancelling: false
+  property real progress: -1
+  property int elapsed: 0
   function note(text) { root.fileNote = text }
-''' + block(ops, r"  function run\(") + block(ops, r"  function copyPath\(") + block(ops, r"  Process {\n    id: filer") + '''
+''' + block(ops, r"  function run\(") + block(ops, r"  function copyPath\(") + block(ops, r"  Process {\n    id: filer") + block(ops, r"  Process {\n    id: gauge") + '''
   Component.onCompleted: {
     root.copyPath([root.sel])
     if (root.fileNote) { console.error("FAIL premature success"); Qt.exit(1) }
@@ -348,6 +351,70 @@ esac
             {"PATH": str(base) + ":" + os.environ["PATH"], "CHECK_COPY": str(captured),
              "CHECK_COPY_EXIT": str(code)})
         assert captured.read_text() == selected
+
+    # A long note, then a running job, stand in for the selection's facts beside a path: neither runs over
+    # the path, and the job's progress is never the part cut short.
+    run("header-note", '''
+  property string note: "copying PrintShop-Tools-Windows-x64-phase1-with-an-even-longer-name.zip"
+  property bool job: false
+  QtObject {
+    id: panel
+    property var crumbs: ["~", "Downloads", "agent-test-folder"]
+    property bool pathMode: false
+    property string typedLeaf: ""
+    property string naming: ""
+    property string filter: ""
+    property string renameTo: ""
+    property int renameAt: 0
+    property bool editing: false
+    property var settledSel: ({ name: "PrintShop-Tools-Windows-x64-phase1.zip" })
+    property string fileNote: root.note
+    property string fileStatusHead: root.job ? "extracting PrintShop-Tools-Windows-x64-phase1-with-an-even-longer-name.zip" : ""
+    property string fileStatusTail: root.job ? " · 1:20 · ctrl+k cancels" : ""
+    property string filePercent: root.job ? "42%" : ""
+    property real fileProgress: root.job ? 0.42 : -1
+    property string diffText: ""
+    property real previewWidth: 480
+    property string metaLine: "93.7 MB · 2 days ago"
+    property var rows: [1, 2, 3]
+    property var listedEntries: [1, 2, 3]
+    property string query: ""
+    property bool showHidden: false
+    property string order: "name"
+    property var marks: []
+    property int hiddenMarks: 0
+    property bool shown: true
+    property bool saveError: false
+    property bool justSaved: false
+    property bool dirty: false
+    property var menu: null
+  }
+  FloatingWindow {
+    visible: true; implicitWidth: 800; implicitHeight: 50
+    FilesHeader { id: header; width: 800; panel: panel }
+  }
+  function clear() {
+    var trail = header.children.find(c => c.spacing !== undefined && c.anchors.left === header.left)
+    var facts = header.children.find(c => c.spacing !== undefined && c.anchors.right === header.right)
+    return facts.x >= trail.x + trail.width
+  }
+  function find(item, test) {
+    if (test(item)) return item
+    for (var i = 0; i < item.children.length; i++) { var f = find(item.children[i], test); if (f) return f }
+    return null
+  }
+  Timer { interval: 200; running: true; onTriggered: {
+    if (!root.clear()) return root.fail("a note ran over the path")
+    root.note = ""; root.job = true; later.start()
+  } }
+  Timer { id: later; interval: 200; onTriggered: {
+    var progress = root.find(header, c => c.text !== undefined && c.text.indexOf("42%") >= 0)
+    if (!root.clear()) return root.fail("a running job ran over the path")
+    if (!progress || !progress.visible || progress.width < progress.implicitWidth) return root.fail("the job's progress was cut")
+    console.log("PASS"); Qt.quit()
+  } }
+  function fail(why) { console.error("FAIL", why); Qt.exit(1) }
+''', expected=(r"does not support setting window masks",))
 
     # Qt's FolderListModel lists the parent for "#archive" and "50%25off", and a fresh one the working directory
     # for "q?x" or a gone folder; the panel shows none of those rows. An unreadable folder lists as

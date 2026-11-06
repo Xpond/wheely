@@ -557,7 +557,8 @@ function manualColumns(rows, count) {
     var columns = [[]], used = 0, card = null
     rows.forEach(function (r, i) {
       var fresh = !card || card.name !== r.section
-      var need = fresh ? MANUAL_HEAD + Math.min(3, rest[i]) : rest[i] === 2 ? 2 : 1
+      // A card opens with room for three rows, or for all of one too short to split.
+      var need = fresh ? MANUAL_HEAD + (rest[i] <= 4 ? rest[i] : 3) : card.rows.length < 3 ? 0 : rest[i] === 2 ? 2 : 1
       if (used && used + need > cap) { columns.push([]); used = 0; fresh = true }
       if (fresh) { columns[columns.length - 1].push(card = { name: r.section, rows: [] }); used += MANUAL_HEAD }
       card.rows.push(r)
