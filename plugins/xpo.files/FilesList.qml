@@ -22,6 +22,24 @@ Item {
     p.index = i
   }
 
+  // A hovered row's name pops up whole over it after a moment, cut short or not. The row is found
+  // from where the pointer is, on every move and every scroll, since a scroll moves rows under a
+  // still pointer without telling them.
+  property Item under: null
+  property Item tipped: null
+  function rest(moved) {
+    var p = pointing.point.position
+    var row = pointing.hovered ? list.itemAtIndex(list.indexAt(p.x + list.contentX, p.y + list.contentY)) : null
+    var name = row ? row.title : null
+    if (name === root.under && !moved) return
+    root.under = name
+    root.tipped = null
+    if (name) tipWait.restart()
+  }
+  Timer { id: tipWait; interval: 500; onTriggered: root.tipped = root.under }
+  // On the list's frame, not in it: a handler in a Flickable rides its content, and its point with it.
+  HoverHandler { id: pointing; onPointChanged: root.rest(false); onHoveredChanged: root.rest(false) }
+
   ListView {
     id: list
     anchors.fill: parent
@@ -29,6 +47,7 @@ Item {
     model: root.panel.rows
     currentIndex: root.panel.index
     boundsBehavior: Flickable.StopAtBounds
+    onContentYChanged: root.rest(true)
 
     delegate: Item {
       id: entry
@@ -38,6 +57,7 @@ Item {
       // What is armed is a list of paths, one to a line.
       readonly property bool doomed: ("\n" + root.panel.doomed + "\n").indexOf("\n" + entry.modelData.path + "\n") >= 0
       readonly property bool marked: !!root.panel.marked[entry.modelData.path]
+      readonly property Item title: label
 
       width: list.width
       height: root.panel.rowHeight
@@ -87,6 +107,7 @@ Item {
         }
 
         Text {
+          id: label
           anchors.verticalCenter: parent.verticalCenter
           width: parent.width - glyph.width - trail.width - parent.spacing * 2
                  - (mark.visible ? mark.width + parent.spacing : 0)
@@ -135,6 +156,17 @@ Item {
       if (i >= 0) root.click(i, 0)
       root.panel.menu.openAt(list, mouse.x, mouse.y, i >= 0 ? root.panel.sel : null)
     }
+  }
+
+  // Over the preview too, as far as the pane goes, and wrapped past that.
+  FilesTip {
+    readonly property point at: root.tipped ? root.tipped.mapToItem(root, 0, 0) : Qt.point(0, 0)
+    visible: !!root.tipped
+    x: at.x - pad
+    y: root.tipped ? at.y + (root.tipped.height - height) / 2 : 0
+    maxWidth: root.parent.width - x
+    text: root.tipped ? root.tipped.text : ""
+    pixelSize: Style.font.body
   }
 
   // Show the scroll position in long directories.

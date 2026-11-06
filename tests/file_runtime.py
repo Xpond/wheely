@@ -12,7 +12,7 @@ def check(files, ops, base, run, block):
     # its column and line, a double click opens the pick, a right-click opens its menu without picking
     # it, and the wheel still scrolls the preview.
     run("preview-pointer", '''
-  property var entries: Array.from({ length: 200 }, (_, i) => ({ name: "e" + i, isDir: false, size: 1, modified: null }))
+  property var entries: Array.from({ length: 200 }, (_, i) => ({ name: "e" + i, path: "/t/e" + i, isDir: false, size: 1, modified: null }))
   property var dirColumns: FilesIndex.columns(root.entries, 10, 120, 400, ({}))
   property var dirMarks: []
   property bool showsDir: true
@@ -55,7 +55,7 @@ def check(files, ops, base, run, block):
     if (root.picks.join() !== "1:3,1:4,open") { console.error("FAIL clicks in the preview gave", root.picks.join()); Qt.exit(1); return }
     // Another folder under the resting pointer: new columns all sit at x 0 until the Row places them.
     pointer.mouseMove(preview, p.x, p.y, -1, Qt.NoButton, Qt.NoModifier)
-    root.entries = root.entries.map(e => ({ name: "f" + e.name, isDir: false, size: 1, modified: null }))
+    root.entries = root.entries.map(e => ({ name: "f" + e.name, path: "/t/f" + e.name, isDir: false, size: 1, modified: null }))
     swapped.start()
   } }
   Timer { id: swapped; interval: 100; onTriggered: {
@@ -353,10 +353,11 @@ esac
         assert captured.read_text() == selected
 
     # A long note, then a running job, stand in for the selection's facts beside a path: neither runs over
-    # the path, and the job's progress is never the part cut short.
+    # the path, and the job's progress is never the part cut short. A note shows with nothing selected.
     run("header-note", '''
   property string note: "copying PrintShop-Tools-Windows-x64-phase1-with-an-even-longer-name.zip"
   property bool job: false
+  property bool empty: false
   QtObject {
     id: panel
     property var crumbs: ["~", "Downloads", "agent-test-folder"]
@@ -367,7 +368,7 @@ esac
     property string renameTo: ""
     property int renameAt: 0
     property bool editing: false
-    property var settledSel: ({ name: "PrintShop-Tools-Windows-x64-phase1.zip" })
+    property var settledSel: root.empty ? null : ({ name: "PrintShop-Tools-Windows-x64-phase1.zip" })
     property string fileNote: root.note
     property string fileStatusHead: root.job ? "extracting PrintShop-Tools-Windows-x64-phase1-with-an-even-longer-name.zip" : ""
     property string fileStatusTail: root.job ? " · 1:20 · ctrl+k cancels" : ""
@@ -411,6 +412,12 @@ esac
     var progress = root.find(header, c => c.text !== undefined && c.text.indexOf("42%") >= 0)
     if (!root.clear()) return root.fail("a running job ran over the path")
     if (!progress || !progress.visible || progress.width < progress.implicitWidth) return root.fail("the job's progress was cut")
+    root.job = false; root.empty = true; root.note = "trashed 3 items"; emptied.start()
+  } }
+  // Trashing a folder's last leaves nothing selected; the note still shows.
+  Timer { id: emptied; interval: 200; onTriggered: {
+    var note = root.find(header, c => c.text === "trashed 3 items")
+    if (!note || !note.visible) return root.fail("a note in an empty folder was hidden")
     console.log("PASS"); Qt.quit()
   } }
   function fail(why) { console.error("FAIL", why); Qt.exit(1) }
@@ -468,6 +475,9 @@ esac
   function checkAccess(dir) {}
   QtObject { id: preview; property int paneHeight: 100; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
+  property bool props: false
+  property string folderSize: ""
+  QtObject { id: sizer; function cancel() {} function start(command) {} }
 ''' + "\n".join([block(files, r"^  function media\("), block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "16"),
                  block(files, r"  FolderListModel \{\n    id: childFolder"),
                  block(files, r"^  readonly property bool childUnlisted:")]) + '''

@@ -195,6 +195,8 @@ function tree(c) {
     one && own && row("link", "Make link…", "", function () { p.beginCopyName("link", e) }),
     SEP,
     row("path", c.many ? "Copy paths" : "Copy path", "ctrl+y", function () { o.copyPath(list) }),
+    // Settled first, so the card is for this row rather than dropped when the selection settles.
+    one && row("props", "Properties", "", function () { p.settleNow(); p.props = true }),
     // Asked twice, as Del is: the first pick arms it and keeps the menu open, the second trashes.
     own && row("trash", c.doomed ? "Again to trash " + named : c.many ? "Trash " + named : "Trash", "del",
                function () { o.remove(list); return !!o.doomed }, { danger: true }),

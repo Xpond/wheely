@@ -330,6 +330,29 @@ Item {
     font.pixelSize: Style.font.bodySmall
   }
 
+  // A hovered entry's name pops up whole over it after a moment, as the list's does, kept inside the
+  // pane. A row is its glyph, two spaces, then the name.
+  readonly property var pointed: hovered.visible ? root.panel.previewEntry(hovered.column.index, hovered.line) : null
+  readonly property string pointedPath: root.pointed ? root.pointed.path : ""
+  property string tipped: ""
+  onPointedPathChanged: { root.tipped = ""; if (root.pointedPath) tipWait.restart() }
+  Timer { id: tipWait; interval: 500; onTriggered: root.tipped = root.pointedPath }
+  TextMetrics {
+    id: nameAt
+    font.family: Style.font.menuFamily
+    font.pixelSize: Style.font.subtitle
+    text: FilesIndex.DIR_GLYPH + "  "
+  }
+  FilesTip {
+    visible: !!root.tipped && root.tipped === root.pointedPath
+    x: !hovered.column ? 0 : Math.max(0, Math.min(root.width - width,
+      scroller.x + folderView.x + hovered.column.x + nameAt.advanceWidth - scroller.contentX - pad))
+    y: scroller.y + folderView.y + hovered.line * root.panel.lineHeight - scroller.contentY + (root.panel.lineHeight - height) / 2
+    maxWidth: root.width
+    text: root.pointed ? root.pointed.name : ""
+    pixelSize: Style.font.subtitle
+  }
+
   // A click picks the folder entry under it and a double click opens the pick. Over the scroller
   // rather than in it, so the second click counts whatever the pane shows by then.
   MouseArea {

@@ -126,6 +126,18 @@ Item {
     id: measurer
     onFinished: output => root.imageDims = output.split("\n")[0].trim()
   }
+  // A selected folder's size, summed by du on its own filesystem; "≥" when part of it can't be read.
+  property string folderSize: ""
+  FilesProcess {
+    id: sizer
+    onFinished: function (output, code) {
+      var n = parseInt(output, 10)
+      root.folderSize = isNaN(n) ? "" : (code ? "≥ " : "") + FilesIndex.humanSize(n)
+    }
+  }
+  // Properties stand in for the preview until the selection moves or Esc.
+  property bool props: false
+  readonly property bool showsProps: root.props && !root.editing && !root.diffMode
   readonly property bool showsMarkdown: !root.showsDiff && !!root.settledSel && !root.settledSel.isDir
                                         && !root.settledSel.missing && FilesIndex.isMarkdown(root.settledSel.name)
   readonly property string previewPath:
@@ -271,6 +283,8 @@ Item {
   onSettledSelChanged: {
     var path = root.settledSel ? root.settledSel.path : ""
     if (path !== root.settledPath) {
+      root.props = false
+      root.folderSize = ""
       preview.resetScroll()
       root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / Style.font.subtitle))
     }
@@ -284,13 +298,17 @@ Item {
     measurer.cancel()
     if (root.media(root.settledSel) === "image")
       measurer.start(["identify", "-ping", "-format", "%w×%h\n", root.settledSel.path])
+    sizer.cancel()
+    if (root.settledSel && root.settledSel.isDir && !root.settledSel.missing)
+      sizer.start(["du", "-sbx", "--", root.settledSel.path])
   }
 
   readonly property string metaLine:
     !root.settledSel ? ""
     : root.settledSel.missing ? (root.settledSel.isDir ? "deleted folder" : "deleted")
-    : root.settledSel.isDir ? (root.childUnlisted ? "" : FilesIndex.countLabel(childFolder.count + root.previewEntries.length - root.dirEntries.length,
-        childFolder.count + root.previewEntries.length - root.dirEntries.length, "", root.showHidden))
+    : root.settledSel.isDir ? [root.childUnlisted ? "" : FilesIndex.countLabel(childFolder.count + root.previewEntries.length - root.dirEntries.length,
+        childFolder.count + root.previewEntries.length - root.dirEntries.length, "", root.showHidden), root.folderSize]
+        .filter(s => s).join("  ·  ")
     : FilesIndex.humanSize(root.settledSel.size)
       + (root.imageDims ? "  ·  " + root.imageDims : "")
       + (root.fullText ? "  ·  " + FilesIndex.lineLabel(root.fullText) : "")
@@ -867,6 +885,8 @@ Item {
             id: list
             panel: root
             operations: ops
+            // Above the preview, which a hovered name's whole may run over.
+            z: 1
             anchors { top: parent.top; bottom: parent.bottom }
             x: root.listShown ? 0 : -root.listWidth - Style.spacing.huge
             Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
@@ -878,12 +898,19 @@ Item {
           FilesPreview {
             id: preview
             panel: root
+            visible: !root.showsProps
             anchors {
               top: parent.top; bottom: parent.bottom
               left: list.right; leftMargin: Style.spacing.huge
             }
             width: list.x > -list.width - Style.spacing.huge
                    ? parent.width - list.width - Style.spacing.huge : parent.width
+          }
+
+          FilesProps {
+            panel: root
+            anchors.fill: preview
+            visible: root.showsProps
           }
         }
 
