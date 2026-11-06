@@ -47,6 +47,16 @@ Item {
     font.pixelSize: Style.font.subtitle
   }
 
+  // How far a running file job has read, along the header's foot.
+  Rectangle {
+    anchors.bottom: parent.bottom
+    visible: !!root.panel.fileStatusHead && root.panel.fileProgress >= 0
+    width: Math.round(parent.width * Math.max(0, root.panel.fileProgress))
+    height: Style.space(2)
+    color: Commons.Color.accent
+    opacity: 0.85
+  }
+
   // Keep the count beside the path so it cannot be mistaken for preview metadata.
   Row {
     id: trail
@@ -164,25 +174,53 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     spacing: Style.spacing.lg
     visible: !!root.panel.settledSel
+    // A note or a running job stands in for the selection's facts, and takes at most half the header,
+    // so it never runs over the path.
+    readonly property bool noting: !root.panel.editing && (!!root.panel.fileNote || !!root.panel.fileStatusHead)
 
-    Text {
+    // A note, or a running job's name; a long one gives way in the middle, the job's progress after it never.
+    Row {
+      readonly property bool running: !root.panel.editing && !root.panel.fileNote && !!root.panel.fileStatusHead
       anchors.verticalCenter: parent.verticalCenter
-      visible: root.panel.editing || !!root.panel.fileNote
-      text: !root.panel.editing ? root.panel.fileNote
-            : root.panel.saveError ? "write failed"
-            : root.panel.fileNote ? root.panel.fileNote
-            : root.panel.justSaved ? "saved"
-            : root.panel.dirty ? "unsaved" : "editing"
-      color: root.panel.saveError ? Commons.Color.menu.text : Commons.Color.accent
-      opacity: 0.85
-      font.family: Style.font.menuFamily
-      font.pixelSize: Style.font.bodySmall
+      visible: root.panel.editing || facts.noting
+
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        width: facts.noting ? Math.max(0, Math.min(implicitWidth, Math.round(root.width / 2) - (progress.visible ? progress.width : 0)))
+                            : implicitWidth
+        elide: Text.ElideMiddle
+        text: parent.running ? root.panel.fileStatusHead
+              : !root.panel.editing ? root.panel.fileNote
+              : root.panel.saveError ? "write failed"
+              : root.panel.fileNote ? root.panel.fileNote
+              : root.panel.justSaved ? "saved"
+              : root.panel.dirty ? "unsaved" : "editing"
+        color: root.panel.saveError ? Commons.Color.menu.text : Commons.Color.accent
+        opacity: 0.85
+        font.family: Style.font.menuFamily
+        font.pixelSize: Style.font.bodySmall
+      }
+
+      // The percentage bold in the text colour against the accent.
+      Text {
+        id: progress
+        anchors.verticalCenter: parent.verticalCenter
+        visible: parent.running
+        textFormat: Text.StyledText
+        text: (root.panel.filePercent ? "&#160;·&#160;<b><font color=\"" + Commons.Color.menu.text + "\">"
+               + root.panel.filePercent + "</font></b>" : "") + FilesIndex.styledCode(root.panel.fileStatusTail)
+        color: Commons.Color.accent
+        opacity: 0.85
+        font.family: Style.font.menuFamily
+        font.pixelSize: Style.font.bodySmall
+      }
     }
 
     // Lines the uncommitted changes add and remove, in the diff's own green and red. They lead
     // the name as one more fact, set off by the facts' own dot and spaces, so no gap of the row's.
     Row {
       anchors.verticalCenter: parent.verticalCenter
+      visible: !facts.noting
 
       Text {
         readonly property var counts: FilesIndex.diffStat(root.panel.diffText)
@@ -210,6 +248,7 @@ Item {
 
     Text {
       anchors.verticalCenter: parent.verticalCenter
+      visible: !facts.noting
       text: root.panel.metaLine
       color: Commons.Color.menu.text
       opacity: 0.5

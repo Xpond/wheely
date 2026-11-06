@@ -59,6 +59,7 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 | `F2` | rename |
 | `Ctrl+Shift+N` | new file, or folder/ |
 | `Del` | trash; press again to confirm |
+| `Ctrl+K` | cancel a running paste, extract, compress or trash |
 | `Ctrl+Y` | copy the path |
 | `Menu` `Shift+F10` | the right-click menu |
 | `Ctrl+M` | mark, and step on |

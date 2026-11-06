@@ -654,6 +654,10 @@ Item {
   FilesOps { id: ops; panel: root }
   readonly property alias held: ops.held
   readonly property alias fileNote: ops.fileNote
+  readonly property alias fileStatusHead: ops.statusHead
+  readonly property alias fileStatusTail: ops.statusTail
+  readonly property alias fileProgress: ops.progress
+  readonly property alias filePercent: ops.percent
   readonly property alias doomed: ops.doomed
   readonly property alias doomedName: ops.doomedName
   readonly property alias danger: ops.danger

@@ -28,6 +28,7 @@ const suites = [
   "./files-ops.js",
   "./files-menu.js",
   "./files-failures.js",
+  "./files-cancel.js",
   "./lock-design.js",
   "./lock.js",
   "./lock-idle.js",

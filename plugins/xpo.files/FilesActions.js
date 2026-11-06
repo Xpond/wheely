@@ -39,18 +39,21 @@ function isScript(name, text) {
 // Writes test their destination first, as FilesOps.guarded does: 17 when the name is taken.
 var TAKEN = 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; '
 
+// A cancel stops the shell and what it runs; the shell traps it, to clean up after what it ran.
+var STAY = 'trap "k=1" TERM; '
+
 // Archives entries of one folder from inside it, so the archive holds their names rather than their
 // paths. A failed archive leaves nothing behind.
 function compressCommand(dir, archive, names) {
   var make = /\.zip$/.test(archive) ? 'zip -qry "$a" -- "$@"' : 'bsdtar -acf "$a" -- "$@"'
-  return ["sh", "-c", 'cd -- "$1" || exit 1; ' + TAKEN + 'a=$2; shift 2; ' + make + ' || { rm -f -- "$a"; exit 1; }',
+  return ["sh", "-c", 'cd -- "$1" || exit 1; ' + STAY + TAKEN + 'a=$2; shift 2; ' + make + ' || { rm -f -- "$a"; exit 1; }',
           "files", dir, archive].concat(names)
 }
 
 // Unpacks into a folder named after the archive; one holding a single folder of that same name gives
 // that folder rather than nesting it twice. Unpacked aside first, so a failure leaves nothing.
 function extractCommand(path, target) {
-  return ["sh", "-c", TAKEN + 't="${2%/*}/.extract-$$"; mkdir -- "$t" || exit 1; ' +
+  return ["sh", "-c", STAY + TAKEN + 't="${2%/*}/.extract-$$"; mkdir -- "$t" || exit 1; ' +
     'bsdtar -xf "$1" -C "$t" || { rm -rf -- "$t"; exit 1; }; n=${2##*/}; ' +
     'if [ "$(ls -A -- "$t")" = "$n" ] && [ -d "$t/$n" ] && [ ! -L "$t/$n" ]; ' +
     'then mv -T -- "$t/$n" "$2" && rmdir -- "$t"; else mv -T -- "$t" "$2"; fi || { rm -rf -- "$t"; exit 1; }',
@@ -171,13 +174,14 @@ function tree(c) {
     media && row("wallpaper", "Set as wallpaper", "", function () {
       o.run(["omarchy-theme-bg-set", e.path], { done: "wallpaper set", fail: "could not set the wallpaper" }) }),
     stem && row("extract", "Extract here", "", function () {
-      o.run(extractCommand(e.path, dir + "/" + stem), { name: stem, land: land, done: "extracted " + e.name, fail: "extract failed" }) }),
+      o.run(extractCommand(e.path, dir + "/" + stem), { name: stem, land: land, doing: "extracting " + e.name, reads: [e.path], done: "extracted " + e.name, fail: "extract failed" }) }),
     // Many go into one archive, named after their folder.
     own && sub("compress", "Compress", [".zip", ".tar.zst"].map(function (ext) {
       var name = (one ? e.name : dir.slice(dir.lastIndexOf("/") + 1)) + ext
       return row("pack" + ext, name, "", function () {
         o.run(compressCommand(dir, dir + "/" + name, list.map(function (t) { return t.name })),
-              { name: name, land: land, done: "compressed " + named, fail: "compress failed" }) }) })),
+              { name: name, land: land, doing: "compressing " + named, reads: paths,
+                done: "compressed " + named, fail: "compress failed" }) }) })),
     file && c.script && !c.executable && row("exec", "Make executable", "", function () {
       o.run(["chmod", "+x", "--", e.path], { done: "made " + e.name + " executable", fail: "could not make it executable" }) }),
     SEP,
