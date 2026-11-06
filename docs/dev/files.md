@@ -171,10 +171,13 @@ little past the archive's size (68 MB over 9.8 GB with 397k entries); the bar cl
 `Ctrl+K` sends `TERM` to the job's shell, then to its children. The shell must survive
 that to clean up, so extract, compress and paste trap it (`STAY` sets `k`): the killed
 `bsdtar` or `zip` fails into the cleanup it already had, and the paste loop stops
-before the next item and removes the copy it was making. It does not remove a half-made
-move: once `mv` has removed any of a folder's source, the target is all there is.
-Killing only the shell would orphan the child, which then runs on to the end with no
-one to clean up after it.
+before the next item and removes the copy it was making. A move uses `mv` only within
+one filesystem, where it is a rename. Across filesystems `mv` copies and deletes in one
+process, and killed midway it leaves a partial target, which can't be told from a
+complete one once a folder's source is half deleted. So the paste does `cp -a` and
+removes the source only after the copy completes: a cancel during the copy removes the
+copy, and one during the delete finds the copy complete. Killing only the shell would
+orphan the child, which then runs on to the end with no one to clean up after it.
 
 The pasted row arrives on its own: `FolderListModel` watches the directory, so
 the paste only has to name what to land on — `pending`, the same mechanism the
@@ -322,7 +325,7 @@ link, paste-into and a paste of many against disposable files; `menu-pointer` in
 submenus, with gio and tailscale stood in for. `tests/files-failures.js` covers
 partial operations, extraction cleanup after failed renames, hidden target counts
 and which commands each probe invokes. `tests/files-cancel.js` cancels a stubbed
-extract, compress and copy midway with the real cancel and checks nothing is left,
+extract, compress, copy and cross-filesystem move midway with the real cancel and checks nothing is left,
 and reads a running job's gauge.
 
 ## Highlighting and Markdown

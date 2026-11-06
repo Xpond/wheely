@@ -82,14 +82,18 @@ Item {
   function inHere(name) { return root.panel.listedDir.replace(/\/+$/, "") + "/" + name }
 
   // Each into the folder in turn, past a name already taken, its own name included: 17 when every
-  // name was taken, 18 when some were, 19 on partial failure, 1 on total failure. Cancelled, it stops
-  // before the next and removes the copy it was making; a half-made move is left.
+  // name was taken, 18 when some were, 19 on partial failure, 1 on total failure. A move to another
+  // filesystem is a whole copy before the source goes, so a cancel removes only an unfinished copy
+  // and stops before the next.
   function pasteCommand(move, dir, paths) {
-    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; trap "k=1" TERM; for f do [ -z "$k" ] || break; t="$d/${f##*/}"; '
-      + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif $v -- "$f" "$t"; then p=1; else s=1; '
-      + 'if [ -n "$k" ] && [ "$v" = "cp -r" ]; then rm -rf -- "$t"; fi; fi; done; [ -z "$k" ] || exit 130; '
-      + 'if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',
-      "files", move ? "mv" : "cp -r", dir].concat(paths)
+    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; trap "k=1" TERM; put() { '
+      + 'if [ "$v" = mv ] && [ "$(stat -c %d -- "$1")" = "$(stat -c %d -- "$d")" ]; then mv -- "$1" "$2"; return; fi; '
+      + 'if [ "$v" = mv ]; then o=-a; else o=-r; fi; '
+      + 'if ! cp $o -- "$1" "$2"; then [ -z "$k" ] || rm -rf -- "$2"; return 1; fi; [ "$v" = cp ] || rm -rf -- "$1"; }; '
+      + 'for f do [ -z "$k" ] || break; t="$d/${f##*/}"; '
+      + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif put "$f" "$t"; then p=1; else s=1; fi; done; '
+      + '[ -z "$k" ] || exit 130; if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',
+      "files", move ? "mv" : "cp", dir].concat(paths)
   }
 
   // Into the folder being listed, or into the folder given; only the first lands in view.

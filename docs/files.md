@@ -51,10 +51,9 @@ rest. `Ctrl+D` shows a changed file's diff instead of its contents.
 - `Del` moves to the trash, so it can be restored. It asks twice.
 - Nothing is ever overwritten: a name that is taken is reported, not replaced.
 - A paste, extract, compress or trash shows in the header while it runs, with its time,
-  how far it has got and a bar along the header's foot. `Ctrl+K` cancels it: a
-  cancelled copy, extract or compress leaves nothing half-made, while a move between
-  drives may leave its last item half-copied beside the untouched original. One file
-  job runs at a time.
+  how far it has got and a bar along the header's foot. `Ctrl+K` cancels it and
+  leaves nothing half-made: a move to another drive copies everything before it removes
+  the original. One file job runs at a time.
 
 ## Marking several
 

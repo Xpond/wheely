@@ -60,13 +60,18 @@ try {
   assert.notEqual(cancelled(A.compressCommand(at("c"), at("c", "c.zip"), ["a.txt"]), () => fs.existsSync(at("c", "c.zip"))), 0)
   assert.deepEqual(fs.readdirSync(at("c")), ["a.txt"], "a cancelled compress left its archive")
 
-  // Copy: the copy being made goes, and the next is never started.
+  // Copy, and a move to another filesystem (stat says so): the copy being made goes, the sources stay,
+  // and the next is never started.
   fs.mkdirSync(at("from")); fs.mkdirSync(at("to"))
   for (const n of ["one", "two"]) fs.writeFileSync(at("from", n), n)
-  const paste = method(opsSource, "pasteCommand", {})(false, at("to"), [at("from", "one"), at("from", "two")])
-  assert.equal(cancelled(paste, () => fs.existsSync(at("to", "one"))), 130)
-  assert.deepEqual(fs.readdirSync(at("to")), [], "a cancelled copy left a partial copy or went on to the next")
-  assert.deepEqual(fs.readdirSync(at("from")).sort(), ["one", "two"])
+  const pasteCommand = method(opsSource, "pasteCommand", {})
+  for (const move of [false, true]) {
+    if (move) fs.writeFileSync(at("bin", "stat"), "#!/bin/sh\necho $$\n", { mode: 0o755 })
+    const paste = pasteCommand(move, at("to"), [at("from", "one"), at("from", "two")])
+    assert.equal(cancelled(paste, () => fs.existsSync(at("to", "one"))), 130)
+    assert.deepEqual(fs.readdirSync(at("to")), [], "a cancelled paste left a partial copy or went on to the next")
+    assert.deepEqual(fs.readdirSync(at("from")).sort(), ["one", "two"], "a cancelled paste lost a source")
+  }
 
   // Ctrl+K cancels; it is no one else's key outside naming and editing.
   let asked = 0
@@ -76,4 +81,4 @@ try {
 } finally {
   fs.rmSync(base, { recursive: true, force: true })
 }
-console.log("ok: cancelled extract, compress and copy leave nothing behind; the gauge reads what a job has read")
+console.log("ok: cancelled extract, compress, copy and move leave nothing behind; the gauge reads what a job has read")
