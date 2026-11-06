@@ -20,6 +20,7 @@ with tempfile.TemporaryDirectory(prefix="wheely-markdown-") as temporary:
     base = Path(temporary)
     (base / "Commons").symlink_to(shell / "Commons")
     shutil.copyfile(plugin / "FilesIndex.js", base / "FilesIndex.js")
+    shutil.copyfile(plugin / "FilesTip.qml", base / "FilesTip.qml")
     (base / "FilesPreview.qml").write_text(qslog.patch(source.read_text(), "  id: root\n",
         "  id: root\n  readonly property alias testScroller: scroller\n", exactly=True))
     # The preview references this type even when no video is loaded; video playback is not this test.

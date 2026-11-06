@@ -33,7 +33,7 @@ const apps = [{ id: "imv", name: "imv" }, { id: "nvim", name: "Neovim", terminal
 const image = menu(file("photo.jpg"), { image: true, apps, preferred: "imv", peers: ["laptop"] })
 assert.equal(ids(image), "open with[with:imv with:nvim] nautilus | share[localsend to:laptop clip pixels] "
   + "convert[as:jpg-high as:jpg-medium as:jpg-low as:png-high as:png-medium as:png-low] wallpaper "
-  + "compress[pack.zip pack.tar.zst] | cut copy duplicate rename link | path trash | here[new terminal nautilus | hidden by:name by:date by:size window]")
+  + "compress[pack.zip pack.tar.zst] | cut copy duplicate rename link | path props trash | here[new terminal nautilus | hidden by:name by:date by:size window]")
 assert.equal(find(image, "with").sub[0].hint, "default", "the default app is not marked")
 assert.equal(ids(find(menu(file("clip.mkv"), { video: true }), "convert").sub), "as:mp4-4k as:mp4-1080p as:mp4-720p as:gif-4k as:gif-1080p as:gif-720p")
 assert.ok(!find(find(menu(file("clip.mkv"), { video: true }), "share").sub, "pixels"), "a video offers Copy image")

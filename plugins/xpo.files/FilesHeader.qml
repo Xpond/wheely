@@ -173,9 +173,9 @@ Item {
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
     spacing: Style.spacing.lg
-    visible: !!root.panel.settledSel
+    visible: !!root.panel.settledSel || noting
     // A note or a running job stands in for the selection's facts, and takes at most half the header,
-    // so it never runs over the path.
+    // so it never runs over the path. It shows in an empty folder too, as after trashing its last.
     readonly property bool noting: !root.panel.editing && (!!root.panel.fileNote || !!root.panel.fileStatusHead)
 
     // A note, or a running job's name; a long one gives way in the middle, the job's progress after it never.
