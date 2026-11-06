@@ -54,7 +54,7 @@ Item {
 
   // The shell first, which a job that cleans up traps rather than dies of, then what it is running.
   function cancel() {
-    if (!root.busy || root.cancelling) return
+    if (!root.busy) return
     root.cancelling = true
     Quickshell.execDetached(["sh", "-c", 'kill -TERM "$1"; pkill -TERM -P "$1"', "cancel", String(filer.processId)])
   }
@@ -124,7 +124,6 @@ Item {
       if (!o) return
       if (root.cancelling && exitCode !== 0) {
         root.note(o.doing.replace(/^\S+ /, "") + " cancelled")
-        if (o.spend) root.held = null
         return
       }
       if (exitCode !== 0) {

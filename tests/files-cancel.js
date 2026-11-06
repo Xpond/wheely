@@ -78,6 +78,13 @@ try {
   const press = keymap("plugins/xpo.files/FilesKeys.js", { editing: false, naming: "", menu: null }, { cancel() { asked++ } }, {})
   assert.ok(press("Key_K", 1 << 26).accepted)
   assert.equal(asked, 1)
+
+  // A second Ctrl+K sends again: a first that landed between commands found nothing to stop.
+  let sent = 0
+  scope.Quickshell.execDetached = () => sent++
+  Object.assign(scope.root, { busy: true, cancelling: true })
+  cancel()
+  assert.equal(sent, 1)
 } finally {
   fs.rmSync(base, { recursive: true, force: true })
 }

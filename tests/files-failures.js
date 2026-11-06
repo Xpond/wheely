@@ -35,6 +35,16 @@ try {
     assert.equal(root.message, "some items moved; others could not be moved")
     assert.equal(fs.readFileSync(at("dest", good), "utf8"), "move me")
   }
+  // A cancelled move keeps the hold, and pasting it again goes on past what already moved.
+  fs.writeFileSync(at("dest", "went.txt"), "moved"); fs.writeFileSync(at("left.txt"), "move me")
+  root.held = hold(["went.txt", "left.txt"])
+  root.op = { doing: "moving 2 items", spend: true }; root.cancelling = true
+  exited(root, {}, 130)
+  root.cancelling = false
+  assert.equal(root.message, "2 items cancelled")
+  root.paste()
+  assert.equal(root.status, 18)
+  assert.equal(fs.readFileSync(at("dest", "left.txt"), "utf8"), "move me")
   // Copy failure uses the same status, but copied sources stay valid for another paste.
   fs.writeFileSync(at("copy.txt"), "copy me")
   root.held = hold(["copy.txt", "missing.txt"], false)
