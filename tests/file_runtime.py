@@ -509,6 +509,20 @@ esac
   } }
 ''')
 
+    # Ordering stays quick on a big folder in FolderListModel's code-point order, which V4's own
+    # sort took over three seconds to put in localeCompare's for 100k names.
+    run("order-scale", '''
+  Timer { interval: 0; running: true; onTriggered: {
+    var words = ["IMG", "img", "Screenshot", "report", "Report", "_draft", "notes", "Notes", "a-b", "a_b", "Zeta", "zeta"]
+    var entries = Array.from({ length: 100000 }, (_, i) => ({ name: words[i % 12] + " " + ((i * 7919) % 100000), isDir: false }))
+    entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+    var start = Date.now(), sorted = FilesIndex.ordered(entries, "name"), took = Date.now() - start
+    var inOrder = sorted.every((e, i) => !i || sorted[i - 1].name.localeCompare(e.name) <= 0)
+    if (!inOrder || took > 1500) { console.error("FAIL ordered", inOrder, "in", took, "ms"); Qt.exit(1); return }
+    console.log("PASS"); Qt.quit()
+  } }
+''')
+
     # The highlighter colours twice the lines shown, as Pygments colours them in the whole file, and
     # asks again once more are shown than it coloured.
     code = base / "long.py"

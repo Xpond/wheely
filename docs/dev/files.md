@@ -79,7 +79,10 @@ folder you are in; both forms are rooted at `$HOME`.
 **Ordering** is folders first then names, or newest, or largest (`Ctrl+O`). Where the
 filter landed ranks only under name, since under newest a prefix match jumping the
 queue would be the sort lying. Folders are never ordered by size, which for a
-directory counts its listing block rather than its contents.
+directory counts its listing block rather than its contents. `ordered()` merges rather
+than calling V4's `sort`, which slows badly on input already in another order, as
+FolderListModel's code-point order is to `localeCompare`: 100k names took 3.3 s, and
+take 0.5 s merged.
 
 **Reading a file.** The preview follows the selection only once it has stopped moving
 (60 ms), so held arrows do not read and lay out every file
@@ -135,7 +138,12 @@ Only what is near the view is **laid out**. A selection lays out two screens of
 lines (`lineHeight`, not the font size); scrolling within a screen of their end doubles that, and `End` lays out
 the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
-Laying out is the cost.
+Laying out is the cost, and one Text lays out its lines in time growing with their
+square, so code is laid out in pieces of 250 lines (`pieces()`): 5,800 coloured lines take
+265 ms rather than 1.5 s. A tag open at a piece's end is closed there and opened again
+in the next, each piece measures its own lines for `onLineLaidOut`, and each is as tall as
+its lines, since StyledText drops a blank last one. `tests/files-preview.py` lays its
+cases out in pieces of three, so every one crosses an edge.
 
 Marks are read whenever the folder's rows load — which a save also triggers —
 and whenever the browser opens; a short debounce combines duplicate requests,

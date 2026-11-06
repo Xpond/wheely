@@ -11,6 +11,7 @@ Item {
   property var panel: null
   clip: true
 
+  readonly property int pieceLines: 250
   readonly property real pageStep: scroller.height * 0.9
   readonly property real panStep: Style.space(60)
   readonly property real paneWidth: scroller.width
@@ -30,7 +31,6 @@ Item {
   // Measured as each layout starts: a binding could still hold the previous font.
   property real codeBaseline: 0
   property real codeAscent: 0
-  property var codeLines: []
   // Text lays out only once its implicit size is wanted, and baselineOffset needs the layout.
   Text {
     id: probe
@@ -40,22 +40,21 @@ Item {
     renderType: Text.NativeRendering
   }
 
-  function measure(markup) {
-    root.codeLines = markup.split("<br>")
-    root.codeBaseline = root.baselineIn(rendered.lineHeight)
-    probe.font = rendered.font
+  function measure(piece) {
+    root.codeBaseline = root.baselineIn(piece.lineHeight)
+    probe.font = piece.font
     probe.text = "x"
     root.codeAscent = probe.baselineOffset
   }
 
   // Printable ASCII is drawn in the code font; anything else may fall back to another.
-  // Every line but the last also ends in a line separator drawn in the code font.
-  function ascentOf(n) {
-    var markup = root.codeLines[n]
+  // Every line but a piece's last also ends in a line separator drawn in the code font.
+  function ascentOf(lines, n) {
+    var markup = lines[n]
     if (!/[^\x20-\x7e]|&#(?!(?:32|9|39);)/.test(markup)) return root.codeAscent
     probe.text = markup
-    return n < root.codeLines.length - 1 ? Math.max(root.codeAscent, probe.baselineOffset)
-                                         : probe.baselineOffset
+    return n < lines.length - 1 ? Math.max(root.codeAscent, probe.baselineOffset)
+                                : probe.baselineOffset
   }
 
   function scrollBy(dy) {
@@ -265,23 +264,34 @@ Item {
         renderType: Text.NativeRendering
       }
 
-      Text {
+      // Code in pieces of pieceLines: one Text lays out its lines in time growing with their square,
+      // so End on a coloured 200 KB file froze the preview for a second.
+      Column {
         id: rendered
         visible: !root.panel.editing && !root.panel.showsMarkdown
-        text: root.panel.showsMarkdown ? "" : root.panel.previewBody
-        color: Commons.Color.menu.text
-        opacity: 0.92
-        textFormat: root.panel.showsCode ? Text.StyledText : Text.PlainText
-        font.family: Style.font.menuFamily
-        font.pixelSize: Style.font.subtitle
-        renderType: Text.NativeRendering
-        lineHeightMode: Text.FixedHeight
-        lineHeight: root.panel.lineHeight
-        onLineLaidOut: function (line) {
-          if (!root.panel.showsCode) return
-          if (line.number === 0) root.measure(text)
-          // Absolute: Text has already lowered the line to the foot of its fixed height.
-          line.y = line.number * lineHeight + root.codeBaseline - root.ascentOf(line.number)
+        Repeater {
+          model: root.panel.showsCode ? FilesIndex.pieces(root.panel.previewBody, root.pieceLines) : []
+          delegate: Text {
+            id: piece
+            required property string modelData
+            readonly property var lines: modelData.split("<br>")
+            // A piece ending on a blank line still counts it, which StyledText would drop.
+            height: piece.lines.length * lineHeight
+            text: modelData
+            color: Commons.Color.menu.text
+            opacity: 0.92
+            textFormat: Text.StyledText
+            font.family: Style.font.menuFamily
+            font.pixelSize: Style.font.subtitle
+            renderType: Text.NativeRendering
+            lineHeightMode: Text.FixedHeight
+            lineHeight: root.panel.lineHeight
+            onLineLaidOut: function (line) {
+              if (line.number === 0) root.measure(piece)
+              // Absolute: Text has already lowered the line to the foot of its fixed height.
+              line.y = line.number * lineHeight + root.codeBaseline - root.ascentOf(piece.lines, line.number)
+            }
+          }
         }
       }
     }

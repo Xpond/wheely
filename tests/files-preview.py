@@ -61,10 +61,12 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
     shutil.copyfile(plugin / "FilesTip.qml", base / "FilesTip.qml")
     styled = (plugin / "FilesPreview.qml").read_text().replace("Style.font.subtitle", "root.panel.codePx")
     styled = styled.replace("  id: root", "  id: root\n  readonly property real testBodyX: content.mapToItem(root, content.children[0].width + content.spacing, 0).x")
-    handler = styled[styled.index("        onLineLaidOut:", styled.index("id: rendered")):styled.index("      }\n    }\n  }\n\n  Rectangle")]
-    rich = styled.replace("panel.showsCode ? Text.StyledText", "panel.showsCode ? Text.RichText")
-    assert rich != styled and handler
-    (base / "Styled.qml").write_text(styled)
+    # The code's handler, for the rich text to go without; the rich text in one piece, and the
+    # styled in pieces of three lines, so every case crosses where one piece ends and the next begins.
+    handler = re.compile(r"^( *)onLineLaidOut: function \(line\) \{\n.*?^\1\}\n", re.S | re.M).search(styled, styled.index("id: rendered")).group()
+    rich = styled.replace("            textFormat: Text.StyledText\n", "            textFormat: Text.RichText\n").replace("pieceLines: 250", "pieceLines: 1000000")
+    assert rich.count("Text.RichText") == 1 and "root.measure(piece)" in handler
+    (base / "Styled.qml").write_text(styled.replace("pieceLines: 250", "pieceLines: 3"))
     (base / "Rich.qml").write_text(rich.replace(handler, ""))
 
     def run(*command):
