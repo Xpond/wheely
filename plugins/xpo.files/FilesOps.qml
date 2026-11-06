@@ -31,8 +31,46 @@ Item {
   function run(command, about) {
     if (filer.running) { root.note("a file operation is still running"); return }
     root.op = about
+    root.cancelling = false
+    root.progress = -1
+    root.elapsed = 0
+    if (about.doing) root.fileNote = ""
     filer.command = command
     filer.running = true
+  }
+
+  // A job that says what it is doing shows it for as long as it runs, how far it has read of what it
+  // reads, and stops on Ctrl+K.
+  property bool cancelling: false
+  property real progress: -1
+  property int elapsed: 0
+  readonly property bool busy: !!root.op && !!root.op.doing
+  // The header sets the percentage between the two, in a colour of its own.
+  readonly property string statusHead: root.busy ? root.op.doing : ""
+  readonly property string statusTail: !root.busy ? "" : root.cancelling ? " · cancelling"
+    : " · " + Math.floor(root.elapsed / 60) + ":" + String(root.elapsed % 60).padStart(2, "0") + " · ctrl+k cancels"
+  readonly property string percent: root.busy && !root.cancelling && root.progress >= 0 ? Math.round(root.progress * 100) + "%" : ""
+  Timer { running: root.busy; interval: 1000; repeat: true; onTriggered: root.elapsed++ }
+
+  // The shell first, which a job that cleans up traps rather than dies of, then what it is running.
+  function cancel() {
+    if (!root.busy) return
+    root.cancelling = true
+    Quickshell.execDetached(["sh", "-c", 'kill -TERM "$1"; pkill -TERM -P "$1"', "cancel", String(filer.processId)])
+  }
+
+  // What the job has read: its own count and its running children's, since a shell takes in each
+  // child's count as it reaps it. Against the size of its inputs, once a second while it runs.
+  function gaugeCommand(pid, paths) {
+    return ["sh", "-c", 'p=$1; shift; t=$(du -scb -- "$@" | tail -n1 | cut -f1); while kill -0 "$p" 2>/dev/null; do '
+      + 'r=0; for c in "$p" $(pgrep -P "$p"); do n=$(sed -n "s/^rchar: //p" "/proc/$c/io" 2>/dev/null); r=$((r + ${n:-0})); done; '
+      + 'echo "$r $t"; sleep 1; done', "gauge", String(pid)].concat(paths)
+  }
+  Process {
+    id: gauge
+    stdout: SplitParser {
+      onRead: line => { var n = line.split(" "); if (+n[1] > 0) root.progress = Math.min(1, n[0] / n[1]) }
+    }
   }
 
   // Pass paths as arguments to preserve shell metacharacters.
@@ -44,12 +82,18 @@ Item {
   function inHere(name) { return root.panel.listedDir.replace(/\/+$/, "") + "/" + name }
 
   // Each into the folder in turn, past a name already taken, its own name included: 17 when every
-  // name was taken, 18 when some were, 19 on partial failure, 1 on total failure.
+  // name was taken, 18 when some were, 19 on partial failure, 1 on total failure. A move to another
+  // filesystem is a whole copy before the source goes, so a cancel removes only an unfinished copy
+  // and stops before the next.
   function pasteCommand(move, dir, paths) {
-    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; for f do t="$d/${f##*/}"; '
-      + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif $v -- "$f" "$t"; then p=1; else s=1; fi; done; '
-      + 'if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',
-      "files", move ? "mv" : "cp -r", dir].concat(paths)
+    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; trap "k=1" TERM; put() { '
+      + 'if [ "$v" = mv ] && [ "$(stat -c %d -- "$1")" = "$(stat -c %d -- "$d")" ]; then mv -- "$1" "$2"; return; fi; '
+      + 'if [ "$v" = mv ]; then o=-a; else o=-r; fi; '
+      + 'if ! cp $o -- "$1" "$2"; then [ -z "$k" ] || rm -rf -- "$2"; return 1; fi; [ "$v" = cp ] || rm -rf -- "$1"; }; '
+      + 'for f do [ -z "$k" ] || break; t="$d/${f##*/}"; '
+      + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif put "$f" "$t"; then p=1; else s=1; fi; done; '
+      + '[ -z "$k" ] || exit 130; if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',
+      "files", move ? "mv" : "cp", dir].concat(paths)
   }
 
   // Into the folder being listed, or into the folder given; only the first lands in view.
@@ -57,7 +101,8 @@ Item {
     var h = root.held
     if (!h) return
     root.run(root.pasteCommand(h.move, into || root.panel.listedDir.replace(/\/+$/, ""), h.items.map(i => i.path)),
-             { name: h.items[0].name, land: !into, spend: h.move,
+             { name: h.items[0].name, land: !into, spend: h.move, reads: h.items.map(i => i.path),
+               doing: (h.move ? "moving " : "copying ") + h.name,
                occupied: h.items.length > 1 ? "all " + h.items.length + " names are already here" : "a " + h.name + " is already here",
                taken: "some names were already here; the rest " + (h.move ? "moved" : "copied"),
                partial: "some items " + (h.move ? "moved" : "copied") + "; others could not be " + (h.move ? "moved" : "copied"),
@@ -67,10 +112,20 @@ Item {
 
   Process {
     id: filer
+    onStarted: {
+      if (!root.op || !root.op.reads) return
+      gauge.command = root.gaugeCommand(filer.processId, root.op.reads)
+      gauge.running = true
+    }
     onExited: function (exitCode) {
       var o = root.op
       root.op = null
+      gauge.running = false
       if (!o) return
+      if (root.cancelling && exitCode !== 0) {
+        root.note(o.doing.replace(/^\S+ /, "") + " cancelled")
+        return
+      }
       if (exitCode !== 0) {
         root.note(exitCode === 17 ? o.occupied || "a " + o.name + " is already here"
                   : exitCode === 18 && o.taken ? o.taken : exitCode === 19 && o.partial ? o.partial : o.fail)
@@ -128,7 +183,8 @@ Item {
     }
     root.doomed = ""
     root.run(["gio", "trash", "--"].concat(paths),
-             { name: entries[0].name, done: "trashed " + root.label(entries), fail: "delete failed" })
+             { name: entries[0].name, doing: "trashing " + root.label(entries),
+               done: "trashed " + root.label(entries), fail: "delete failed" })
   }
   // Keep the panel open unless another application accepts the file.
   property var opening: null
