@@ -82,7 +82,7 @@ queue would be the sort lying. Folders are never ordered by size, which for a
 directory counts its listing block rather than its contents.
 
 **Reading a file.** The preview follows the selection only once it has stopped moving
-(60 ms, the highlighter's wait), so held arrows do not read and lay out every file
+(60 ms), so held arrows do not read and lay out every file
 they pass. Files over 256 KiB are never read; one that grew past that since listing
 is loaded off the UI thread but never decoded on it (200 MB blocked the shell for
 seconds). A NUL byte in the first kilobyte marks a binary, rather than an extension
@@ -123,8 +123,16 @@ Both panes start at the same height. A line of text sits at the top of its line
 box while a list row sits in the middle of a taller one, so without `dirTopPad`
 the first file in the preview floats above the first file in the list.
 
+**A folder is read again in bursts, not once a file.** Entering one lists it at once.
+After that, each change to the folder's count would snapshot and sort it whole, ninety
+times over a 1k-file move, so changes are read at most every 150 ms, and not at all
+while the panel is hidden: it reads the folder once when it shows (`relistDue`).
+`hiddenMarks` counts with an object rather than a `Set`, which V4 builds in quadratic
+time (a second for 20k paths). `withDeleted` hands back the same list when git deleted
+nothing, so a status landing does not sort the folder again.
+
 Only what is near the view is **laid out**. A selection lays out two screens of
-lines; scrolling within a screen of their end doubles that, and `End` lays out
+lines (`lineHeight`, not the font size); scrolling within a screen of their end doubles that, and `End` lays out
 the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
 Laying out is the cost.
@@ -183,8 +191,10 @@ share one success path and one failure path rather than three of each.
 **A long job says so, and can be stopped.** An `op` with `doing` is shown in the
 header for as long as it runs, with its elapsed time; one with `reads` also gets a
 percentage and a bar. That is a small `gauge` shell reading `/proc/<pid>/io`'s `rchar`
-for the job's shell and its live children once a second, against `du -scb` of the
-inputs. A shell takes in each child's count as it reaps it, so a paste of many `cp`s
+for the job's shell and its live children (`/proc/<pid>/task/<pid>/children`) once a
+second, with builtins, so only its `sleep` forks; `pgrep` scanned all of `/proc` each
+tick. It counts against `du -scb` of the inputs, its own process so it stops with the
+job rather than walking on. A shell takes in each child's count as it reaps it, so a paste of many `cp`s
 counts every one exactly once, and the same number works for `cp`, `mv`, `bsdtar` and
 `zip` with nothing to parse. bsdtar reads a zip's central directory first, so it runs a
 little past the archive's size (68 MB over 9.8 GB with 397k entries); the bar clamps.
@@ -333,7 +343,10 @@ string, and any change to the marks disarms it (`onMarkedChanged`) — a `Ctrl`+
 on the row already selected changes the marks without moving the selection, which
 would otherwise leave a Trash armed for a different list.
 
-**A paste is one process**, `pasteCommand()`, for one entry or many. It goes on past
+**A paste is one process**, `pasteCommand()`, for one entry or many, which asks the
+destination's filesystem once rather than once an item. Compress stores media and
+archives in a zip rather than squeezing them again (`STORED`), and zstd runs on every
+core. Copy path passes each path as its own argument: Linux caps any one at 128 KiB. It goes on past
 a name already taken — its own, when pasted where it already is. `17` means every
 name was, so nothing went and the hold stays. `18` means some names collided;
 `19` means some entries succeeded and others failed. Both clear a move hold,
@@ -353,14 +366,16 @@ and reads a running job's gauge.
 
 Colour comes from pygments, one process per settled selection:
 
-    python3 highlight.py <path>             one interpreter, style=one-dark
+    python3 highlight.py <path> <lines>     one interpreter, style=one-dark
 
 One interpreter does the lexer lookup and the formatting together; naming the
 lexer with `pygmentize -N` would cost a second Python start and a shell to pipe
-them. A 60 ms debounce means arrowing through a directory does not spawn a
-process per row. Colour is a nicety: without `python3` or pygments the escaped plain
-text stays. It lands a beat after the text (debounce plus interpreter start); caching
-recent results or one long-lived process would be the next step. An image's pixel size
+them. The selection's own 60 ms settle means arrowing through a directory does not
+spawn a process per row. pygments' `get_lexer_for_filename` compiles its ~900 name
+patterns on every start (90 ms); `lexer_for()` makes the same choice, a plain `*.ext`
+as a suffix test, and falls back to pygments if its table changes shape. Colour is a
+nicety: without `python3` or pygments the escaped plain text stays. It lands a beat
+after the text (interpreter start); one long-lived process would be the next step. An image's pixel size
 comes from ImageMagick's `identify`, also optional.
 
 **The uncoloured file travels through the same markup the coloured one does.**
@@ -379,8 +394,11 @@ printable ASCII. NEL goes in as U+0080, another glyphless control, because Qt
 reads `&#133;` as an ellipsis. `tests/files-preview.py` holds all of it to the
 old rendering pixel for pixel.
 
-`highlight.py` colours the whole file once. The preview shows its first
-`shownLines`: the gutter numbers `head()` of the text, and the markup is cut by
+`highlight.py` colours the file's first `2 × shownLines` lines, split at `\n` alone as
+Qt splits them, and is asked again once more than half of those show, so a longer
+preview stays coloured while the next lot is read. pygments lexes from the top, so
+those lines colour as they would in the whole file: a 200 KB file colours in 50 ms
+rather than 425. The preview shows its first `shownLines`: the gutter numbers `head()` of the text, and the markup is cut by
 the same `head()` at its `<br>`s, appending the same `…` line, for the same
 reason: if the two disagree the numbers stop naming the lines beside them.
 

@@ -1,18 +1,36 @@
-"""Colour a whole file for Qt's StyledText: python3 highlight.py <path>"""
+"""Colour a file's first lines for Qt's StyledText: python3 highlight.py <path> <lines>"""
+from fnmatch import fnmatchcase
+import os
 import re
 import sys
 
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
-from pygments.lexers import get_lexer_for_filename
+from pygments.lexers import find_lexer_class, get_lexer_for_filename
+from pygments.lexers._mapping import LEXERS
 from pygments.lexers.special import TextLexer
 
-path = sys.argv[1]
-src = open(path, errors="replace").read()
+# Lines split as Qt splits them, at \n alone; Pygments reads a lone \r as a line end itself.
+path, lines = sys.argv[1], int(sys.argv[2])
+src = "\n".join(open(path, errors="replace", newline="").read().split("\n")[:lines])
+
+
+# Pygments' own choice by file name, without compiling all of its ~900 name patterns: a plain
+# *.ext is a suffix test. An exact name beats a pattern, then the higher priority.
+def lexer_for(name):
+    found = [(cls.priority + ("*" not in glob) * 0.5, cls.__name__, cls)
+             for _, lexer, _, globs, _ in LEXERS.values() for glob in globs
+             if (name.endswith(glob[1:]) if glob.startswith("*.") and not any(c in glob[2:] for c in "*?[")
+                 else fnmatchcase(name, glob))
+             for cls in [find_lexer_class(lexer)]]
+    return max(found)[2](stripnl=False) if found else TextLexer()
+
+
 try:
-    lexer = get_lexer_for_filename(path, stripnl=False)
+    lexer = lexer_for(os.path.basename(path))
 except Exception:
-    lexer = TextLexer()
+    # pygments' table changed shape: its own, slower lookup. Failing that, the preview stays plain.
+    lexer = get_lexer_for_filename(path, stripnl=False)
 html = highlight(src, lexer, HtmlFormatter(nowrap=True, noclasses=True, style="one-dark"))
 
 # The same rules as FilesIndex.styledCode(), which shows the file until this answers.

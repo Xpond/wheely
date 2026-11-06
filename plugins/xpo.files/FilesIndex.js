@@ -312,11 +312,14 @@ function withRoots(entries, dir, home, folders) {
   }))
 }
 
-// Keep deleted files and their missing parent folders reachable in the existing list.
+// Keep deleted files and their missing parent folders reachable in the existing list. Nothing
+// deleted gives the same list back, so a git status landing does not sort the folder again.
 function withDeleted(entries, status, dir, under, hidden) {
-  var out = entries.slice(), seen = Object.create(null), deleted = status.deleted
+  var deleted = status.deleted, names = Object.keys(deleted)
+  if (!names.length) return entries
+  var out = entries.slice(), seen = Object.create(null)
   entries.forEach(function (e) { seen[e.name] = true })
-  Object.keys(deleted).forEach(function (name) {
+  names.forEach(function (name) {
     if (seen[name] || (!hidden && name.charAt(0) === ".")) return
     out.push({ name: name, path: dir.replace(/\/$/, "") + "/" + (under ? under + "/" : "") + name,
                isDir: deleted[name], size: 0, modified: null, missing: true })

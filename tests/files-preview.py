@@ -76,7 +76,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
         path.parent.mkdir(exist_ok=True)
         path.write_text(text, newline="")
         cases.append({"name": name, "text": text, "rich": run("python3", "-c", RICH, str(path)),
-                      "styled": run("python3", str(plugin / "highlight.py"), str(path))})
+                      "styled": run("python3", str(plugin / "highlight.py"), str(path), str(text.count("\n") + 1))})
     (base / "cases.json").write_text(json.dumps(cases))
 
     (base / "shell.qml").write_text('''import QtQuick

@@ -43,9 +43,12 @@ var TAKEN = 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; '
 var STAY = 'trap "k=1" TERM; '
 
 // Archives entries of one folder from inside it, so the archive holds their names rather than their
-// paths. A failed archive leaves nothing behind.
+// paths. A failed archive leaves nothing behind. zip stores what is compressed already rather than
+// squeezing it again, and zstd uses every core.
+var STORED = ".jpg:.jpeg:.png:.webp:.heic:.avif:.gif:.mp4:.mkv:.mov:.webm:.mp3:.flac:.ogg:.opus:.m4a:.zip:.gz:.zst:.xz:.bz2:.7z"
 function compressCommand(dir, archive, names) {
-  var make = /\.zip$/.test(archive) ? 'zip -qry "$a" -- "$@"' : 'bsdtar -acf "$a" -- "$@"'
+  var make = /\.zip$/.test(archive) ? 'zip -qry -n ' + STORED + ' "$a" -- "$@"'
+    : 'bsdtar ' + (/\.zst$/.test(archive) ? "--options zstd:threads=0 " : "") + '-acf "$a" -- "$@"'
   return ["sh", "-c", 'cd -- "$1" || exit 1; ' + STAY + TAKEN + 'a=$2; shift 2; ' + make + ' || { rm -f -- "$a"; exit 1; }',
           "files", dir, archive].concat(names)
 }

@@ -39,7 +39,7 @@ def check(files, base, run, block):
   QtObject { id: preview; property int paneHeight: 100; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
 ''' + block(files, r"  property string folderSize") + block(files, r"^  function media\(")
-      + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "16") + '''
+      + block(files, r"^  onSettledSelChanged: \{").replace("root.lineHeight", "28") + '''
   function pick(name) { root.settledSel = { name: name, path: ''' + json.dumps(str(base)) + ''' + "/" + name, isDir: true } }
   function fail(why) { console.error("FAIL", why); Qt.exit(1) }
   property string first: ""

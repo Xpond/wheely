@@ -60,17 +60,22 @@ Item {
   }
 
   // What the job has read: its own count and its running children's, since a shell takes in each
-  // child's count as it reaps it. Against the size of its inputs, once a second while it runs.
-  function gaugeCommand(pid, paths) {
-    return ["sh", "-c", 'p=$1; shift; t=$(du -scb -- "$@" | tail -n1 | cut -f1); while kill -0 "$p" 2>/dev/null; do '
-      + 'r=0; for c in "$p" $(pgrep -P "$p"); do n=$(sed -n "s/^rchar: //p" "/proc/$c/io" 2>/dev/null); r=$((r + ${n:-0})); done; '
-      + 'echo "$r $t"; sleep 1; done', "gauge", String(pid)].concat(paths)
+  // child's count as it reaps it. Once a second while it runs, read with builtins rather than a
+  // process per child; only sleep forks.
+  function gaugeCommand(pid) {
+    return ["sh", "-c", 'p=$1; while kill -0 "$p" 2>/dev/null; do r=0 kids=; read -r kids 2>/dev/null < "/proc/$p/task/$p/children"; '
+      + 'for c in "$p" $kids; do while read -r k v; do [ "$k" = rchar: ] && { r=$((r + v)); break; }; done 2>/dev/null < "/proc/$c/io"; done; '
+      + 'echo "$r"; sleep 1; done', "gauge", String(pid)]
   }
   Process {
     id: gauge
-    stdout: SplitParser {
-      onRead: line => { var n = line.split(" "); if (+n[1] > 0) root.progress = Math.min(1, n[0] / n[1]) }
-    }
+    stdout: SplitParser { onRead: line => { if (root.total > 0) root.progress = Math.min(1, line / root.total) } }
+  }
+  // Against the size of its inputs: one du, so it stops with the job rather than walking on.
+  property real total: 0
+  FilesProcess {
+    id: totaller
+    onFinished: output => root.total = parseInt(output.trim().split("\n").pop(), 10) || 0
   }
 
   // Pass paths as arguments to preserve shell metacharacters.
@@ -86,8 +91,8 @@ Item {
   // filesystem is a whole copy before the source goes, so a cancel removes only an unfinished copy
   // and stops before the next.
   function pasteCommand(move, dir, paths) {
-    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; trap "k=1" TERM; put() { '
-      + 'if [ "$v" = mv ] && [ "$(stat -c %d -- "$1")" = "$(stat -c %d -- "$d")" ]; then mv -- "$1" "$2"; return; fi; '
+    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; trap "k=1" TERM; [ "$v" = mv ] && e=$(stat -c %d -- "$d"); put() { '
+      + 'if [ "$v" = mv ] && [ "$(stat -c %d -- "$1")" = "$e" ]; then mv -- "$1" "$2"; return; fi; '
       + 'if [ "$v" = mv ]; then o=-a; else o=-r; fi; '
       + 'if ! cp $o -- "$1" "$2"; then [ -z "$k" ] || rm -rf -- "$2"; return 1; fi; [ "$v" = cp ] || rm -rf -- "$1"; }; '
       + 'for f do [ -z "$k" ] || break; t="$d/${f##*/}"; '
@@ -114,13 +119,16 @@ Item {
     id: filer
     onStarted: {
       if (!root.op || !root.op.reads) return
-      gauge.command = root.gaugeCommand(filer.processId, root.op.reads)
+      root.total = 0
+      totaller.start(["du", "-scb", "--"].concat(root.op.reads))
+      gauge.command = root.gaugeCommand(filer.processId)
       gauge.running = true
     }
     onExited: function (exitCode) {
       var o = root.op
       root.op = null
       gauge.running = false
+      totaller.cancel()
       if (!o) return
       if (root.cancelling && exitCode !== 0) {
         root.note(o.doing.replace(/^\S+ /, "") + " cancelled")
@@ -140,10 +148,10 @@ Item {
       if (o.then) Quickshell.execDetached(o.then)
     }
   }
-  // Many paths go one to a line.
+  // Many paths go one to a line, each its own argument: Linux caps any one at 128 KiB.
   function copyPath(entries) {
     if (!entries.length || root.panel.editing) return
-    root.run(["sh", "-c", 'printf %s "$1" | wl-copy', "files", entries.map(e => e.path).join("\n")],
+    root.run(["sh", "-c", '{ printf %s "$1"; shift; [ $# = 0 ] || printf "\\n%s" "$@"; } | wl-copy', "files"].concat(entries.map(e => e.path)),
              { done: "copied " + (entries.length > 1 ? entries.length + " paths" : FilesIndex.display(entries[0].path, root.panel.home)),
                fail: "copy path failed" })
   }

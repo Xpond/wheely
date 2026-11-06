@@ -62,7 +62,7 @@ if name == 'old.txt':
   } }
 ''')
 
-    preview = files[files.index("  readonly property string previewPath:"):files.index("  // Highlight the whole settled")]
+    preview = files[files.index("  readonly property string previewPath:"):files.index("  // Highlight the settled file")]
     run("git-large-preview", '''
   property var settledSel: null
   property int previewLimit: 262144
@@ -85,8 +85,8 @@ if name == 'old.txt':
   property bool props: false
   property string folderSize: ""
   QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
-''' + preview.replace("Style.font.subtitle", "14") + line(files, r"^  readonly property bool showsDiff: .*")
-        + block(files, r"^  function media\(") + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14") + '''
+''' + preview.replace("root.lineHeight", "24") + line(files, r"^  readonly property bool showsDiff: .*")
+        + block(files, r"^  function media\(") + block(files, r"^  onSettledSelChanged: \{").replace("root.lineHeight", "24") + '''
   Timer { interval: 0; running: true; onTriggered: {
     root.settledSel = ({name: 'large.txt', path: '/tmp/large.txt', size: 280000, isDir: false})
     if (root.previewPath || root.previewText !== root.diffText || root.shownLines < 2) {
@@ -127,12 +127,12 @@ if name == 'old.txt':
   property string folderSize: ""
   QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
   QtObject { id: listedFolder; property int status: 0 }
-''' + preview.replace("Style.font.subtitle", "14")
+''' + preview.replace("root.lineHeight", "24")
         + segment("  readonly property bool showsMarkdown:", "  readonly property string previewPath:")
         + line(files, r"^  readonly property bool showsCode: .*")
         + segment("  property string diffText:", "  onDiffModeChanged:")
         + segment("  readonly property string previewBody:", "  onSelChanged:")
-        + block(files, r"^  function media\(") + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14")
+        + block(files, r"^  function media\(") + block(files, r"^  onSettledSelChanged: \{").replace("root.lineHeight", "24")
         + segment("  readonly property string previewNote:", "  // Payloads may choose")
         + block(files, r"^  FileView \{\n    id: previewFile") + '''
   function shown() {
@@ -182,7 +182,7 @@ if name == 'old.txt':
 ''' + block(files, r"^  function media\(") + files[start:end].replace('Qt.resolvedUrl("git-preview.py")', json.dumps(str(repo / "plugins/xpo.files/git-preview.py")))
         + "".join(line(files, p) for p in [r"^  readonly property var listedEntries: .*(?:\n    .*)*", r"^  readonly property var orderedEntries: .*",
                                            r"^  readonly property var rows: .*"])
-        + block(files, r"^  FolderListModel \{\n    id: listedFolder") + block(files, r"^  readonly property bool unlisted:.*?\n  function relist\(") + '''
+        + block(files, r"^  FolderListModel \{\n    id: listedFolder") + block(files, r"^  readonly property bool unlisted:.*?\n  function reread\(") + '''
   Component.onCompleted: root.readChanges()
   Timer { interval: 50; running: true; repeat: true; onTriggered: {
     if (root.stage < 2) {
@@ -245,7 +245,7 @@ if name == 'old.txt':
         + files[files.index("  readonly property var sel:"):files.index("  // Debounce preview work")]
         + files[files.index("  // A one-shot selection"):files.index("  function close()")]
         + files[files.index("  // Empty while the preview"):files.index("  // Payloads may choose")]
-        + "".join(block(files, p) + "\n" for p in [r"^  FolderListModel \{\n    id: listedFolder", r"^  readonly property bool unlisted:.*?\n  function relist\(", r"^  function enter\(",
+        + "".join(block(files, p) + "\n" for p in [r"^  FolderListModel \{\n    id: listedFolder", r"^  readonly property bool unlisted:.*?\n  function reread\(", r"^  function enter\(",
                                                    r"^  function up\(", r"^  function move\(", r"^  onRowsChanged: \{"]) + '''
   property var cases: [{ from: 'gone', want: 'gone' }, { from: 'a', want: 'a' }, { from: '.hid', want: 'a' },
                        { from: 'gone', key: 1, want: 'a' }, { from: 'gone', key: -1, want: 'wide' },
@@ -300,7 +300,7 @@ if name == 'old.txt':
   QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
   QtObject { id: differ; function cancel() {} function start(argv) { root.events.push('diff') } }
 ''' + files[files.index("  readonly property int previewLimit"):files.index("  property string imageDims")]
-        + block(files, r"^  function readDiff\(") + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14") + '''
+        + block(files, r"^  function readDiff\(") + block(files, r"^  onSettledSelChanged: \{").replace("root.lineHeight", "24") + '''
   Timer { interval: 0; running: true; onTriggered: {
     var text = {name: 'a.txt', path: '/d/a.txt', size: 1, isDir: false}, image = {name: 'b.jpg', path: '/d/b.jpg', size: 1, isDir: false}
     for (var e of [text, image, null, image, text]) { root.settledSel = e; root.events.push(e ? e.name : 'none') }

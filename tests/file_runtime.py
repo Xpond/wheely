@@ -333,6 +333,7 @@ esac
   property bool cancelling: false
   property real progress: -1
   property int elapsed: 0
+  QtObject { id: totaller; function cancel() {} }
   function note(text) { root.fileNote = text }
 ''' + block(ops, r"  function run\(") + block(ops, r"  function copyPath\(") + block(ops, r"  Process {\n    id: filer") + block(ops, r"  Process {\n    id: gauge") + '''
   Component.onCompleted: {
@@ -432,6 +433,7 @@ esac
     (base / "listing/locked").mkdir(mode=0)
     listing = '''
   property bool showHidden: false
+  property bool shown: true
   property string listedDir: ""
   property var entries: []
   property var dirs: ''' + json.dumps([str(base / "listing" / n) for n in ["#archive", "q?x", "50%25off", "gone", "plain", "locked"]]) + '''
@@ -449,6 +451,90 @@ esac
 '''
     run("files-lists-only-its-folder", listing, expected=(r"QFileSystemWatcher::removePath: path is empty$",
                                                           r"inotify_add_watch\(.*/locked\) failed: \(Permission denied\)$"))
+
+    # A folder entered lists at once; one filling up in a burst, as under a copy, lists again a few
+    # times rather than once a file, and while the panel is hidden not at all until it shows.
+    (base / "bursty").mkdir()
+    for name in ["a", "b"]:
+        (base / "bursty" / name).touch()
+    run("files-relist-in-bursts", '''
+  property bool showHidden: false
+  property bool shown: true
+  property string listedDir: ''' + json.dumps(str(base / "bursty")) + '''
+  property var entries: []
+  property string unreadable: ""
+  property int relists: 0
+  onEntriesChanged: root.relists++
+''' + block(files, r"  FolderListModel \{\n    id: listedFolder") + block(files, r"^  readonly property bool unlisted:.*?\n  function reread\(") + '''
+  onShownChanged: if (root.shown) {
+''' + re.search(r"^ *if \(root\.relistDue\) root\.relist\(\)\n", files, re.M).group() + '''
+  }
+  Process { id: touching; command: ["sh", "-c", 'for i in $(seq $2); do touch "$1/$3$i"; sleep 0.01; done', "t", root.listedDir, "30", "n"] }
+  function fail(why) { console.error("FAIL", why); Qt.exit(1) }
+  Timer { interval: 300; running: true; onTriggered: {
+    if (root.entries.length !== 2) return root.fail("the folder listed " + root.entries.length)
+    root.relists = 0
+    touching.running = true
+    burst.start()
+  } }
+  Timer { id: burst; interval: 1200; onTriggered: {
+    if (root.entries.length !== 32 || root.relists > 8) return root.fail("a burst of 30 listed " + root.entries.length + " in " + root.relists)
+    root.shown = false
+    touching.command = ["sh", "-c", 'touch "$1/h1" "$1/h2"', "t", root.listedDir]
+    touching.running = true
+    hidden.start()
+  } }
+  Timer { id: hidden; interval: 500; onTriggered: {
+    if (root.entries.length !== 32) return root.fail("a hidden panel listed again")
+    root.shown = true
+    if (root.entries.length !== 34) return root.fail("showing did not catch up: " + root.entries.length)
+    console.log("PASS"); Qt.quit()
+  } }
+''', expected=(r"QFileSystemWatcher::removePath: path is empty$",))
+
+    # Counting marks the filter hides stays quick in a big folder: V4 builds a Set of 20k paths in
+    # over a second.
+    run("hidden-marks-scale", '''
+  property var rows: []
+  property var marks: [{ path: "/gone" }]
+''' + block(files, r"^  readonly property int hiddenMarks:") + '''
+  Timer { interval: 0; running: true; onTriggered: {
+    var start = Date.now()
+    root.rows = Array.from({ length: 20000 }, (_, i) => ({ path: "/d/" + i }))
+    var hidden = root.hiddenMarks, took = Date.now() - start
+    if (hidden !== 1 || took > 200) { console.error("FAIL", hidden, "hidden in", took, "ms"); Qt.exit(1); return }
+    root.marks = []
+    if (root.hiddenMarks !== 0) { console.error("FAIL no marks counted", root.hiddenMarks); Qt.exit(1); return }
+    console.log("PASS"); Qt.quit()
+  } }
+''')
+
+    # The highlighter colours twice the lines shown, as Pygments colours them in the whole file, and
+    # asks again once more are shown than it coloured.
+    code = base / "long.py"
+    code.write_text("".join("x%d = 'a' + str(%d)\n" % (i, i) for i in range(300)))
+    highlighting = files[files.index("  property string previewHtml: \"\""):files.index("  // git's status of everything")]
+    run("highlight-first-lines", '''
+  property string fullText: ""
+  property string previewText: ""
+  property bool showsMarkdown: false
+  property string previewPath: ''' + json.dumps(str(code)) + '''
+  property int shownLines: 10
+''' + highlighting.replace('Qt.resolvedUrl("highlight.py")', json.dumps("file://" + str(base / "plugins/xpo.files/highlight.py"))) + '''
+  function lines() { return root.previewHtml.split("<br>").length }
+  function fail(why) { console.error("FAIL", why); Qt.exit(1) }
+  Timer { interval: 0; running: true; onTriggered: { root.fullText = "x"; first.start() } }
+  Timer { id: first; interval: 1000; onTriggered: {
+    if (root.htmlLines !== 20 || root.lines() !== 20 || root.previewHtml.indexOf("<font") < 0)
+      return root.fail("the first lot coloured " + root.lines() + " lines for " + root.htmlLines)
+    root.shownLines = 20
+    more.start()
+  } }
+  Timer { id: more; interval: 1000; onTriggered: {
+    if (root.htmlLines !== 40 || root.lines() !== 40) return root.fail("showing more coloured " + root.lines())
+    console.log("PASS"); Qt.quit()
+  } }
+''')
 
     # A folder selected again, as when the list reloads around it, keeps its preview: its model does
     # not change folder, so nothing would refill it. Another folder with as many entries still fills in.
@@ -478,7 +564,7 @@ esac
   property bool props: false
   property string folderSize: ""
   QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
-''' + "\n".join([block(files, r"^  function media\("), block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "16"),
+''' + "\n".join([block(files, r"^  function media\("), block(files, r"^  onSettledSelChanged: \{").replace("root.lineHeight", "28"),
                  block(files, r"  FolderListModel \{\n    id: childFolder"),
                  block(files, r"^  readonly property bool childUnlisted:")]) + '''
   Timer { interval: 300; running: true; repeat: true; onTriggered: {
