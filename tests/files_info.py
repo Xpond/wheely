@@ -6,21 +6,56 @@ import pwd
 
 
 def check(files, base, run, block):
-    # A folder's size is du's; part of it unreadable makes it a lower bound.
+    # Part of a folder unreadable makes du's size a lower bound.
     tree = base / "sized"
     (tree / "locked").mkdir(parents=True)
     (tree / "data").write_bytes(b"x" * 5000)
     run("folder-size", '''
 ''' + block(files, r"  property string folderSize") + '''
-  Timer { interval: 100; running: true; onTriggered: sizer.start(["du", "-sbx", "--", ''' + json.dumps(str(tree)) + ''']) }
-  Timer { interval: 600; running: true; onTriggered: {
-    if (!/^\\d/.test(root.folderSize)) { console.error("FAIL a readable folder measured", root.folderSize); Qt.exit(1); return }
-    root.folderSize = ""
+  Timer { interval: 100; running: true; onTriggered: {
     sizer.start(["sh", "-c", 'chmod 000 "$1/locked"; du -sbx -- "$1"; s=$?; chmod 755 "$1/locked"; exit $s', "t", ''' + json.dumps(str(tree)) + '''])
     measured.start()
   } }
   Timer { id: measured; interval: 600; onTriggered: {
     if (root.folderSize.indexOf("≥ ") !== 0) { console.error("FAIL an unreadable part gave", root.folderSize); Qt.exit(1); return }
+    console.log("PASS"); Qt.quit()
+  } }
+''')
+
+    # Selecting folders: a linked one measures its target, a reload around the same one leaves du's
+    # walk be, and one seen again shows its last size at once, before du measures it anew.
+    (base / "sized-link").symlink_to("sized")
+    (base / "sized-other").mkdir()
+    run("folder-size-cache", '''
+  property string settledPath: ""
+  property var settledSel: null
+  property bool props: false
+  property int shownLines: 0
+  property string diffText: ""
+  property string imageDims: ""
+  property var dirEntries: []
+  function readDiff() {}
+  function childEntries() { return [] }
+  QtObject { id: preview; property int paneHeight: 100; function resetScroll() {} }
+  QtObject { id: measurer; function cancel() {} }
+''' + block(files, r"  property string folderSize") + block(files, r"^  function media\(")
+      + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "16") + '''
+  function pick(name) { root.settledSel = { name: name, path: ''' + json.dumps(str(base)) + ''' + "/" + name, isDir: true } }
+  function fail(why) { console.error("FAIL", why); Qt.exit(1) }
+  property string first: ""
+  Timer { interval: 100; running: true; onTriggered: { root.pick("sized-link"); other.start() } }
+  Timer { id: other; interval: 600; onTriggered: {
+    root.first = root.folderSize
+    if (!/^[\\d.]+K$/.test(root.first)) return root.fail("a linked folder measured " + root.first)
+    root.pick("sized-link")
+    if (sizer.current) return root.fail("a reload around the same folder measured it again")
+    root.pick("sized-other")
+    if (root.folderSize) return root.fail("another folder showed the last one's size")
+    back.start()
+  } }
+  Timer { id: back; interval: 600; onTriggered: {
+    root.pick("sized-link")
+    if (root.folderSize !== root.first) return root.fail("a folder seen again showed " + root.folderSize)
     console.log("PASS"); Qt.quit()
   } }
 ''')

@@ -127,12 +127,15 @@ Item {
     onFinished: output => root.imageDims = output.split("\n")[0].trim()
   }
   // A selected folder's size, summed by du on its own filesystem; "≥" when part of it can't be read.
+  // Each size is kept by path, so a folder seen again shows its last size while du measures anew.
   property string folderSize: ""
   FilesProcess {
     id: sizer
+    property var sizes: ({})
     onFinished: function (output, code) {
       var n = parseInt(output, 10)
       root.folderSize = isNaN(n) ? "" : (code ? "≥ " : "") + FilesIndex.humanSize(n)
+      sizer.sizes[root.settledPath] = root.folderSize
     }
   }
   // Properties stand in for the preview until the selection moves or Esc.
@@ -284,7 +287,11 @@ Item {
     var path = root.settledSel ? root.settledSel.path : ""
     if (path !== root.settledPath) {
       root.props = false
-      root.folderSize = ""
+      root.folderSize = sizer.sizes[path] || ""
+      // Only a new path: a reload around the same folder would start its walk over.
+      sizer.cancel()
+      if (root.settledSel && root.settledSel.isDir && !root.settledSel.missing)
+        sizer.start(["du", "-sbxD", "--", root.settledSel.path])
       preview.resetScroll()
       root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / Style.font.subtitle))
     }
@@ -298,9 +305,6 @@ Item {
     measurer.cancel()
     if (root.media(root.settledSel) === "image")
       measurer.start(["identify", "-ping", "-format", "%w×%h\n", root.settledSel.path])
-    sizer.cancel()
-    if (root.settledSel && root.settledSel.isDir && !root.settledSel.missing)
-      sizer.start(["du", "-sbx", "--", root.settledSel.path])
   }
 
   readonly property string metaLine:

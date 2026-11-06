@@ -477,7 +477,7 @@ esac
   QtObject { id: measurer; function cancel() {} }
   property bool props: false
   property string folderSize: ""
-  QtObject { id: sizer; function cancel() {} function start(command) {} }
+  QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
 ''' + "\n".join([block(files, r"^  function media\("), block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "16"),
                  block(files, r"  FolderListModel \{\n    id: childFolder"),
                  block(files, r"^  readonly property bool childUnlisted:")]) + '''

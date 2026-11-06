@@ -344,7 +344,7 @@ Item {
     text: FilesIndex.DIR_GLYPH + "  "
   }
   FilesTip {
-    visible: !!root.tipped && root.tipped === root.pointedPath
+    visible: !!root.tipped
     x: !hovered.column ? 0 : Math.max(0, Math.min(root.width - width,
       scroller.x + folderView.x + hovered.column.x + nameAt.advanceWidth - scroller.contentX - pad))
     y: scroller.y + folderView.y + hovered.line * root.panel.lineHeight - scroller.contentY + (root.panel.lineHeight - height) / 2

@@ -9,6 +9,7 @@ import "FilesIndex.js" as FilesIndex
 Item {
   id: root
   property var panel: null
+  readonly property real labelWidth: Style.font.body * 7
 
   readonly property var entry: root.visible ? root.panel.settledSel : null
   readonly property string path: root.entry ? root.entry.path : ""
@@ -66,7 +67,7 @@ Item {
         spacing: Style.spacing.lg
 
         Text {
-          width: Style.font.body * 7
+          width: root.labelWidth
           text: line.modelData[0]
           color: Commons.Color.menu.text
           opacity: 0.5
@@ -77,7 +78,7 @@ Item {
 
         Text {
           id: value
-          width: root.width - Style.font.body * 7 - Style.spacing.lg
+          width: root.width - root.labelWidth - Style.spacing.lg
           wrapMode: Text.WrapAnywhere
           text: line.modelData[1]
           color: Commons.Color.menu.text
