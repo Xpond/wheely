@@ -11,6 +11,7 @@ from wheel_refresh import check as check_wheel_refresh
 from wheel_scans import check as check_wheel_scans
 from wheel_menu import check as check_wheel_menu
 from file_runtime import check as check_file_runtime
+from files_info import check as check_files_info
 from files_lifecycle import check as check_files_lifecycle
 from files_git_runtime import check as check_files_git
 from wheel_settings import check as check_wheel_settings
@@ -51,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-runtime-") as temporary:
         assert not Path(f"/proc/{pidfile.read_text()}").exists(), "scanner was not reaped"
     print("ok: closed scan reader stays quiet and reaps its child")
 
-    for path in ["xpo.files/FilesIndex.js", "xpo.files/FilesProcess.qml", "xpo.files/FilesList.qml", "xpo.files/FilesPreview.qml", "xpo.files/FilesHeader.qml",
+    for path in ["xpo.files/FilesIndex.js", "xpo.files/FilesProcess.qml", "xpo.files/FilesList.qml", "xpo.files/FilesPreview.qml", "xpo.files/FilesHeader.qml", "xpo.files/FilesProps.qml", "xpo.files/FilesTip.qml",
                  "xpo.files/FilesMenu.qml", "xpo.files/FilesMenuCard.qml", "xpo.files/FilesActions.js",
                  "xpo.wheel/MenuIndex.js", "xpo.wheel/scan.py", "xpo.wheel/MenuKeys.js", "xpo.wheel/WheelResults.qml",
                  "xpo.wheel/ClickShield.qml", "xpo.wheel/PanelIcon.qml"]:
@@ -103,6 +104,7 @@ Scope {
     check_wheel_scans(wheel, run, block)
     check_wheel_menu(wheel, base, run, block, line)
     check_file_runtime(files, ops, base, run, block)
+    check_files_info(files, base, run, block)
     check_files_lifecycle(files, run, block, line)
     check_files_git(repo, files, base, run, block, line)
 

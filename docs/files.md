@@ -24,12 +24,16 @@ double-click to open, right-click for the menu, `Ctrl`/`Shift`+click to mark.
 
 | selection | preview |
 |---|---|
-| folder | its contents, with sizes and dates |
+| folder | its contents, with sizes and dates; the header adds the folder's total size |
 | image | the image, with its pixel size |
 | video | plays muted; `Space` pauses (`Shift+Space` types a space), the fullsize button opens mpv |
 | Markdown | rendered |
 | other text | syntax highlighted, with line numbers |
 | anything else | its size |
+
+Right-click › Properties shows the selection's kind, size, permissions, owner and dates in
+the preview's place, until you move on or press `Esc`. Hovering a name, in the
+list or a folder's preview, pops it up whole.
 
 Files over 256 KiB are not previewed. `Ctrl+B` hides the list so the preview takes the
 whole card. Video previews need `qt6-multimedia` and `qt6-multimedia-ffmpeg`.

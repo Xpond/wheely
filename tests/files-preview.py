@@ -58,6 +58,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
     base = Path(temporary)
     (base / "Commons").symlink_to(shell / "Commons")
     shutil.copyfile(plugin / "FilesIndex.js", base / "FilesIndex.js")
+    shutil.copyfile(plugin / "FilesTip.qml", base / "FilesTip.qml")
     styled = (plugin / "FilesPreview.qml").read_text().replace("Style.font.subtitle", "root.panel.codePx")
     styled = styled.replace("  id: root", "  id: root\n  readonly property real testBodyX: content.mapToItem(root, content.children[0].width + content.spacing, 0).x")
     handler = styled[styled.index("        onLineLaidOut:", styled.index("id: rendered")):styled.index("      }\n    }\n  }\n\n  Rectangle")]

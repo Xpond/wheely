@@ -106,6 +106,7 @@ Right-click a row, or the path for the folder. With marks, it acts on them all.
 | Open in a terminal | a terminal in that folder |
 | Duplicate… Make link… | a copy or link beside it |
 | Show in Nautilus | open it in Nautilus |
+| Properties | kind, size, permissions, owner and dates; `Esc` closes |
 | Current folder | new, paste, sort, hidden, terminal |
 
 ## Files editor

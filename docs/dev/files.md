@@ -151,6 +151,27 @@ time in Quickshell.
 `--no-optional-locks` keeps a status read off the index lock a commit may
 want; `--literal-pathspecs` keeps `a*b` from diffing `axb` too.
 
+**A folder's size is du's, for the settled folder only.** Sizing every listed folder
+would walk whole trees for rows nobody looked at, and a reload around the same folder
+does not start the walk over. `du -sbxD` is one process, so cancelling it on the next
+selection stops the walk; a pipeline would orphan its children. `-x` keeps `/` from
+walking `/proc` and mounts, `-D` measures a linked folder's target rather than the link,
+and `-b` counts bytes as the file rows do. du exits non-zero when part of the tree is
+unreadable but still prints a total, shown as `≥`. Sizes are kept by path for the session, so a
+folder seen again shows its last size at once while du measures it anew.
+
+**Properties** reuses that size and takes everything else from one `stat --printf` and
+`file`. It stands in for the preview (`showsProps`) and goes when the settled path
+changes, so the menu settles the row before opening it.
+
+**A hovered name pops up whole** (`FilesTip.qml`, shared by the list and a folder's
+preview). The list finds the row from the pointer's position on every move and scroll,
+since a scroll moves rows under a still pointer without an enter or leave. Its
+`HoverHandler` sits on the list's frame, since one inside a Flickable rides its content,
+and the list sits above the preview so the name can run on over it. The preview uses the
+entry its hover tint already finds and keeps the popup inside the pane.
+`tests/files_info.py` checks the size, Properties and both popups in Quickshell.
+
 ## Writing
 
 **One process, one contract.** Every write goes through the same `Process` and

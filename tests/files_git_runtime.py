@@ -82,6 +82,9 @@ if name == 'old.txt':
   function readDiff() { diffText = '@@ -1 +1 @@\\n-old\\n+new\\n' }
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
+  property bool props: false
+  property string folderSize: ""
+  QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
 ''' + preview.replace("Style.font.subtitle", "14") + line(files, r"^  readonly property bool showsDiff: .*")
         + block(files, r"^  function media\(") + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14") + '''
   Timer { interval: 0; running: true; onTriggered: {
@@ -120,6 +123,9 @@ if name == 'old.txt':
   function childEntries() { return [] }
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
+  property bool props: false
+  property string folderSize: ""
+  QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
   QtObject { id: listedFolder; property int status: 0 }
 ''' + preview.replace("Style.font.subtitle", "14")
         + segment("  readonly property bool showsMarkdown:", "  readonly property string previewPath:")
@@ -289,6 +295,9 @@ if name == 'old.txt':
   function childEntries() { return [] }
   QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} function start(argv) { root.events.push('measure ' + argv[argv.length - 1]) } }
+  property bool props: false
+  property string folderSize: ""
+  QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
   QtObject { id: differ; function cancel() {} function start(argv) { root.events.push('diff') } }
 ''' + files[files.index("  readonly property int previewLimit"):files.index("  property string imageDims")]
         + block(files, r"^  function readDiff\(") + block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "14") + '''

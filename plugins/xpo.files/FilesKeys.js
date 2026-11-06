@@ -115,7 +115,8 @@ function onKey(panel, ops, preview, event) {
   }
   switch (event.key) {
   case Qt.Key_Escape:
-    if (panel.marks && panel.marks.length) panel.unmarkAll()
+    if (panel.showsProps) panel.props = false
+    else if (panel.marks && panel.marks.length) panel.unmarkAll()
     else if (panel.filter) panel.filter = ""
     else if (panel.host) panel.toWheel()
     else panel.close()
