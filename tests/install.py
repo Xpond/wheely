@@ -162,20 +162,24 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     # A lock file left stock holds back its partner.
     notes = fixture.user / ".local/state/omarchy/notifications"
     notes.mkdir(parents=True)
-    toast = {"app": "notify-send", "summary": "wheely", "body": "Not patched: plugins/lock/Service.qml"}
-    (notes / "1-1.json").write_text(json.dumps(toast))
+    live = notes / "live.json"
+    toast = {"key": "a", "app": "notify-send", "summary": "wheely", "body": "Not patched: plugins/lock/Service.qml"}
+    other = {"key": "b", "app": "kitty", "summary": "Claude Code", "body": "waiting"}
+    live.write_text(json.dumps([toast, other]))
     edited = fixture.stock[lock[0]] + b"// personal edit\n"
     (fixture.shell / lock[0]).write_bytes(edited)
     result = fixture.run()
     assert result.returncode == 1 and "Held back" in result.stderr and lock[1] in result.stderr, result.stderr
     assert fixture.installed(lock[0]) == edited and fixture.installed(lock[1]) == fixture.stock[lock[1]]
-    assert (notes / "1-1.json").exists()
+    assert json.loads(live.read_text()) == [toast, other]
     (fixture.shell / lock[0]).write_bytes(fixture.stock[lock[0]])
+    (fixture.user / "restarts").unlink(missing_ok=True)
     assert fixture.run().returncode == 0
-    assert (notes / "history/1-1.json").exists() and not (notes / "1-1.json").exists()
+    assert json.loads(live.read_text()) == [other]
+    assert (fixture.user / "restarts").read_text().split() == ["dismiss", "restart"], "dismissed after the restart"
     assert fixture.run("revert.sh").returncode == 0
     print("ok: a lock file that cannot be patched holds back its partner, keeping the stock lock")
-    print("ok: the next clean install archives the failed run's toast")
+    print("ok: the next clean install dismisses the failed run's toast before restarting the shell")
 
     relative = "plugins/bar/Bar.qml"
     edited = fixture.stock[relative] + b"// personal edit\n"

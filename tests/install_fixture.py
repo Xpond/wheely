@@ -52,6 +52,10 @@ class Installer:
 fi
 exec "$@"''',
             "notify-send": "exit 0",
+            # The shell owns live.json: it drops dismissed rows itself.
+            "omarchy-notification-dismiss": '''echo dismiss >> "$HOME/restarts"
+live="$HOME/.local/state/omarchy/notifications/live.json"
+jq --arg s "$1" 'map(select(.summary | contains($s) | not))' "$live" > "$live.new" && /usr/bin/mv "$live.new" "$live"''',
             # install.sh finds the shell with quickshell, never pgrep. A fallback to pgrep would find
             # this PID, so "no-shell" catches it even on a host where no Quickshell runs.
             "pgrep": "echo 1",
