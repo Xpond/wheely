@@ -96,13 +96,14 @@ check(shadowed.length === 0, `no menu label starts with a mode sigil (${Object.k
       shadowed.map(r => r.label).join(", "))
 // Sigils, file rows and their payloads need no desktop: tests/wheel-files.js covers them.
 
-// An odd ring is allowed, but worth knowing about: it has no slice at 3 or 9 o'clock.
-for (const [label, cfg] of [["shipped", `${omarchy}/config/omarchy/shell.json`],
-                            ["this machine", `${home}/.config/omarchy/shell.json`]]) {
+// An odd ring is allowed, but worth knowing about: it has no slice at 3 or 9 o'clock. A ring saved
+// in wheel.json is the one the wheel draws; without one it follows the bar.
+for (const [label, cfg, saved] of [["shipped", `${omarchy}/config/omarchy/shell.json`, ""],
+                                   ["this machine", `${home}/.config/omarchy/shell.json`, `${home}/.config/omarchy/wheel.json`]]) {
   const raw = read(cfg)
   if (!raw) continue
-  const n = M.panels(M.barWidgets(raw)).length
-  if (n % 2) console.log(`note  ${label} bar's slices are not even on the wheel (${n}): none sits at 3 or 9 o'clock`)
+  const n = (M.listIn(read(saved), "slices") || M.panels(M.barWidgets(raw))).length
+  if (n % 2) console.log(`note  ${label} ring has an odd number of slices (${n}): none sits at 3 or 9 o'clock`)
 }
 
 console.log(failed ? `\n${failed} failed` : "\nall good")
