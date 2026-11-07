@@ -1,6 +1,7 @@
 """Scan cancellation, epochs and incremental joins in the wheel."""
 import json
 import re
+from wheel_memory import check as check_memory
 
 
 def check(wheel, run_case, block):
@@ -41,6 +42,8 @@ def check(wheel, run_case, block):
             out += "  FileScan { id: " + name + "Scan; source: " + json.dumps("home" if name == "home" else "folders")
             out += "; walk: " + json.dumps(command)[:-1] + ", String(epoch)] }\n"
         return out + handlers
+
+    check_memory(scan, run)
 
     run("scan-close-reopen", scan("0.15") + """
   Component.onCompleted: root.mode = "file"

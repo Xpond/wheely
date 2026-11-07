@@ -317,9 +317,14 @@ so results show before either walk finishes; keyboard actions wait for the curre
 query's results, and closing cancels both scans. Each batch goes to the worker as it
 lands, which takes one job at a time, so ranking overlaps the walk. The worker exists
 only from a search's scan until the wheel and the pinned search are both gone.
-Unloading reduces retained memory but does not return all of Qt's heap: a fixed
-93,228-path scan left about 61 MiB above its pre-search RSS, versus 87 MiB with a
-persistent worker, measured five seconds after close. `Enter` on a path opens Files there;
+Closing a search also schedules main-engine garbage collection 250 ms later, to
+release the UI's copies of scan batches. It skips collection if the wheel or pinned
+search is open. Normal closes without a search schedule nothing. The managed
+`omarchy-launch-shell` wrapper enables jemalloc background purging with a one-second
+decay time, so freed pages return to the OS even while the worker thread is idle.
+In an isolated 93,228-path scan, unloading alone left about 61 MiB above baseline;
+collection plus purging reduced that to about 11–13 MiB five seconds after close.
+Runtime caches still keep RSS above its initial value. `Enter` on a path opens Files there;
 a path outside the browser's folders opens through `omarchy-open-path`.
 
 **The calculator** (`=`, `Calc.js`) takes `+ - * / ^` and parentheses, `^` binding
@@ -374,6 +379,7 @@ asks `pacman -T` once for every package they name and answers
 (`omarchy-bar position` alone some thirty times), so the read-only ones in
 `CONDITION_READERS` share output and exit status in simple checks: a bare reader
 (optionally negated), or `[[ ]]` comparisons against literals joined by `&&` or `||`.
+Literals include Bash's `$'…'` quoting for the clock's escaped multiline formats.
 Those calls use cache files shared with `$(...)` and removed when the script exits.
 Other expressions run unchanged and end the cache group, since they may change
 the environment or redefine a command. No reader's command name is shadowed, so

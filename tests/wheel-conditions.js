@@ -15,7 +15,8 @@ stub("pacman", 'echo "$1" >> "$STUBS/pacman.log"; installed=" kitty vim "\n'
   + '[[ $installed == *" $2 "* ]]\n')
 stub("omarchy-default-browser", 'echo browser >> "$STUBS/reads.log"; echo "${TEST_BROWSER:-brave}"\n')
 stub("omarchy-lock-design", '[[ $1 == current ]] && echo meadow\n')
-stub("omarchy-bar", 'echo "bar $*" >> "$STUBS/reads.log"; [[ $* == position ]] && echo top; true\n')
+stub("omarchy-bar", 'echo "bar $*" >> "$STUBS/reads.log"; [[ $* == position ]] && echo top\n'
+  + '[[ $* == "get omarchy.clock verticalFormat" ]] && printf "dd\\nMMM\\n\'W\'ww\\n\'\'yy\\n"; true\n')
 stub("omarchy-hw-x86", 'echo x86 >> "$STUBS/reads.log"; exit 1\n')
 stub("probe-reader", 'echo probe >> "$STUBS/reads.log"; echo value\n')
 // What a script printed, and which pacman queries and readers it ran.
@@ -37,6 +38,9 @@ try {
     // A reader is asked in subshells and compound checks, and answers once; a setter is no read.
     barTop: { label: "Top", action: "t", checked: "[[ $(omarchy-bar position) != left && $(omarchy-bar position) != right ]]" },
     barLeft: { label: "Left", action: "l", checked: "[[ \"$(omarchy-bar position)\" == left ]]" },
+    clock: { checked: "[[ $(omarchy-bar get omarchy.clock verticalFormat) == $'dd\\nMMM\\n\\'W\\'ww\\n\\'\\'yy' ]]" },
+    clockOther: { checked: "[[ $(omarchy-bar get omarchy.clock verticalFormat) == $'HH\\nmm' ]]" },
+    barStillTop: { checked: "[[ $(omarchy-bar position) == $'top' ]]" },
     barSet: { label: "Set", action: "s", when: "omarchy-bar position top" },
     x86: { label: "X86", action: "x", when: "omarchy-hw-x86" },
     notX86: { label: "Not x86", action: "n", when: "! omarchy-hw-x86" }
@@ -44,9 +48,9 @@ try {
   // A failed query asks pacman per name, as omarchy-pkg-present does.
   for (const fails of ["", "1"]) {
     const run = bash(M.conditionScript(checks), fails)
-    assert.deepEqual(run.stdout.trim().split("\n").sort(), ["barSet:w", "barTop:c", "brave:c", "kitty:w", "notX86:w", "quoted:w", "steam:w", "style.lockscreen.1:c"])
+    assert.deepEqual(run.stdout.trim().split("\n").sort(), ["barSet:w", "barStillTop:c", "barTop:c", "brave:c", "clock:c", "kitty:w", "notX86:w", "quoted:w", "steam:w", "style.lockscreen.1:c"])
     assert.equal(run.pacman, fails ? "-T\n-Q\n-Q\n-Q\n-Q\n" : "-T\n")
-    assert.deepEqual(run.reads.trim().split("\n").sort(), ["bar position", "bar position top", "browser", "x86"],
+    assert.deepEqual(run.reads.trim().split("\n").sort(), ["bar get omarchy.clock verticalFormat", "bar position", "bar position top", "browser", "x86"],
       "a shared reader ran twice, or a setter was answered from a read")
   }
   const custom = {
@@ -57,7 +61,8 @@ try {
     localEnvironment: "export TEST_BROWSER=firefox; [[ $(omarchy-default-browser) == firefox ]]",
     nested: '[[ "$(printf x$(probe-reader))" == xvalue ]]',
     ordinary: "[[ $(probe-reader) == value ]]",
-    quotedArgument: "[[ $(printf '%s' value) == value ]]"
+    quotedArgument: "[[ $(printf '%s' value) == value ]]",
+    ansiLiteral: "[[ $(omarchy-default-browser) != $'$(probe-reader)' ]]"
   }
   for (const [name, expr] of Object.entries(custom)) {
     for (const [field, tag] of [["when", "w"], ["checked", "c"]]) {

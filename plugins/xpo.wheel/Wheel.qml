@@ -807,7 +807,7 @@ Item {
       home: root.home, uses: root.uses })
     root.fileQueue = []
   }
-  // Unloading the worker reduces retained memory; Qt still keeps part of its heap after close.
+  // Unload the worker, then collect the main engine's copies of its scan batches after close.
   // It lives only from a search's scan until the wheel and the pinned search are both gone.
   Loader {
     id: worker
@@ -865,6 +865,11 @@ Item {
   FileScan { id: folderScan; source: "folders"; walk: MenuIndex.scanCommand(root.folders, root.skipped, root.home) }
 
   property int scanEpoch: 0
+  Timer {
+    id: scanCleanup
+    interval: 250
+    onTriggered: if (!root.opened && !root.windowed) gc()
+  }
   // The skip list suggests home's folders alone, so only a search scans the added folders.
   function scanFiles() {
     if (!root.opened && !root.windowed || root.mode !== "file" && root.listing !== "skipped") return
@@ -878,7 +883,10 @@ Item {
   function dropScan(rescan) {
     root.fileAction = ""
     root.scanEpoch++
-    if (!root.opened && !root.windowed) worker.active = false
+    if (!root.opened && !root.windowed) {
+      if (root.fileWorker) scanCleanup.restart()
+      worker.active = false
+    }
     else if (root.fileWorker && root.fileWorker.ready)
       root.fileWorker.sendMessage({ epoch: root.scanEpoch, reset: true, rescan: !!rescan })
     homeScan.running = folderScan.running = false

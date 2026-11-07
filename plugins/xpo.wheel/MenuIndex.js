@@ -231,7 +231,7 @@ function conditionScript(items) {
       // Rewrite only whole comparisons of known readers and literals, or a bare reader check.
       // Everything else keeps its Bash meaning and ends the group: it may change the environment.
       var comparisons = []
-      var shape = expr.replace(/("?)\$\(([\w .-]+)\)\1 (==|!=) ("[^"$`\\]*"|'[^']*'|[\w.*\/-]+)/g,
+      var shape = expr.replace(/("?)\$\(([\w .-]+)\)\1 (==|!=) (\$'(?:\\.|[^'\\])*'|"[^"$`\\]*"|'[^']*'|[\w.*\/-]+)/g,
         function (match, quote, cmd, op, literal) {
           var r = CONDITION_READERS.indexOf(cmd)
           if (r < 0) return match
