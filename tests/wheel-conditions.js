@@ -1,5 +1,5 @@
-// The batched condition script: one pacman query and one run per known reader answer the stock
-// checks, and every other condition keeps the meaning Bash alone gives it.
+// The batched condition script: one pacman query and shared readers answer simple checks,
+// and every other condition keeps the meaning Bash alone gives it.
 const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const os = require("node:os")
@@ -67,7 +67,29 @@ try {
         `${name} (${field}) changed its result or executed an extra command`)
     }
   }
-  console.log("ok: one pacman query and one read per known reader; custom conditions keep their Bash meaning")
+  // Sharing must not shadow executable lookup or outlive a custom check's environment changes.
+  M.CONDITION_READERS.push("wheel-test-absent-reader")
+  const sequences = [
+    ["command -v wheel-test-absent-reader", '[[ $(command -v omarchy-default-browser) == "$STUBS/omarchy-default-browser" ]]'],
+    ['[[ $(omarchy-default-browser) == brave ]]',
+     'export TEST_BROWSER=firefox; [[ $(omarchy-default-browser) == firefox ]]',
+     '[[ $(omarchy-default-browser) == firefox ]]', '[[ $(omarchy-default-browser) == firefox ]]'],
+    ['[[ $(omarchy-default-browser) == brave ]]',
+     '[[ $(TEST_BROWSER=firefox omarchy-default-browser) == firefox ]]',
+     '[[ $(omarchy-default-browser) == brave ]]'],
+    ['[[ $(omarchy-default-browser) == brave ]]',
+     'omarchy-default-browser() { echo firefox; }; true',
+     '[[ $(omarchy-default-browser) == firefox ]]'],
+    ["[[ '$(omarchy-default-browser) == brave' == '$(omarchy-default-browser) == brave' ]]",
+     "[[ $(omarchy-default-browser) == '$(omarchy-default-browser)' ]]"],
+  ]
+  for (const expressions of sequences) {
+    const items = Object.fromEntries(expressions.map((when, i) => ["check" + i, { when }]))
+    const plain = expressions.map((expr, i) => `if { ${expr}; } >/dev/null 2>&1; then echo check${i}:w; fi`).join("\n")
+    assert.equal(bash(M.conditionScript(items)).stdout, bash(plain).stdout,
+      "shared readers changed command lookup, environment, function lookup, or literal text")
+  }
+  console.log("ok: one pacman query and shared simple readers; custom conditions keep their Bash meaning")
 } finally {
   fs.rmSync(stubs, { recursive: true })
 }

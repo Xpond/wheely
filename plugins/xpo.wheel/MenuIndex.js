@@ -218,9 +218,9 @@ var CONDITION_READERS = [
 
 // Every `when` and `checked` in one bash script, echoing `<id>:w` or `<id>:c` for each that holds.
 // Asked one at a time the package checks alone take over a second, so one `pacman -T` answers
-// every name they ask about, and each known reader runs once.
+// every name they ask about, and simple checks share known readers between custom expressions.
 function conditionScript(items) {
-  var checks = [], names = {}
+  var checks = [], names = {}, group = 0
   for (var id in items) {
     var tags = { w: items[id].when, c: items[id].checked }
     for (var tag in tags) {
@@ -228,6 +228,22 @@ function conditionScript(items) {
       var expr = String(tags[tag])
       var asked = /omarchy-pkg-(?:present|missing)((?:[ \t]+[\w@.+-]+)+)/g, m
       while ((m = asked.exec(expr))) m[1].trim().split(/\s+/).forEach(function (n) { names[n] = true })
+      // Rewrite only whole comparisons of known readers and literals, or a bare reader check.
+      // Everything else keeps its Bash meaning and ends the group: it may change the environment.
+      var comparisons = []
+      var shape = expr.replace(/("?)\$\(([\w .-]+)\)\1 (==|!=) ("[^"$`\\]*"|'[^']*'|[\w.*\/-]+)/g,
+        function (match, quote, cmd, op, literal) {
+          var r = CONDITION_READERS.indexOf(cmd)
+          if (r < 0) return match
+          comparisons.push(quote + "$(__read " + group + "." + r + " " + cmd + ")" + quote + " " + op + " " + literal)
+          return "\0"
+        })
+      var bare = /^(! )?([\w .-]+)$/.exec(expr)
+      if (/^\[\[ \0(?: (?:&&|\|\|) \0)* \]\]$/.test(shape))
+        expr = shape.replace(/\0/g, function () { return comparisons.shift() })
+      else if (bare && CONDITION_READERS.indexOf(bare[2]) >= 0)
+        expr = (bare[1] || "") + "__read " + group + "." + CONDITION_READERS.indexOf(bare[2]) + " " + bare[2]
+      else group++
       checks.push("if { " + expr + "; } >/dev/null 2>&1; then echo " + id + ":" + tag + "; fi")
     }
   }
@@ -241,19 +257,12 @@ function conditionScript(items) {
     "__has() { case ${__pkg[$1]-} in 1) return 0 ;; 0) return 1 ;; esac; pacman -Q \"$1\" &>/dev/null; }",
     "omarchy-pkg-present() { local p; for p; do __has \"$p\" || return 1; done; }",
     "omarchy-pkg-missing() { local p; for p; do __has \"$p\" || return 0; done; return 1; }",
-    // The checks run as written, so a reader runs only where a check asks it, and only the first
-    // time: a later ask, in a $(...) too, replays its output and status from this run's files.
+    // Files share output and status with $(...) without defining functions under command names.
     "__memo=${XDG_RUNTIME_DIR:-/tmp}/wheel-conditions.$$",
     "trap 'rm -f \"$__memo\".*' EXIT",
-    "__read() { local out rc; [[ -e $__memo.$1 ]] || { command \"${@:2}\" >\"$__memo.$1.out\"; echo $? >\"$__memo.$1\"; }",
+    "__read() { local out rc; [[ -e $__memo.$1 ]] || { \"${@:2}\" >\"$__memo.$1.out\"; echo $? >\"$__memo.$1\"; }",
     "  IFS= read -rd '' out <\"$__memo.$1.out\"; printf %s \"$out\"; read -r rc <\"$__memo.$1\"; return \"$rc\"; }"
   ]
-  var asks = {}
-  CONDITION_READERS.forEach(function (line, i) {
-    var cmd = line.split(" ")[0]
-    asks[cmd] = (asks[cmd] || "") + "'" + line.slice(cmd.length + 1) + "') __read " + i + " \"$FUNCNAME\" \"$@\" ;; "
-  })
-  for (var cmd in asks) head.push(cmd + "() { case \"$*\" in " + asks[cmd] + "*) command \"$FUNCNAME\" \"$@\" ;; esac; }")
   return head.concat(checks).join("\n")
 }
 

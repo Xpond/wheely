@@ -772,7 +772,10 @@ Item {
   onActiveWindowChanged: {
     if (!root.activeWindow) return
     var address = root.activeWindow.address
-    root.focusOrder = [address].concat(root.focusOrder.filter(a => a !== address))
+    var next = [address]
+    for (let i = 0; i < root.focusOrder.length; i++)
+      if (root.focusOrder[i] !== address) next.push(root.focusOrder[i])
+    root.focusOrder = next
   }
 
   // Scan lazily per open; cap depth to avoid large cache and SDK trees. Home and the added folders
@@ -804,8 +807,8 @@ Item {
       home: root.home, uses: root.uses })
     root.fileQueue = []
   }
-  // The worker keeps the heap a scan grew even once it lets the paths go, so it lives only from
-  // a search's scan until the wheel and the pinned search are both gone.
+  // Unloading the worker reduces retained memory; Qt still keeps part of its heap after close.
+  // It lives only from a search's scan until the wheel and the pinned search are both gone.
   Loader {
     id: worker
     active: false

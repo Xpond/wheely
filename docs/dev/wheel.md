@@ -316,8 +316,10 @@ batches (`scan.py`) that a background worker ranks as they arrive, home's ties f
 so results show before either walk finishes; keyboard actions wait for the current
 query's results, and closing cancels both scans. Each batch goes to the worker as it
 lands, which takes one job at a time, so ranking overlaps the walk. The worker exists
-only from a search's scan until the wheel and the pinned search are both gone: it
-keeps the heap 90,000 paths grew even after it lets them go. `Enter` on a path opens Files there;
+only from a search's scan until the wheel and the pinned search are both gone.
+Unloading reduces retained memory but does not return all of Qt's heap: a fixed
+93,228-path scan left about 61 MiB above its pre-search RSS, versus 87 MiB with a
+persistent worker, measured five seconds after close. `Enter` on a path opens Files there;
 a path outside the browser's folders opens through `omarchy-open-path`.
 
 **The calculator** (`=`, `Calc.js`) takes `+ - * / ^` and parentheses, `^` binding
@@ -370,12 +372,12 @@ Asked one at a time the package checks alone took over a second, so the script
 asks `pacman -T` once for every package they name and answers
 `omarchy-pkg-present` from that. The checks ask the same few readers over and over
 (`omarchy-bar position` alone some thirty times), so the read-only ones in
-`CONDITION_READERS` run once each: the script defines a function under each reader's
-name that, asked exactly as the list spells it, runs the reader the first time and
-replays its output and exit status after, from files the run removes as it exits,
-which reach a `$(...)` too. Any other arguments, a setter, go to the real command.
-Every check runs as written, so a reader runs only where a check asks it, and exit
-status, quoting and short-circuit guards hold. The script runs in the background:
+`CONDITION_READERS` share output and exit status in simple checks: a bare reader
+(optionally negated), or `[[ ]]` comparisons against literals joined by `&&` or `||`.
+Those calls use cache files shared with `$(...)` and removed when the script exits.
+Other expressions run unchanged and end the cache group, since they may change
+the environment or redefine a command. No reader's command name is shadowed, so
+executable lookups keep their meaning. The script runs in the background:
 the wheel opens on the last answers and the new ones land a moment later,
 rebuilding only if they changed (see the trap above). The menu loads a file at a
 time as the shell starts, so a change waits 250 ms for the rest before it checks.
