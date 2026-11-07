@@ -31,9 +31,15 @@ function ordered(entries, order) {
   var hits = []
   for (var i = 0; i < entries.length; i++) {
     var e = entries[i]
-    hits.push({ entry: e, time: order === "date" ? when(e.modified) : 0 })
+    hits.push({ entry: e, time: order === "date" ? when(e.modified) : 0, at: i })
   }
-  hits = mergeSort(hits, function (a, b) {
+  // V4's sort slows badly on input already in another order, as FolderListModel's code-point
+  // order is to localeCompare (100k names: seconds); shuffled, it never does. Ties keep the
+  // listing's order.
+  for (var k = hits.length - 1; k > 0; k--) {
+    var r = Math.floor(Math.random() * (k + 1)), swap = hits[k]; hits[k] = hits[r]; hits[r] = swap
+  }
+  hits.sort(function (a, b) {
     // Deleted rows arrive with git's status, after the rest; last, they move no selection.
     if (!a.entry.missing !== !b.entry.missing) return a.entry.missing ? 1 : -1
     if (a.entry.isDir !== b.entry.isDir) return a.entry.isDir ? -1 : 1
@@ -41,27 +47,11 @@ function ordered(entries, order) {
     if (order === "date") rank = b.time - a.time
     // Folder metadata size does not represent its contents.
     else if (order === "size" && !a.entry.isDir) rank = b.entry.size - a.entry.size
-    return rank || a.entry.name.localeCompare(b.entry.name)
+    return rank || a.entry.name.localeCompare(b.entry.name) || a.at - b.at
   })
   var out = []
   for (var j = 0; j < hits.length; j++) out.push(hits[j].entry)
   return out
-}
-
-// V4's sort slows badly on input already in another order, as FolderListModel's code-point
-// order is to localeCompare: 100k names took seconds. A bottom-up merge never does, and is stable.
-function mergeSort(list, compare) {
-  var n = list.length, from = list, to = new Array(n)
-  for (var width = 1; width < n; width *= 2) {
-    for (var start = 0, k = 0; start < n; start += 2 * width) {
-      var a = start, mid = Math.min(start + width, n), b = mid, end = Math.min(start + 2 * width, n)
-      while (a < mid && b < end) to[k++] = compare(from[b], from[a]) < 0 ? from[b++] : from[a++]
-      while (a < mid) to[k++] = from[a++]
-      while (b < end) to[k++] = from[b++]
-    }
-    var swap = from; from = to; to = swap
-  }
-  return from
 }
 
 // Entries already have their metadata/name order; typing only partitions name matches.
@@ -453,19 +443,15 @@ function isUtf8(data) {
   return true
 }
 
-// Bound Text rendering cost for large files. Highlighted markup breaks its lines with <br>.
-// Markup cut into pieces of so many lines. A tag still open at a piece's end is closed there and
-// opened again at the next one's start, so each piece draws on its own as it did in the whole.
+// Markup cut into pieces of so many lines, each drawn on its own: Pygments and styledDiff() close
+// their tags at every newline.
 function pieces(markup, size) {
-  var lines = String(markup).split("<br>"), out = [], open = []
-  for (var i = 0; i < lines.length; i += size) {
-    var body = lines.slice(i, i + size).join("<br>"), opened = open.join("")
-    ;(body.match(/<\/?(?!br>)\w+[^>]*>/g) || []).forEach(function (tag) { if (tag.charAt(1) === "/") open.pop(); else open.push(tag) })
-    out.push(opened + body + open.map(function (tag) { return "</" + tag.match(/\w+/)[0] + ">" }).reverse().join(""))
-  }
+  var lines = String(markup).split("<br>"), out = []
+  for (var i = 0; i < lines.length; i += size) out.push(lines.slice(i, i + size).join("<br>"))
   return out
 }
 
+// Bound Text rendering cost for large files. Highlighted markup breaks its lines with <br>.
 function head(text, lines, br) {
   var t = String(text || ""), b = br || "\n"
   var end = -b.length

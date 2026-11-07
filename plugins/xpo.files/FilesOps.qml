@@ -69,14 +69,17 @@ Item {
   }
   Process {
     id: gauge
-    stdout: SplitParser { onRead: line => { if (root.total > 0) root.progress = Math.min(1, line / root.total) } }
+    property real done: 0
+    stdout: SplitParser { onRead: line => { gauge.done = +line; root.showProgress() } }
   }
   // Against the size of its inputs: one du, so it stops with the job rather than walking on.
+  // Whichever of the two answers last shows the share.
   property real total: 0
   FilesProcess {
     id: totaller
-    onFinished: output => root.total = parseInt(output.trim().split("\n").pop(), 10) || 0
+    onFinished: output => { root.total = parseInt(output.trim().split("\n").pop(), 10) || 0; root.showProgress() }
   }
+  function showProgress() { if (root.total > 0) root.progress = Math.min(1, gauge.done / root.total) }
 
   // Pass paths as arguments to preserve shell metacharacters.
   function guarded(verb, src, dst) {
@@ -119,7 +122,7 @@ Item {
     id: filer
     onStarted: {
       if (!root.op || !root.op.reads) return
-      root.total = 0
+      root.total = gauge.done = 0
       totaller.start(["du", "-scb", "--"].concat(root.op.reads))
       gauge.command = root.gaugeCommand(filer.processId)
       gauge.running = true

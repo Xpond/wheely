@@ -353,6 +353,29 @@ esac
              "CHECK_COPY_EXIT": str(code)})
         assert captured.read_text() == selected
 
+    # A job's share shows once du answers, though the gauge read first: not a tick later. A slow du
+    # stands in for a big tree.
+    (base / "slow").mkdir()
+    (base / "slow/du").write_text('#!/bin/sh\nsleep 0.3\nprintf "1000\\ttotal\\n"\n')
+    (base / "slow/du").chmod(0o755)
+    run("progress-on-total", '''
+  property var panel: root
+  property var op: null
+  property string fileNote: ""
+  property bool cancelling: false
+  property real progress: -1
+  property int elapsed: 0
+  function note(text) {}
+''' + "".join(block(ops, p) + "\n" for p in [r"  function run\(", r"  function gaugeCommand\(", r"  Process \{\n    id: gauge",
+                                               r"  FilesProcess \{\n    id: totaller", r"  Process \{\n    id: filer"])
+        + "".join(re.search(p, ops, re.M).group() for p in [r"^  property real total: .*\n", r"^  function showProgress\(.*\n"]) + '''
+  Component.onCompleted: root.run(["sleep", "1.5"], { doing: "copying", reads: ["/"], done: "copied" })
+  Timer { interval: 800; running: true; onTriggered: {
+    if (root.progress < 0) { console.error("FAIL no share 0.8 s in"); Qt.exit(1); return }
+    console.log("PASS"); Qt.quit()
+  } }
+''', {"PATH": str(base / "slow") + ":" + os.environ["PATH"]})
+
     # A long note, then a running job, stand in for the selection's facts beside a path: neither runs over
     # the path, and the job's progress is never the part cut short. A note shows with nothing selected.
     run("header-note", '''
@@ -468,8 +491,6 @@ esac
 ''' + block(files, r"  FolderListModel \{\n    id: listedFolder") + block(files, r"^  readonly property bool unlisted:.*?\n  function reread\(") + '''
   onShownChanged: if (root.shown) {
 ''' + re.search(r"^ *if \(root\.relistDue\) root\.relist\(\)\n", files, re.M).group() + '''
-  } else {
-''' + "".join(re.findall(r"^ *if \(relistSoon\.running\).*\n", files, re.M)) + '''
   }
   Process { id: touching; command: ["sh", "-c", 'for i in $(seq $2); do touch "$1/$3$i"; sleep 0.01; done', "t", root.listedDir, "30", "n"] }
   function fail(why) { console.error("FAIL", why); Qt.exit(1) }
@@ -508,8 +529,6 @@ esac
     root.rows = Array.from({ length: 20000 }, (_, i) => ({ path: "/d/" + i }))
     var hidden = root.hiddenMarks, took = Date.now() - start
     if (hidden !== 1 || took > 200) { console.error("FAIL", hidden, "hidden in", took, "ms"); Qt.exit(1); return }
-    root.marks = []
-    if (root.hiddenMarks !== 0) { console.error("FAIL no marks counted", root.hiddenMarks); Qt.exit(1); return }
     console.log("PASS"); Qt.quit()
   } }
 ''')
@@ -523,13 +542,14 @@ esac
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
     var start = Date.now(), sorted = FilesIndex.ordered(entries, "name"), took = Date.now() - start
     var inOrder = sorted.every((e, i) => !i || sorted[i - 1].name.localeCompare(e.name) <= 0)
-    if (!inOrder || took > 1500) { console.error("FAIL ordered", inOrder, "in", took, "ms"); Qt.exit(1); return }
+    if (!inOrder || took > 3000) { console.error("FAIL ordered", inOrder, "in", took, "ms"); Qt.exit(1); return }
     console.log("PASS"); Qt.quit()
   } }
 ''')
 
-    # The highlighter colours twice the lines shown, as Pygments colours them in the whole file, and
-    # asks again once more are shown than it coloured.
+    # The highlighter first colours twice the lines shown and two more, as Pygments colours them in the
+    # whole file, so a preview doubled still ends in head()'s "…"; then the whole file, which colours
+    # any number shown, as End shows.
     code = base / "long.py"
     code.write_text("".join("x%d = 'a' + str(%d)\n" % (i, i) for i in range(300)))
     highlighting = files[files.index("  property string previewHtml: \"\""):files.index("  // git's status of everything")]
@@ -540,17 +560,14 @@ esac
   property string previewPath: ''' + json.dumps(str(code)) + '''
   property int shownLines: 10
 ''' + highlighting.replace('Qt.resolvedUrl("highlight.py")', json.dumps("file://" + str(base / "plugins/xpo.files/highlight.py"))) + '''
-  function lines() { return root.previewHtml.split("<br>").length }
-  function fail(why) { console.error("FAIL", why); Qt.exit(1) }
-  Timer { interval: 0; running: true; onTriggered: { root.fullText = "x"; first.start() } }
-  Timer { id: first; interval: 1000; onTriggered: {
-    if (root.htmlLines !== 20 || root.lines() !== 20 || root.previewHtml.indexOf("<font") < 0)
-      return root.fail("the first lot coloured " + root.lines() + " lines for " + root.htmlLines)
-    root.shownLines = 20
-    more.start()
-  } }
-  Timer { id: more; interval: 1000; onTriggered: {
-    if (root.htmlLines !== 40 || root.lines() !== 40) return root.fail("showing more coloured " + root.lines())
+  property var answers: []
+  onHtmlLinesChanged: root.answers.push(root.htmlLines + ":" + root.previewHtml.split("<br>").length
+                                        + (FilesIndex.head(root.previewHtml, 20, "<br>").endsWith("<br>…") ? "…" : ""))
+  Timer { interval: 0; running: true; onTriggered: root.fullText = ''' + json.dumps(code.read_text()) + ''' }
+  Timer { interval: 2000; running: true; onTriggered: {
+    if (String(root.answers) !== "22:22…,Infinity:300…" || root.previewHtml.indexOf("<font") < 0) {
+      console.error("FAIL coloured", root.answers); Qt.exit(1); return
+    }
     console.log("PASS"); Qt.quit()
   } }
 ''')

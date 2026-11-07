@@ -224,6 +224,11 @@ try {
   assert.equal(sh(A.compressCommand(at("-odd dir"), at("-odd dir", "both.zip"), ["a.txt", "sub"])).status, 0)
   assert.deepEqual(sh(["bsdtar", "-tf", at("-odd dir", "both.zip")]).stdout.split("\n").filter(Boolean).sort(), ["a.txt", "sub/", "sub/b.txt"])
   fs.unlinkSync(at("-odd dir", "both.zip"))
+  // A camera's photo goes in as it is, though zip's -n matches case.
+  fs.writeFileSync(at("-odd dir", "P.JPG"), "a".repeat(4096))
+  assert.equal(sh(A.compressCommand(at("-odd dir"), at("-odd dir", "photo.zip"), ["P.JPG"])).status, 0)
+  assert.match(sh(["zipinfo", at("-odd dir", "photo.zip")]).stdout, / stor .*P\.JPG/, "an upper-case photo was squeezed again")
+  fs.unlinkSync(at("-odd dir", "P.JPG")); fs.unlinkSync(at("-odd dir", "photo.zip"))
   fs.mkdirSync(at("out"))
   // An archive of one folder named as it is unwraps; loose files go into a folder named after it.
   fs.renameSync(at("-odd dir.zip"), at("out", "-odd dir.zip"))

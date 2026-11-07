@@ -29,8 +29,13 @@ def lexer_for(name):
 def first_tokens(lexer):
     # Keep lookahead past the cut for comments and heredocs; stop consuming tokens at the cut.
     # Match Pygments' CR/BOM normalization without treating lone CRs as Qt line boundaries.
-    prefix = "\n".join(src.split("\n", lines)[:lines])
-    left = len(prefix.replace("\r\n", "\n").replace("\r", "\n").removeprefix("\ufeff"))
+    # The cut keeps the break after its last line, for the strip below to take rather than a blank
+    # line, and a line more when that strip takes a blank first one.
+    body = src.removeprefix("\ufeff")
+    n = lines + body.startswith(("\n", "\r\n"))
+    parts = body.split("\n", n)
+    prefix = "\n".join(parts[:n]) + "\n" * (len(parts) > n)
+    left = len(prefix.replace("\r\n", "\n").replace("\r", "\n"))
     for token, text in lexer.get_tokens(src):
         yield token, text[:left]
         left -= len(text)

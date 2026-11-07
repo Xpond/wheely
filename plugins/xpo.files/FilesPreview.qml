@@ -265,19 +265,26 @@ Item {
       }
 
       // Code in pieces of pieceLines: one Text lays out its lines in time growing with their square,
-      // so End on a coloured 200 KB file froze the preview for a second.
+      // so End on a coloured 200 KB file froze the preview for a second. The pieces stay, so one whose
+      // markup is unchanged keeps its layout as the preview grows.
       Column {
         id: rendered
         visible: !root.panel.editing && !root.panel.showsMarkdown
+        readonly property var markup: root.panel.showsCode ? FilesIndex.pieces(root.panel.previewBody, root.pieceLines) : []
+        onMarkupChanged: {
+          if (pieceList.count > markup.length) pieceList.remove(markup.length, pieceList.count - markup.length)
+          markup.forEach((m, i) => i < pieceList.count ? pieceList.setProperty(i, "markup", m) : pieceList.append({ markup: m }))
+        }
+        ListModel { id: pieceList }
         Repeater {
-          model: root.panel.showsCode ? FilesIndex.pieces(root.panel.previewBody, root.pieceLines) : []
+          model: pieceList
           delegate: Text {
             id: piece
-            required property string modelData
-            readonly property var lines: modelData.split("<br>")
+            required property string markup
+            readonly property var lines: markup.split("<br>")
             // A piece ending on a blank line still counts it, which StyledText would drop.
             height: piece.lines.length * lineHeight
-            text: modelData
+            text: markup
             color: Commons.Color.menu.text
             opacity: 0.92
             textFormat: Text.StyledText

@@ -162,32 +162,38 @@ Item {
     root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
   }
 
-  // Highlight the settled file's first lines in one Pygments process, twice as many as shown so a
-  // longer preview stays coloured while the next lot is read. Lexing runs from the top, so the first
-  // lines colour as they would in the whole file.
+  // Highlight the settled file in Pygments: first twice the lines shown and two more, so head() finds
+  // a line after them for its "…" (a blank last one reads as the end), then the whole, so scrolling
+  // on and End find it coloured. Lexing runs from the top, so the first lines colour as they would
+  // in the whole file.
   property string previewHtml: ""
-  property int htmlLines: 0
+  // The lines previewHtml holds; without end once it holds the whole file.
+  property real htmlLines: 0
   readonly property string highlightScript:
     decodeURIComponent(String(Qt.resolvedUrl("highlight.py")).replace(/^file:\/\//, ""))
   readonly property bool showsCode: !!root.previewText && !root.showsMarkdown
 
-  function highlight() {
+  function highlight(lines) {
     highlighter.cancel()
     if (!root.fullText || root.showsMarkdown) return
-    highlighter.lines = 2 * root.shownLines
-    highlighter.start(["python3", root.highlightScript, root.previewPath, String(highlighter.lines)])
+    highlighter.lines = lines
+    highlighter.start(["python3", root.highlightScript, root.previewPath, String(lines)])
   }
   FilesProcess {
     id: highlighter
     property int lines: 0
-    onFinished: output => { root.previewHtml = output; root.htmlLines = highlighter.lines }
+    onFinished: output => {
+      var all = root.fullText.split("\n").length
+      root.previewHtml = output
+      root.htmlLines = highlighter.lines < all ? highlighter.lines : Infinity
+      if (highlighter.lines < all) root.highlight(all)
+    }
   }
 
   onFullTextChanged: {
     root.previewHtml = ""
-    root.highlight()
+    root.highlight(2 * root.shownLines + 2)
   }
-  onShownLinesChanged: if (highlighter.lines < 2 * root.shownLines) root.highlight()
 
   // git's status of everything under the listed folder, reread whenever its rows load:
   // marks by entry name for the list, and for a folder's preview.
@@ -416,7 +422,6 @@ Item {
       if (root.relistDue) root.relist()
       root.readChanges()
     } else {
-      if (relistSoon.running) { root.relistDue = true; relistSoon.stop() }
       gitStatus.cancel()
       statusSoon.stop()
       settle.stop()
@@ -710,12 +715,12 @@ Item {
   // A folder entered lists at once. One that changes in bursts, as under a copy, is read again at
   // most every 150 ms, and while the panel is hidden only once it shows.
   property bool relistDue: false
-  Timer { id: relistSoon; interval: 150; onTriggered: root.relist() }
+  Timer { id: relistSoon; interval: 150; onTriggered: if (root.shown) root.relist() }
   function reread() {
     if (listedFolder.status !== FolderListModel.Ready) return
+    root.relistDue = true
     if (!root.entries.length) root.relist()
     else if (root.shown) relistSoon.start()
-    else root.relistDue = true
   }
 
   // FolderListModel lists an unreadable or gone folder as empty and its signals can't tell, so each
