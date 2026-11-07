@@ -61,14 +61,30 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
     shutil.copyfile(plugin / "FilesTip.qml", base / "FilesTip.qml")
     styled = (plugin / "FilesPreview.qml").read_text().replace("Style.font.subtitle", "root.panel.codePx")
     styled = styled.replace("  id: root", "  id: root\n  readonly property real testBodyX: content.mapToItem(root, content.children[0].width + content.spacing, 0).x")
-    handler = styled[styled.index("        onLineLaidOut:", styled.index("id: rendered")):styled.index("      }\n    }\n  }\n\n  Rectangle")]
-    rich = styled.replace("panel.showsCode ? Text.StyledText", "panel.showsCode ? Text.RichText")
-    assert rich != styled and handler
-    (base / "Styled.qml").write_text(styled)
+    # The code's handler, for the rich text to go without; the rich text in one piece, and the
+    # styled in pieces of three lines, so every case crosses where one piece ends and the next begins.
+    handler = re.compile(r"^( *)onLineLaidOut: function \(line\) \{\n.*?^\1\}\n", re.S | re.M).search(styled, styled.index("id: rendered")).group()
+    size = re.compile(r"pieceLines: \d+")
+    rich = size.sub("pieceLines: 1000000", styled.replace("            textFormat: Text.StyledText\n", "            textFormat: Text.RichText\n"))
+    assert rich.count("Text.RichText") == 1 and "root.measure(piece)" in handler and len(size.findall(styled)) == 1
+    (base / "Styled.qml").write_text(size.sub("pieceLines: 3", styled))
     (base / "Rich.qml").write_text(rich.replace(handler, ""))
 
     def run(*command):
         return subprocess.run(command, capture_output=True, text=True, check=True).stdout
+
+    # Closing delimiters beyond the requested lines must still inform the lexer, and the cut keeps the
+    # lines asked for when a blank one starts the file or ends the cut.
+    for name, opening, closing in [("comment.js", "/*", "*/"), ("comment.html", "<!--", "-->"),
+                                    ("heredoc.sh", "cat <<EOF", "EOF")]:
+        for newline in ["\n", "\r\n"]:
+            for lines in [[opening] + ["inside"] * 12, [opening] + ["inside"] * 4 + [""] * 2 + ["inside"] * 6,
+                          ["", opening] + ["inside"] * 11]:
+                path = base / name
+                path.write_text(newline.join(lines + [closing, "after"]), newline="")
+                whole = run("python3", str(plugin / "highlight.py"), str(path), "100")
+                first = run("python3", str(plugin / "highlight.py"), str(path), "6")
+                assert first == "<br>".join(whole.split("<br>")[:6]), (name, repr(newline), lines, first)
 
     cases = []
     for name, text in list(samples.items()) + [(f.name, f.read_text()) for f in files]:
@@ -76,7 +92,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
         path.parent.mkdir(exist_ok=True)
         path.write_text(text, newline="")
         cases.append({"name": name, "text": text, "rich": run("python3", "-c", RICH, str(path)),
-                      "styled": run("python3", str(plugin / "highlight.py"), str(path))})
+                      "styled": run("python3", str(plugin / "highlight.py"), str(path), str(text.count("\n") + 1))})
     (base / "cases.json").write_text(json.dumps(cases))
 
     (base / "shell.qml").write_text('''import QtQuick

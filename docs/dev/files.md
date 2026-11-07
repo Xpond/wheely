@@ -79,10 +79,12 @@ folder you are in; both forms are rooted at `$HOME`.
 **Ordering** is folders first then names, or newest, or largest (`Ctrl+O`). Where the
 filter landed ranks only under name, since under newest a prefix match jumping the
 queue would be the sort lying. Folders are never ordered by size, which for a
-directory counts its listing block rather than its contents.
+directory counts its listing block rather than its contents. `ordered()` shuffles
+before V4's `sort`, which slows badly on input already in another order, as
+FolderListModel's code-point order is to `localeCompare`.
 
 **Reading a file.** The preview follows the selection only once it has stopped moving
-(60 ms, the highlighter's wait), so held arrows do not read and lay out every file
+(60 ms), so held arrows do not read and lay out every file
 they pass. Files over 256 KiB are never read; one that grew past that since listing
 is loaded off the UI thread but never decoded on it (200 MB blocked the shell for
 seconds). A NUL byte in the first kilobyte marks a binary, rather than an extension
@@ -123,11 +125,24 @@ Both panes start at the same height. A line of text sits at the top of its line
 box while a list row sits in the middle of a taller one, so without `dirTopPad`
 the first file in the preview floats above the first file in the list.
 
+**A folder is read again in bursts, not once a file.** Entering one lists it at once.
+After that, each change to the folder's count would snapshot and sort it whole, so
+changes are read at most every 150 ms, and not at all while the panel is hidden: it
+reads the folder once when it shows (`relistDue`).
+
 Only what is near the view is **laid out**. A selection lays out two screens of
 lines; scrolling within a screen of their end doubles that, and `End` lays out
 the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
-Laying out is the cost.
+Laying out is the cost, and one Text lays out its lines in time growing with their
+square, so code is laid out in pieces of 250 lines (`pieces()`). The pieces stay
+from one change to the next, so one whose markup is unchanged keeps its layout and a
+longer preview lays out only what it adds. Pygments closes its tags at every
+newline, so each piece draws on its own; a line separator (U+2028) inside a
+coloured token is the exception, and past a piece's edge the rest of that token is
+plain. Each piece measures its own lines for `onLineLaidOut` and is as tall as its
+lines, since StyledText drops a blank last one. `tests/files-preview.py` lays its
+cases out in pieces of three, so every one crosses an edge.
 
 Marks are read whenever the folder's rows load — which a save also triggers —
 and whenever the browser opens; a short debounce combines duplicate requests,
@@ -180,14 +195,17 @@ paste with collisions, `19` partial paste with failures, anything else failed.
 `op` carries what to say about each outcome, so move, copy, rename and delete
 share one success path and one failure path rather than three of each.
 
-**A long job says so, and can be stopped.** An `op` with `doing` is shown in the
-header for as long as it runs, with its elapsed time; one with `reads` also gets a
-percentage and a bar. That is a small `gauge` shell reading `/proc/<pid>/io`'s `rchar`
-for the job's shell and its live children once a second, against `du -scb` of the
-inputs. A shell takes in each child's count as it reaps it, so a paste of many `cp`s
-counts every one exactly once, and the same number works for `cp`, `mv`, `bsdtar` and
-`zip` with nothing to parse. bsdtar reads a zip's central directory first, so it runs a
-little past the archive's size (68 MB over 9.8 GB with 397k entries); the bar clamps.
+**A long job says so, and can be stopped.** An `op` with `doing` is shown in the header
+for as long as it runs, with its elapsed time; one with `reads` also gets a percentage,
+how much of how much it has read, and a bar. That is a small `gauge` shell reading
+`/proc/<pid>/io`'s `rchar` for the job's shell and its live children
+(`/proc/<pid>/task/<pid>/children`) once a second, with builtins, so only its `sleep`
+forks. It counts against `du -scb` of the inputs, its own process so it stops with the
+job rather than walking on, and whichever of the two answers last shows the share. A
+shell takes in each child's count as it reaps it, so a paste of many `cp`s counts every
+one exactly once, and the same number works for `cp`, `mv`, `bsdtar` and `zip` with
+nothing to parse. bsdtar reads a zip's central directory first, so it runs a little past
+the archive's size (68 MB over 9.8 GB with 397k entries); the bar clamps.
 
 `Ctrl+K` sends `TERM` to the job's shell, then to its children. The shell must survive
 that to clean up, so extract, compress and paste trap it (`STAY` sets `k`): the killed
@@ -333,7 +351,8 @@ string, and any change to the marks disarms it (`onMarkedChanged`) — a `Ctrl`+
 on the row already selected changes the marks without moving the selection, which
 would otherwise leave a Trash armed for a different list.
 
-**A paste is one process**, `pasteCommand()`, for one entry or many. It goes on past
+**A paste is one process**, `pasteCommand()`, for one entry or many, which asks the
+destination's filesystem once rather than once an item. It goes on past
 a name already taken — its own, when pasted where it already is. `17` means every
 name was, so nothing went and the hold stays. `18` means some names collided;
 `19` means some entries succeeded and others failed. Both clear a move hold,
@@ -351,17 +370,21 @@ and reads a running job's gauge.
 
 ## Highlighting and Markdown
 
-Colour comes from pygments, one process per settled selection:
+Colour comes from pygments, one process per settled selection, and a second for the
+rest of a long file:
 
-    python3 highlight.py <path>             one interpreter, style=one-dark
+    python3 highlight.py <path> <lines>     one interpreter, style=one-dark
 
 One interpreter does the lexer lookup and the formatting together; naming the
 lexer with `pygmentize -N` would cost a second Python start and a shell to pipe
-them. A 60 ms debounce means arrowing through a directory does not spawn a
-process per row. Colour is a nicety: without `python3` or pygments the escaped plain
-text stays. It lands a beat after the text (debounce plus interpreter start); caching
-recent results or one long-lived process would be the next step. An image's pixel size
-comes from ImageMagick's `identify`, also optional.
+them. The selection's own 60 ms settle means arrowing through a directory does not spawn
+a process per row. pygments' `get_lexer_for_filename` looks for plugin lexers and
+compiles its ~900 name patterns on every start; `lexer_for()` makes the same choice from
+the built-in table, a plain `*.ext` as a suffix test, and falls back to pygments if that
+table changes shape. Colour is a nicety: without `python3` or pygments the escaped plain
+text stays. It lands a beat after the text (interpreter start); one long-lived process
+would be the next step. An image's pixel size comes from ImageMagick's `identify`, also
+optional.
 
 **The uncoloured file travels through the same markup the coloured one does.**
 Swapping a plain-text item for a marked-up one steps the whole file down the
@@ -379,10 +402,16 @@ printable ASCII. NEL goes in as U+0080, another glyphless control, because Qt
 reads `&#133;` as an ellipsis. `tests/files-preview.py` holds all of it to the
 old rendering pixel for pixel.
 
-`highlight.py` colours the whole file once. The preview shows its first
-`shownLines`: the gutter numbers `head()` of the text, and the markup is cut by
-the same `head()` at its `<br>`s, appending the same `…` line, for the same
-reason: if the two disagree the numbers stop naming the lines beside them.
+`highlight.py` colours the file's first lines, split at `\n` alone as Qt splits
+them: first `2 × shownLines + 2`, so a preview doubled before the rest lands stays
+coloured and still ends in `head()`'s `…` (a blank last line would read as the end),
+then the whole file, so scrolling on and `End` find it coloured. The lexer sees the
+whole source, including closing delimiters past the cut; token consumption and
+formatting stop at the line break that ends it, so those lines colour as they would
+in the whole file, a blank last one included. The preview shows its first
+`shownLines`: the gutter numbers `head()` of the text, and the markup is cut by the
+same `head()` at its `<br>`s, appending the same `…` line, for the same reason: if
+the two disagree the numbers stop naming the lines beside them.
 
 Markdown is rendered by Qt; two things have to be done to the source first.
 

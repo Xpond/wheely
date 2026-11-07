@@ -350,8 +350,9 @@ against this machine's real menu files:
 - every keybinding, read with the wheel's own command, is found by its
   description on a row that runs it
 
-It also notes, without failing, a bar whose slices are not even on the wheel:
-an odd ring has no slice at 3 or 9 o'clock.
+It also notes, without failing, a ring with an odd number of slices, which has
+no slice at 3 or 9 o'clock: the ring saved in `wheel.json`, or without one the
+bar's.
 
 Run it after touching `MenuIndex.js`, and against a new Omarchy release — the
 menu file is upstream's, and a new entry shape is exactly what would slip

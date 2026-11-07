@@ -56,6 +56,9 @@ try {
   const hidden = { deleted: { ".hidden": false, ".folder": true } }
   assert.equal(F.withDeleted([], hidden, repo, "", false).length, 0)
   assert.equal(F.withDeleted([], hidden, repo, "", true).length, 2)
+  // Nothing deleted gives the very list back, so a status landing does not sort the folder again.
+  const listed = [live]
+  assert.equal(F.withDeleted(listed, F.UNCHANGED, repo, "", true), listed, "nothing deleted made a new list")
   console.log("ok: new files, unborn HEAD, literal names and deleted folders have diffs")
 } finally { fs.rmSync(repo, { recursive: true, force: true }) }
 
