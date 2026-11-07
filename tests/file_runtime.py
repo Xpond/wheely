@@ -353,10 +353,10 @@ esac
              "CHECK_COPY_EXIT": str(code)})
         assert captured.read_text() == selected
 
-    # A job's share shows once du answers, though the gauge read first: not a tick later. A slow du
-    # stands in for a big tree.
+    # A job's share shows once du answers, though the gauge read first: not a tick later, and with how
+    # much of how much it has read. A slow du stands in for a 30 GiB tree.
     (base / "slow").mkdir()
-    (base / "slow/du").write_text('#!/bin/sh\nsleep 0.3\nprintf "1000\\ttotal\\n"\n')
+    (base / "slow/du").write_text('#!/bin/sh\nsleep 0.3\nprintf "32212254720\\ttotal\\n"\n')
     (base / "slow/du").chmod(0o755)
     run("progress-on-total", '''
   property var panel: root
@@ -368,10 +368,12 @@ esac
   function note(text) {}
 ''' + "".join(block(ops, p) + "\n" for p in [r"  function run\(", r"  function gaugeCommand\(", r"  Process \{\n    id: gauge",
                                                r"  FilesProcess \{\n    id: totaller", r"  Process \{\n    id: filer"])
-        + "".join(re.search(p, ops, re.M).group() for p in [r"^  property real total: .*\n", r"^  function showProgress\(.*\n"]) + '''
+        + "".join(re.search(p, ops, re.M | re.S).group() for p in [r"^  property real total: .*?\n", r"^  function showProgress\(.*?\n",
+                                                                     r"^  readonly property bool busy: .*?\n", r"^  readonly property string statusTail: .*?cancels\"\n"]) + '''
   Component.onCompleted: root.run(["sleep", "1.5"], { doing: "copying", reads: ["/"], done: "copied" })
   Timer { interval: 800; running: true; onTriggered: {
     if (root.progress < 0) { console.error("FAIL no share 0.8 s in"); Qt.exit(1); return }
+    if (!/^ · [\\d.]+[BKM] of 30G · 0:00 · ctrl\\+k cancels$/.test(root.statusTail)) { console.error("FAIL size", root.statusTail); Qt.exit(1); return }
     console.log("PASS"); Qt.quit()
   } }
 ''', {"PATH": str(base / "slow") + ":" + os.environ["PATH"]})
@@ -395,7 +397,7 @@ esac
     property var settledSel: root.empty ? null : ({ name: "PrintShop-Tools-Windows-x64-phase1.zip" })
     property string fileNote: root.note
     property string fileStatusHead: root.job ? "extracting PrintShop-Tools-Windows-x64-phase1-with-an-even-longer-name.zip" : ""
-    property string fileStatusTail: root.job ? " · 1:20 · ctrl+k cancels" : ""
+    property string fileStatusTail: root.job ? " · 12.6G of 30G · 1:20 · ctrl+k cancels" : ""
     property string filePercent: root.job ? "42%" : ""
     property real fileProgress: root.job ? 0.42 : -1
     property string diffText: ""

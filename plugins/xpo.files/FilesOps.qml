@@ -45,10 +45,12 @@ Item {
   property real progress: -1
   property int elapsed: 0
   readonly property bool busy: !!root.op && !!root.op.doing
-  // The header sets the percentage between the two, in a colour of its own.
+  // The header sets the percentage between the two, in a colour of its own. After it, how much of
+  // how much the job has read, which a big one moves on even while its percentage stands still.
   readonly property string statusHead: root.busy ? root.op.doing : ""
   readonly property string statusTail: !root.busy ? "" : root.cancelling ? " · cancelling"
-    : " · " + Math.floor(root.elapsed / 60) + ":" + String(root.elapsed % 60).padStart(2, "0") + " · ctrl+k cancels"
+    : (root.total > 0 ? " · " + FilesIndex.humanSize(Math.min(gauge.done, root.total)) + " of " + FilesIndex.humanSize(root.total) : "")
+      + " · " + Math.floor(root.elapsed / 60) + ":" + String(root.elapsed % 60).padStart(2, "0") + " · ctrl+k cancels"
   readonly property string percent: root.busy && !root.cancelling && root.progress >= 0 ? Math.round(root.progress * 100) + "%" : ""
   Timer { running: root.busy; interval: 1000; repeat: true; onTriggered: root.elapsed++ }
 

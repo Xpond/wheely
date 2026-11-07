@@ -197,7 +197,7 @@ share one success path and one failure path rather than three of each.
 
 **A long job says so, and can be stopped.** An `op` with `doing` is shown in the
 header for as long as it runs, with its elapsed time; one with `reads` also gets a
-percentage and a bar. That is a small `gauge` shell reading `/proc/<pid>/io`'s `rchar`
+percentage, how much of how much it has read, and a bar. That is a small `gauge` shell reading `/proc/<pid>/io`'s `rchar`
 for the job's shell and its live children (`/proc/<pid>/task/<pid>/children`) once a
 second, with builtins, so only its `sleep` forks. It counts against `du -scb` of the
 inputs, its own process so it stops with the job rather than walking on, and whichever
