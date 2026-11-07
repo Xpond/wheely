@@ -19,6 +19,12 @@ def interrupted(signum, frame):
 signal.signal(signal.SIGTERM, interrupted)
 repo = Path(__file__).resolve().parents[1]
 omarchy = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy"))
+# install.sh keeps Omarchy's own lock once upstream changes it, so a stale patches/orig means no designs.
+for name in ["LockView.qml", "Service.qml"]:
+    installed = (omarchy / "shell/plugins/lock" / name).read_bytes()
+    if installed not in [(repo / part / "plugins/lock" / name).read_bytes() for part in ["patches/orig", "patches/shell"]]:
+        raise SystemExit(f"Omarchy changed plugins/lock/{name}: install.sh will keep its stock lock. "
+                         "Rebase patches/shell onto it and copy it to patches/orig.")
 with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     out = Path(directory)
     home, runtime, stubs = out / "home", out / "runtime", out / "bin"
