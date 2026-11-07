@@ -1,4 +1,4 @@
-// The batched condition script: one pacman query and one run per shared reader answer the stock
+// The batched condition script: one pacman query and one run per known reader answer the stock
 // checks, and every other condition keeps the meaning Bash alone gives it.
 const assert = require("node:assert/strict")
 const fs = require("node:fs")
@@ -15,6 +15,8 @@ stub("pacman", 'echo "$1" >> "$STUBS/pacman.log"; installed=" kitty vim "\n'
   + '[[ $installed == *" $2 "* ]]\n')
 stub("omarchy-default-browser", 'echo browser >> "$STUBS/reads.log"; echo "${TEST_BROWSER:-brave}"\n')
 stub("omarchy-lock-design", '[[ $1 == current ]] && echo meadow\n')
+stub("omarchy-bar", 'echo "bar $*" >> "$STUBS/reads.log"; [[ $* == position ]] && echo top; true\n')
+stub("omarchy-hw-x86", 'echo x86 >> "$STUBS/reads.log"; exit 1\n')
 stub("probe-reader", 'echo probe >> "$STUBS/reads.log"; echo value\n')
 // What a script printed, and which pacman queries and readers it ran.
 function bash(script, fails = "") {
@@ -31,14 +33,21 @@ try {
     both: { label: "Both", action: "b", when: "omarchy-pkg-missing kitty vim" },
     brave: { label: "Brave", action: "b", checked: "[[ \"$(omarchy-default-browser)\" == brave ]]" },
     zen: { label: "Zen", action: "z", checked: "[[ $(omarchy-default-browser) == zen ]]" },
-    quoted: { label: "Quoted", action: "q", when: "[[ \"$(echo ')')\" == ')' ]]" }
+    quoted: { label: "Quoted", action: "q", when: "[[ \"$(echo ')')\" == ')' ]]" },
+    // A reader is asked in subshells and compound checks, and answers once; a setter is no read.
+    barTop: { label: "Top", action: "t", checked: "[[ $(omarchy-bar position) != left && $(omarchy-bar position) != right ]]" },
+    barLeft: { label: "Left", action: "l", checked: "[[ \"$(omarchy-bar position)\" == left ]]" },
+    barSet: { label: "Set", action: "s", when: "omarchy-bar position top" },
+    x86: { label: "X86", action: "x", when: "omarchy-hw-x86" },
+    notX86: { label: "Not x86", action: "n", when: "! omarchy-hw-x86" }
   }, M.lockItems(["rally", "meadow"]))
   // A failed query asks pacman per name, as omarchy-pkg-present does.
   for (const fails of ["", "1"]) {
     const run = bash(M.conditionScript(checks), fails)
-    assert.deepEqual(run.stdout.trim().split("\n").sort(), ["brave:c", "kitty:w", "quoted:w", "steam:w", "style.lockscreen.1:c"])
+    assert.deepEqual(run.stdout.trim().split("\n").sort(), ["barSet:w", "barTop:c", "brave:c", "kitty:w", "notX86:w", "quoted:w", "steam:w", "style.lockscreen.1:c"])
     assert.equal(run.pacman, fails ? "-T\n-Q\n-Q\n-Q\n-Q\n" : "-T\n")
-    assert.equal(run.reads, "browser\n", "a shared reader ran twice")
+    assert.deepEqual(run.reads.trim().split("\n").sort(), ["bar position", "bar position top", "browser", "x86"],
+      "a shared reader ran twice, or a setter was answered from a read")
   }
   const custom = {
     assignment: "probe=$(command -v wheel-test-no-such-command)",
@@ -58,7 +67,7 @@ try {
         `${name} (${field}) changed its result or executed an extra command`)
     }
   }
-  console.log("ok: one pacman query and one read per shared reader; custom conditions keep their Bash meaning")
+  console.log("ok: one pacman query and one read per known reader; custom conditions keep their Bash meaning")
 } finally {
   fs.rmSync(stubs, { recursive: true })
 }
