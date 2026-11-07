@@ -195,16 +195,17 @@ paste with collisions, `19` partial paste with failures, anything else failed.
 `op` carries what to say about each outcome, so move, copy, rename and delete
 share one success path and one failure path rather than three of each.
 
-**A long job says so, and can be stopped.** An `op` with `doing` is shown in the
-header for as long as it runs, with its elapsed time; one with `reads` also gets a
-percentage, how much of how much it has read, and a bar. That is a small `gauge` shell reading `/proc/<pid>/io`'s `rchar`
-for the job's shell and its live children (`/proc/<pid>/task/<pid>/children`) once a
-second, with builtins, so only its `sleep` forks. It counts against `du -scb` of the
-inputs, its own process so it stops with the job rather than walking on, and whichever
-of the two answers last shows the share. A shell takes in each child's count as it
-reaps it, so a paste of many `cp`s counts every one exactly once, and the same number
-works for `cp`, `mv`, `bsdtar` and `zip` with nothing to parse. bsdtar reads a zip's central directory first, so it runs a
-little past the archive's size (68 MB over 9.8 GB with 397k entries); the bar clamps.
+**A long job says so, and can be stopped.** An `op` with `doing` is shown in the header
+for as long as it runs, with its elapsed time; one with `reads` also gets a percentage,
+how much of how much it has read, and a bar. That is a small `gauge` shell reading
+`/proc/<pid>/io`'s `rchar` for the job's shell and its live children
+(`/proc/<pid>/task/<pid>/children`) once a second, with builtins, so only its `sleep`
+forks. It counts against `du -scb` of the inputs, its own process so it stops with the
+job rather than walking on, and whichever of the two answers last shows the share. A
+shell takes in each child's count as it reaps it, so a paste of many `cp`s counts every
+one exactly once, and the same number works for `cp`, `mv`, `bsdtar` and `zip` with
+nothing to parse. bsdtar reads a zip's central directory first, so it runs a little past
+the archive's size (68 MB over 9.8 GB with 397k entries); the bar clamps.
 
 `Ctrl+K` sends `TERM` to the job's shell, then to its children. The shell must survive
 that to clean up, so extract, compress and paste trap it (`STAY` sets `k`): the killed
@@ -376,14 +377,14 @@ rest of a long file:
 
 One interpreter does the lexer lookup and the formatting together; naming the
 lexer with `pygmentize -N` would cost a second Python start and a shell to pipe
-them. The selection's own 60 ms settle means arrowing through a directory does not
-spawn a process per row. pygments' `get_lexer_for_filename` looks for plugin lexers
-and compiles its ~900 name patterns on every start; `lexer_for()` makes the same
-choice from the built-in table, a plain `*.ext` as a suffix test, and falls back to
-pygments if that table changes shape. Colour is a
-nicety: without `python3` or pygments the escaped plain text stays. It lands a beat
-after the text (interpreter start); one long-lived process would be the next step. An image's pixel size
-comes from ImageMagick's `identify`, also optional.
+them. The selection's own 60 ms settle means arrowing through a directory does not spawn
+a process per row. pygments' `get_lexer_for_filename` looks for plugin lexers and
+compiles its ~900 name patterns on every start; `lexer_for()` makes the same choice from
+the built-in table, a plain `*.ext` as a suffix test, and falls back to pygments if that
+table changes shape. Colour is a nicety: without `python3` or pygments the escaped plain
+text stays. It lands a beat after the text (interpreter start); one long-lived process
+would be the next step. An image's pixel size comes from ImageMagick's `identify`, also
+optional.
 
 **The uncoloured file travels through the same markup the coloured one does.**
 Swapping a plain-text item for a marked-up one steps the whole file down the
