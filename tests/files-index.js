@@ -125,7 +125,7 @@ const words = ["a", "alpha", "beta", "Wheel.qml", "space name", "éclair", "long
 const paths = Array.from({ length: 5000 }, (_, i) =>
   "/home/test/" + words[random() % words.length] + "/" + i + "/" + words[random() % words.length]
   + (i % 4 ? "" : "/"))
-const files = M.parseFiles(JSON.stringify(paths))
+const files = M.parseFiles(paths.join("\0"))
 for (const query of ["", "a", "e", "home", "wheel", " WHEEL ", "a beta", "space name", "é", "zzz",
   "/", "beta/", "a/", "/beta", "1/a"])
   for (const limit of [0, 1, 8, 40, 5001])
@@ -138,5 +138,5 @@ for (const query of ["a", "e", "wheel", "a beta"])
     assert.deepEqual(M.fileRows(files, query, limit, "/home/test", false, fileUses), reference(files, query, limit, fileUses))
 assert.deepEqual(M.fileRows(null, "a", 40, "/home/test"), [])
 // A scan parsed in batches is the scan parsed at once, so each batch parses only itself.
-assert.deepEqual(M.parseFiles(JSON.stringify(paths.slice(3000)), M.parseFiles(JSON.stringify(paths.slice(0, 3000)))), files)
+assert.deepEqual(M.parseFiles(paths.slice(3000).join("\0"), M.parseFiles(paths.slice(0, 3000).join("\0"))), files)
 console.log("ok: file search ordering, limits and ties")

@@ -203,16 +203,24 @@ function panels(barIds) {
   return out.concat(OVERLAYS)
 }
 
+// Read-only commands the stock checks ask again and again, each exactly as they ask it.
 var CONDITION_READERS = [
   "omarchy-default-agent", "omarchy-default-browser", "omarchy-default-terminal", "omarchy-default-editor",
-  "omarchy-dns", "omarchy-channel-current", "omarchy-lock-design current", "dell-xps-touchpad-haptics get"
+  "omarchy-default-dictation", "omarchy-dns", "omarchy-channel-current", "omarchy-lock-design current",
+  "dell-xps-touchpad-haptics get", "omarchy-bar position", "omarchy-bar background",
+  "omarchy-bar get omarchy.clock format", "omarchy-bar get omarchy.clock verticalFormat",
+  "omarchy-bar get omarchy.power showPercentage", "omarchy-dock position", "omarchy-dock autohide",
+  "omarchy-hw-x86", "omarchy-hw-laptop", "omarchy-hw-touchpad", "omarchy-hw-touchscreen", "omarchy-hw-hybrid-gpu",
+  "omarchy-hw-dell-xps-haptic-touchpad", "omarchy-hyprland-workspace-layout-default", "omarchy-hyprland-corners",
+  "omarchy-hyprland-window-transparency", "omarchy-toggle-nightlight --status", "omarchy-sudo-docker --configured",
+  "omarchy-shell notifications isDnd"
 ]
 
 // Every `when` and `checked` in one bash script, echoing `<id>:w` or `<id>:c` for each that holds.
 // Asked one at a time the package checks alone take over a second, so one `pacman -T` answers
-// every name they ask about, and known readers in simple comparisons run once.
+// every name they ask about, and simple checks share known readers between custom expressions.
 function conditionScript(items) {
-  var checks = [], names = {}, reads = []
+  var checks = [], names = {}, group = 0
   for (var id in items) {
     var tags = { w: items[id].when, c: items[id].checked }
     for (var tag in tags) {
@@ -220,15 +228,22 @@ function conditionScript(items) {
       var expr = String(tags[tag])
       var asked = /omarchy-pkg-(?:present|missing)((?:[ \t]+[\w@.+-]+)+)/g, m
       while ((m = asked.exec(expr))) m[1].trim().split(/\s+/).forEach(function (n) { names[n] = true })
-      // Only a whole comparison of a known reader and literal/pattern can share its output.
-      // Assignments, guards, quoted shell text and arbitrary commands keep their Bash semantics.
-      var comparison = /^\[\[ ("?)\$\(([\w .-]+)\)\1 == ("[\w .\/-]*"|'[\w .\/-]*'|[\w.*\/-]+) \]\]$/.exec(expr)
-      if (comparison && CONDITION_READERS.indexOf(comparison[2]) >= 0) {
-        var read = comparison[2]
-        if (reads.indexOf(read) < 0) reads.push(read)
-        expr = "[[ " + comparison[1] + "${__read" + reads.indexOf(read) + "}" + comparison[1]
-             + " == " + comparison[3] + " ]]"
-      }
+      // Rewrite only whole comparisons of known readers and literals, or a bare reader check.
+      // Everything else keeps its Bash meaning and ends the group: it may change the environment.
+      var comparisons = []
+      var shape = expr.replace(/("?)\$\(([\w .-]+)\)\1 (==|!=) (\$'(?:\\.|[^'\\])*'|"[^"$`\\]*"|'[^']*'|[\w.*\/-]+)/g,
+        function (match, quote, cmd, op, literal) {
+          var r = CONDITION_READERS.indexOf(cmd)
+          if (r < 0) return match
+          comparisons.push(quote + "$(__read " + group + "." + r + " " + cmd + ")" + quote + " " + op + " " + literal)
+          return "\0"
+        })
+      var bare = /^(! )?([\w .-]+)$/.exec(expr)
+      if (/^\[\[ \0(?: (?:&&|\|\|) \0)* \]\]$/.test(shape))
+        expr = shape.replace(/\0/g, function () { return comparisons.shift() })
+      else if (bare && CONDITION_READERS.indexOf(bare[2]) >= 0)
+        expr = (bare[1] || "") + "__read " + group + "." + CONDITION_READERS.indexOf(bare[2]) + " " + bare[2]
+      else group++
       checks.push("if { " + expr + "; } >/dev/null 2>&1; then echo " + id + ":" + tag + "; fi")
     }
   }
@@ -241,9 +256,13 @@ function conditionScript(items) {
     "case $? in 0|127) for __p in $__missing; do __pkg[$__p]=0; done ;; *) __pkg=() ;; esac",
     "__has() { case ${__pkg[$1]-} in 1) return 0 ;; 0) return 1 ;; esac; pacman -Q \"$1\" &>/dev/null; }",
     "omarchy-pkg-present() { local p; for p; do __has \"$p\" || return 1; done; }",
-    "omarchy-pkg-missing() { local p; for p; do __has \"$p\" || return 0; done; return 1; }"
+    "omarchy-pkg-missing() { local p; for p; do __has \"$p\" || return 0; done; return 1; }",
+    // Files share output and status with $(...) without defining functions under command names.
+    "__memo=${XDG_RUNTIME_DIR:-/tmp}/wheel-conditions.$$",
+    "trap 'rm -f \"$__memo\".*' EXIT",
+    "__read() { local out rc; [[ -e $__memo.$1 ]] || { \"${@:2}\" >\"$__memo.$1.out\"; echo $? >\"$__memo.$1\"; }",
+    "  IFS= read -rd '' out <\"$__memo.$1.out\"; printf %s \"$out\"; read -r rc <\"$__memo.$1\"; return \"$rc\"; }"
   ]
-  for (var r = 0; r < reads.length; r++) head.push("__read" + r + "=$(" + reads[r] + " 2>/dev/null)")
   return head.concat(checks).join("\n")
 }
 
@@ -645,10 +664,6 @@ function startsWord(padded, term) {
   return padded.indexOf(" " + term) !== -1
 }
 
-function wholeWord(padded, term) {
-  return padded.indexOf(" " + term + " ") !== -1
-}
-
 function squash(text) {
   return String(text || "").toLowerCase().replace(NON_WORD, "")
 }
@@ -658,7 +673,9 @@ function search(index, query, limit, uses) {
   var squashed = squash(q)
   // A query of symbols alone has no term to match.
   if (!squashed) return []
-  var terms = q.split(NON_WORD)
+  var terms = q.split(NON_WORD).filter(Boolean)
+  // Padded once per query, not once per row: a term starts a word, or is a whole one.
+  var starts = terms.map(function (t) { return " " + t }), whole = terms.map(function (t) { return " " + t + " " })
   var spaced = q.replace(NON_WORD, " ").trim()
   var hits = []
   for (var i = 0; i < index.length; i++) {
@@ -670,10 +687,9 @@ function search(index, query, limit, uses) {
     var partial = e.kind === KIND.app || e.kind === KIND.window
     var matched = true, inside = false
     for (var t = 0; t < terms.length; t++) {
-      if (!terms[t]) continue
-      if (startsWord(text.keywords, terms[t])) continue
+      if (text.keywords.indexOf(starts[t]) !== -1) continue
       if (partial && text.keywords.indexOf(terms[t]) !== -1) { inside = true; continue }
-      if (text.ident && wholeWord(text.ident, terms[t])) continue
+      if (text.ident && text.ident.indexOf(whole[t]) !== -1) continue
       matched = false; break
     }
     if (!matched) continue
@@ -749,10 +765,10 @@ function subfolderRows(paths, typed, home) {
 
 var NO_FILES = { paths: [], lower: [] }
 
-// A scan batch is a JSON list of exact paths; fd marks directories with trailing slashes.
-// Fold case and find names once per scan.
+// A scan batch is exact paths, each ended by a NUL but the last; fd marks directories with
+// trailing slashes. Fold case and find names once per scan.
 function parseFiles(raw, into) {
-  var batch = raw ? JSON.parse(raw) : []
+  var batch = raw ? raw.split("\0") : []
   var paths = into ? into.paths : batch, lower = into ? into.lower : [], starts = into ? into.starts : []
   var count = into ? paths.length : 0
   for (var i = 0; i < batch.length; i++) {

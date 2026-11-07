@@ -17,7 +17,7 @@ Run from your Omarchy session, `install.sh`:
 - links `plugins/` into `~/.config/omarchy/plugins/` and registers them in
   `~/.config/omarchy/shell.json`
 - appends a marked block (keybinds, layer rules, blur) to `~/.config/hypr/hyprland.lua`
-- links four helpers into `~/.local/bin`
+- links four helpers and a shell-launch wrapper directory into `~/.local/bin`
 - links the lock-screen designs in `lock/` into `~/.local/share/wheely/`
 - patches eight shell files
 - installs a post-update hook, and restarts the shell
@@ -26,6 +26,12 @@ A file or folder of your own where a plugin's link goes stops it before anything
 Rerunning is safe, and `git pull && ./install.sh` updates it. Keep the checkout where it is:
 the hook, plugins and helpers point to it. Run `./revert.sh` before moving or deleting it.
 If it goes missing anyway, the lock screen still locks, without its design.
+
+The shell-launch wrapper delegates to Omarchy's own launcher with jemalloc background
+purging enabled and a one-second decay time. This returns freed search pages while
+the shell is idle. Existing `MALLOC_CONF` options take precedence; the setting applies
+to the shell's process environment, not the whole desktop. Its dedicated directory
+precedes Omarchy on the compositor's command path without reordering other commands. Revert removes the wrapper and managed path configuration.
 
 Video previews need `qt6-multimedia` and `qt6-multimedia-ffmpeg`
 (`sudo pacman -S --needed qt6-multimedia qt6-multimedia-ffmpeg`). The fullsize button opens

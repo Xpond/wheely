@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict")
 const { read, method, keymap } = require("./qml.js")
-const { M, wheelSource } = require("./wheel-source.js")
+const { M, wheelSource, binding } = require("./wheel-source.js")
 
 // The manual is search rows: `help` leads with the whole manual, and a word finds the key for it.
 const manual = read("plugins/xpo.wheel/manual.md")
@@ -108,4 +108,12 @@ assert.deepEqual(calls, ["pin"], "the sheet did not pin")
 key("Key_Escape")
 assert.equal(root.reading, false)
 assert.equal(root.query, "help rename", "Esc lost the search the sheet was opened from")
+// While the sheet shows, nothing else searches, and `/` in its filter starts no file scan; hidden,
+// the sheet does not filter as search is typed.
+const reader = { reading: true, query: "/rename", term: "rename", listing: "", editingRing: false, mode: "", index: rows }
+assert.deepEqual(binding("results", { root: reader, MenuIndex: M }), [], "the hidden results searched")
+assert.equal(binding("mode", { root: reader, MenuIndex: M }), "", "the sheet's filter started a file search")
+const term = read("plugins/xpo.wheel/WheelManual.qml").match(/readonly property string term: (.*)/)[1]
+assert.equal(new Function("sheet", "return " + term)({ visible: false, wheel: { query: "rename" } }), "",
+  "the hidden sheet filtered")
 console.log("ok: the manual is search rows, lists every key Files takes, and shows on one sheet")

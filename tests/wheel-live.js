@@ -66,10 +66,17 @@ check(dead.length === 0, "every row has something to do", dead.map(r => r.label)
 const empty = rows.filter(r => r.node && M.ringSlices(items, r.node.split("."), cond, []).length === 0)
 check(empty.length === 0, "no row drills into an empty ring", empty.map(r => r.id).join(", "))
 
+// The theme and font readers skip the omarchy dispatcher; each must still answer as its route does.
+const wheelQml = fs.readFileSync(path.join(here, "Wheel.qml"), "utf8")
+const readers = [...wheelQml.matchAll(/command: \["(omarchy-(?:theme|font)-(?:list|current))"\]/g)].map(m => m[1])
+const strayed = readers.filter(c => spawnSync(c, { encoding: "utf8" }).stdout
+  !== spawnSync("omarchy", c.replace(/^omarchy-/, "").split("-"), { encoding: "utf8" }).stdout)
+check(readers.length === 4 && strayed.length === 0, "theme and font readers answer as `omarchy theme|font …`",
+      readers.length === 4 ? strayed.join(", ") : `found ${readers.length} of 4 readers`)
+
 // Every keybinding, read with the wheel's own command, is one search away: its description finds
 // a row that runs its command, whether a row of its own or one it joined.
-const bindCommand = JSON.parse(fs.readFileSync(path.join(here, "Wheel.qml"), "utf8")
-  .match(/id: bindList[^]*?command: (\[.*\])/)[1])
+const bindCommand = JSON.parse(wheelQml.match(/id: bindList[^]*?command: (\[.*\])/)[1])
 const binds = M.bindRows(spawnSync(bindCommand[0], bindCommand.slice(1), { encoding: "utf8" }).stdout)
 check(binds.length > 0, `keybindings load (${binds.length} runnable)`, "no records from omarchy-menu-keybindings")
 const fixed = [...M.panelRows([...M.panels(null), ...M.EXTRAS]), ...rows,
