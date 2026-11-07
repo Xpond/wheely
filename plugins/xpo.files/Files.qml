@@ -159,33 +159,40 @@ Item {
   function showAll() { root.shownLines = root.shownText.split("\n").length }
   onPreviewPathChanged: {
     root.fullText = ""; root.utf8 = false; root.rewrites = false; root.previewHtml = ""; root.saving = root.checking = null
-    root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / Style.font.subtitle))
+    root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
   }
 
-  // Highlight the whole settled file once, in one Pygments process; the preview shows its first lines.
+  // Highlight the settled file in Pygments: first twice the lines shown and two more, so head() finds
+  // a line after them for its "…" (a blank last one reads as the end), then the whole, so scrolling
+  // on and End find it coloured. Lexing runs from the top, so the first lines colour as they would
+  // in the whole file.
   property string previewHtml: ""
+  // The lines previewHtml holds; without end once it holds the whole file.
+  property real htmlLines: 0
   readonly property string highlightScript:
     decodeURIComponent(String(Qt.resolvedUrl("highlight.py")).replace(/^file:\/\//, ""))
   readonly property bool showsCode: !!root.previewText && !root.showsMarkdown
 
-  Timer {
-    id: highlightSoon
-    interval: 60
-    onTriggered: {
-      if (!root.fullText || root.showsMarkdown) return
-      highlighter.start(["python3", root.highlightScript, root.previewPath])
-    }
+  function highlight(lines) {
+    highlighter.cancel()
+    if (!root.fullText || root.showsMarkdown) return
+    highlighter.lines = lines
+    highlighter.start(["python3", root.highlightScript, root.previewPath, String(lines)])
   }
-
   FilesProcess {
     id: highlighter
-    onFinished: output => root.previewHtml = output
+    property int lines: 0
+    onFinished: output => {
+      var all = root.fullText.split("\n").length
+      root.previewHtml = output
+      root.htmlLines = highlighter.lines < all ? highlighter.lines : Infinity
+      if (highlighter.lines < all) root.highlight(all)
+    }
   }
 
   onFullTextChanged: {
     root.previewHtml = ""
-    highlighter.cancel()
-    if (root.fullText && !root.showsMarkdown) highlightSoon.restart()
+    root.highlight(2 * root.shownLines + 2)
   }
 
   // git's status of everything under the listed folder, reread whenever its rows load:
@@ -275,7 +282,7 @@ Item {
   readonly property string previewBody:
     root.showsMarkdown ? FilesIndex.airOut(FilesIndex.escapeTags(FilesIndex.flattenLinks(root.previewText)))
     : root.showsDiff ? FilesIndex.styledDiff(root.previewText)
-    : root.showsCode ? (root.previewHtml ? FilesIndex.head(root.previewHtml, root.shownLines, "<br>")
+    : root.showsCode ? (root.previewHtml && root.htmlLines >= root.shownLines ? FilesIndex.head(root.previewHtml, root.shownLines, "<br>")
                                          : FilesIndex.styledCode(root.previewText))
       : ""
   onSelChanged: { if (root.shown) settle.restart(); ops.doomed = "" }
@@ -293,7 +300,7 @@ Item {
       if (root.settledSel && root.settledSel.isDir && !root.settledSel.missing)
         sizer.start(["du", "-sbxD", "--", root.settledSel.path])
       preview.resetScroll()
-      root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / Style.font.subtitle))
+      root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
     }
     root.settledPath = path
     root.diffText = ""
@@ -412,6 +419,7 @@ Item {
     if (root.shown) {
       // Rebuild a preview even when reopening on the same row, and catch changes made meanwhile.
       settle.restart()
+      if (root.relistDue) root.relist()
       root.readChanges()
     } else {
       gitStatus.cancel()
@@ -648,9 +656,12 @@ Item {
   // kept through the filter and dropped with the folder; the verbs take them, or the selection.
   property var marked: ({})
   readonly property var marks: root.listedEntries.filter(e => !e.missing && !!root.marked[e.path])
+  // An object, not a Set: V4 builds a Set of a big folder's paths in quadratic time.
   readonly property int hiddenMarks: {
-    var visible = new Set(root.rows.map(e => e.path))
-    return root.marks.filter(e => !visible.has(e.path)).length
+    if (!root.marks.length) return 0
+    var visible = Object.create(null)
+    root.rows.forEach(e => visible[e.path] = true)
+    return root.marks.filter(e => !visible[e.path]).length
   }
   readonly property var targets: root.marks.length ? root.marks : root.sel ? [root.sel] : []
   function mark(list, on) {
@@ -691,13 +702,25 @@ Item {
     showDirsFirst: true
     showHidden: root.showHidden
     // Ready gates both initial loads and later count changes.
-    onStatusChanged: if (status === FolderListModel.Ready) root.relist()
-    onCountChanged: if (status === FolderListModel.Ready) root.relist()
+    onStatusChanged: root.reread()
+    onCountChanged: root.reread()
   }
   readonly property bool unlisted: !root.entries.length
                                    && (listedFolder.count > 0 || root.unreadable === root.listedDir)
   function relist() {
+    root.relistDue = false
+    relistSoon.stop()
     root.entries = FilesIndex.snapshot(listedFolder, root.listedDir)
+  }
+  // A folder entered lists at once. One that changes in bursts, as under a copy, is read again at
+  // most every 150 ms, and while the panel is hidden only once it shows.
+  property bool relistDue: false
+  Timer { id: relistSoon; interval: 150; onTriggered: if (root.shown) root.relist() }
+  function reread() {
+    if (listedFolder.status !== FolderListModel.Ready) return
+    root.relistDue = true
+    if (!root.entries.length) root.relist()
+    else if (root.shown) relistSoon.start()
   }
 
   // FolderListModel lists an unreadable or gone folder as empty and its signals can't tell, so each

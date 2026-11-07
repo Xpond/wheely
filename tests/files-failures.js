@@ -14,9 +14,9 @@ const run = (argv, env) => spawnSync(argv[0], argv.slice(1), { encoding: "utf8",
 try {
   fs.mkdirSync(at("dest"))
   const root = { panel: { listedDir: at("dest") }, note(text) { this.message = text } }
-  const exited = new Function("root", "gauge", "exitCode", opsSource.match(/onExited: function \(exitCode\) \{([\s\S]*?)\n    \}/)[1])
+  const exited = new Function("root", "gauge", "totaller", "exitCode", opsSource.match(/onExited: function \(exitCode\) \{([\s\S]*?)\n    \}/)[1])
   for (const name of ["pasteCommand", "paste"]) root[name] = method(opsSource, name, { root })
-  root.run = (command, about) => { root.op = about; root.status = run(command).status; exited(root, {}, root.status) }
+  root.run = (command, about) => { root.op = about; root.status = run(command).status; exited(root, {}, { cancel() {} }, root.status) }
   const hold = (names, move = true) => ({ items: names.map(name => ({ name, path: at(name) })), move, name: names.length + " items" })
 
   // Nothing moved: preserve the hold so the failure can be corrected and retried.
@@ -39,7 +39,7 @@ try {
   fs.writeFileSync(at("dest", "went.txt"), "moved"); fs.writeFileSync(at("left.txt"), "move me")
   root.held = hold(["went.txt", "left.txt"])
   root.op = { doing: "moving 2 items", spend: true }; root.cancelling = true
-  exited(root, {}, 130)
+  exited(root, {}, { cancel() {} }, 130)
   root.cancelling = false
   assert.equal(root.message, "2 items cancelled")
   root.paste()

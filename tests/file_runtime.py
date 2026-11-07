@@ -333,6 +333,7 @@ esac
   property bool cancelling: false
   property real progress: -1
   property int elapsed: 0
+  QtObject { id: totaller; function cancel() {} }
   function note(text) { root.fileNote = text }
 ''' + block(ops, r"  function run\(") + block(ops, r"  function copyPath\(") + block(ops, r"  Process {\n    id: filer") + block(ops, r"  Process {\n    id: gauge") + '''
   Component.onCompleted: {
@@ -351,6 +352,31 @@ esac
             {"PATH": str(base) + ":" + os.environ["PATH"], "CHECK_COPY": str(captured),
              "CHECK_COPY_EXIT": str(code)})
         assert captured.read_text() == selected
+
+    # A job's share shows once du answers, though the gauge read first: not a tick later, and with how
+    # much of how much it has read. A slow du stands in for a 30 GiB tree.
+    (base / "slow").mkdir()
+    (base / "slow/du").write_text('#!/bin/sh\nsleep 0.3\nprintf "32212254720\\ttotal\\n"\n')
+    (base / "slow/du").chmod(0o755)
+    run("progress-on-total", '''
+  property var panel: root
+  property var op: null
+  property string fileNote: ""
+  property bool cancelling: false
+  property real progress: -1
+  property int elapsed: 0
+  function note(text) {}
+''' + "".join(block(ops, p) + "\n" for p in [r"  function run\(", r"  function gaugeCommand\(", r"  Process \{\n    id: gauge",
+                                               r"  FilesProcess \{\n    id: totaller", r"  Process \{\n    id: filer"])
+        + "".join(re.search(p, ops, re.M | re.S).group() for p in [r"^  property real total: .*?\n", r"^  function showProgress\(.*?\n",
+                                                                     r"^  readonly property bool busy: .*?\n", r"^  readonly property string statusTail: .*?cancels\"\n"]) + '''
+  Component.onCompleted: root.run(["sleep", "1.5"], { doing: "copying", reads: ["/"], done: "copied" })
+  Timer { interval: 800; running: true; onTriggered: {
+    if (root.progress < 0) { console.error("FAIL no share 0.8 s in"); Qt.exit(1); return }
+    if (!/^ · [\\d.]+[BKM] of 30G · 0:00 · ctrl\\+k cancels$/.test(root.statusTail)) { console.error("FAIL size", root.statusTail); Qt.exit(1); return }
+    console.log("PASS"); Qt.quit()
+  } }
+''', {"PATH": str(base / "slow") + ":" + os.environ["PATH"]})
 
     # A long note, then a running job, stand in for the selection's facts beside a path: neither runs over
     # the path, and the job's progress is never the part cut short. A note shows with nothing selected.
@@ -371,7 +397,7 @@ esac
     property var settledSel: root.empty ? null : ({ name: "PrintShop-Tools-Windows-x64-phase1.zip" })
     property string fileNote: root.note
     property string fileStatusHead: root.job ? "extracting PrintShop-Tools-Windows-x64-phase1-with-an-even-longer-name.zip" : ""
-    property string fileStatusTail: root.job ? " · 1:20 · ctrl+k cancels" : ""
+    property string fileStatusTail: root.job ? " · 12.6G of 30G · 1:20 · ctrl+k cancels" : ""
     property string filePercent: root.job ? "42%" : ""
     property real fileProgress: root.job ? 0.42 : -1
     property string diffText: ""
@@ -432,6 +458,7 @@ esac
     (base / "listing/locked").mkdir(mode=0)
     listing = '''
   property bool showHidden: false
+  property bool shown: true
   property string listedDir: ""
   property var entries: []
   property var dirs: ''' + json.dumps([str(base / "listing" / n) for n in ["#archive", "q?x", "50%25off", "gone", "plain", "locked"]]) + '''
@@ -449,6 +476,103 @@ esac
 '''
     run("files-lists-only-its-folder", listing, expected=(r"QFileSystemWatcher::removePath: path is empty$",
                                                           r"inotify_add_watch\(.*/locked\) failed: \(Permission denied\)$"))
+
+    # A folder entered lists at once; one filling up in a burst, as under a copy, lists again a few
+    # times rather than once a file, and while the panel is hidden not at all until it shows.
+    (base / "bursty").mkdir()
+    for name in ["a", "b"]:
+        (base / "bursty" / name).touch()
+    run("files-relist-in-bursts", '''
+  property bool showHidden: false
+  property bool shown: true
+  property string listedDir: ''' + json.dumps(str(base / "bursty")) + '''
+  property var entries: []
+  property string unreadable: ""
+  property int relists: 0
+  onEntriesChanged: root.relists++
+''' + block(files, r"  FolderListModel \{\n    id: listedFolder") + block(files, r"^  readonly property bool unlisted:.*?\n  function reread\(") + '''
+  onShownChanged: if (root.shown) {
+''' + re.search(r"^ *if \(root\.relistDue\) root\.relist\(\)\n", files, re.M).group() + '''
+  }
+  Process { id: touching; command: ["sh", "-c", 'for i in $(seq $2); do touch "$1/$3$i"; sleep 0.01; done', "t", root.listedDir, "30", "n"] }
+  function fail(why) { console.error("FAIL", why); Qt.exit(1) }
+  Timer { interval: 300; running: true; onTriggered: {
+    if (root.entries.length !== 2) return root.fail("the folder listed " + root.entries.length)
+    root.relists = 0
+    touching.running = true
+    burst.start()
+  } }
+  Timer { id: burst; interval: 1200; onTriggered: {
+    if (root.entries.length !== 32 || root.relists > 8) return root.fail("a burst of 30 listed " + root.entries.length + " in " + root.relists)
+    root.reread()
+    if (!relistSoon.running) return root.fail("no reload queued before closing")
+    root.shown = false
+    root.relists = 0
+    touching.command = ["sh", "-c", 'touch "$1/h1" "$1/h2"', "t", root.listedDir]
+    touching.running = true
+    hidden.start()
+  } }
+  Timer { id: hidden; interval: 500; onTriggered: {
+    if (root.entries.length !== 32 || root.relists) return root.fail("a hidden panel listed again")
+    root.shown = true
+    if (root.entries.length !== 34) return root.fail("showing did not catch up: " + root.entries.length)
+    console.log("PASS"); Qt.quit()
+  } }
+''', expected=(r"QFileSystemWatcher::removePath: path is empty$",))
+
+    # Counting marks the filter hides stays quick in a big folder: V4 builds a Set of 20k paths in
+    # over a second.
+    run("hidden-marks-scale", '''
+  property var rows: []
+  property var marks: [{ path: "/gone" }]
+''' + block(files, r"^  readonly property int hiddenMarks:") + '''
+  Timer { interval: 0; running: true; onTriggered: {
+    var start = Date.now()
+    root.rows = Array.from({ length: 20000 }, (_, i) => ({ path: "/d/" + i }))
+    var hidden = root.hiddenMarks, took = Date.now() - start
+    if (hidden !== 1 || took > 200) { console.error("FAIL", hidden, "hidden in", took, "ms"); Qt.exit(1); return }
+    console.log("PASS"); Qt.quit()
+  } }
+''')
+
+    # Ordering stays quick on a big folder in FolderListModel's code-point order, which V4's own
+    # sort took over three seconds to put in localeCompare's for 100k names.
+    run("order-scale", '''
+  Timer { interval: 0; running: true; onTriggered: {
+    var words = ["IMG", "img", "Screenshot", "report", "Report", "_draft", "notes", "Notes", "a-b", "a_b", "Zeta", "zeta"]
+    var entries = Array.from({ length: 100000 }, (_, i) => ({ name: words[i % 12] + " " + ((i * 7919) % 100000), isDir: false }))
+    entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+    var start = Date.now(), sorted = FilesIndex.ordered(entries, "name"), took = Date.now() - start
+    var inOrder = sorted.every((e, i) => !i || sorted[i - 1].name.localeCompare(e.name) <= 0)
+    if (!inOrder || took > 3000) { console.error("FAIL ordered", inOrder, "in", took, "ms"); Qt.exit(1); return }
+    console.log("PASS"); Qt.quit()
+  } }
+''')
+
+    # The highlighter first colours twice the lines shown and two more, as Pygments colours them in the
+    # whole file, so a preview doubled still ends in head()'s "…"; then the whole file, which colours
+    # any number shown, as End shows.
+    code = base / "long.py"
+    code.write_text("".join("x%d = 'a' + str(%d)\n" % (i, i) for i in range(300)))
+    highlighting = files[files.index("  property string previewHtml: \"\""):files.index("  // git's status of everything")]
+    run("highlight-first-lines", '''
+  property string fullText: ""
+  property string previewText: ""
+  property bool showsMarkdown: false
+  property string previewPath: ''' + json.dumps(str(code)) + '''
+  property int shownLines: 10
+''' + highlighting.replace('Qt.resolvedUrl("highlight.py")', json.dumps("file://" + str(base / "plugins/xpo.files/highlight.py"))) + '''
+  property var answers: []
+  onHtmlLinesChanged: root.answers.push(root.htmlLines + ":" + root.previewHtml.split("<br>").length
+                                        + (FilesIndex.head(root.previewHtml, 20, "<br>").endsWith("<br>…") ? "…" : ""))
+  Timer { interval: 0; running: true; onTriggered: root.fullText = ''' + json.dumps(code.read_text()) + ''' }
+  Timer { interval: 2000; running: true; onTriggered: {
+    if (String(root.answers) !== "22:22…,Infinity:300…" || root.previewHtml.indexOf("<font") < 0) {
+      console.error("FAIL coloured", root.answers); Qt.exit(1); return
+    }
+    console.log("PASS"); Qt.quit()
+  } }
+''')
 
     # A folder selected again, as when the list reloads around it, keeps its preview: its model does
     # not change folder, so nothing would refill it. Another folder with as many entries still fills in.
@@ -478,7 +602,7 @@ esac
   property bool props: false
   property string folderSize: ""
   QtObject { id: sizer; property var sizes: ({}); function cancel() {} function start(command) {} }
-''' + "\n".join([block(files, r"^  function media\("), block(files, r"^  onSettledSelChanged: \{").replace("Style.font.subtitle", "16"),
+''' + "\n".join([block(files, r"^  function media\("), block(files, r"^  onSettledSelChanged: \{").replace("root.lineHeight", "28"),
                  block(files, r"  FolderListModel \{\n    id: childFolder"),
                  block(files, r"^  readonly property bool childUnlisted:")]) + '''
   Timer { interval: 300; running: true; repeat: true; onTriggered: {

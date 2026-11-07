@@ -31,7 +31,13 @@ function ordered(entries, order) {
   var hits = []
   for (var i = 0; i < entries.length; i++) {
     var e = entries[i]
-    hits.push({ entry: e, time: order === "date" ? when(e.modified) : 0 })
+    hits.push({ entry: e, time: order === "date" ? when(e.modified) : 0, at: i })
+  }
+  // V4's sort slows badly on input already in another order, as FolderListModel's code-point
+  // order is to localeCompare (100k names: seconds); shuffled, it never does. Ties keep the
+  // listing's order.
+  for (var k = hits.length - 1; k > 0; k--) {
+    var r = Math.floor(Math.random() * (k + 1)), swap = hits[k]; hits[k] = hits[r]; hits[r] = swap
   }
   hits.sort(function (a, b) {
     // Deleted rows arrive with git's status, after the rest; last, they move no selection.
@@ -41,7 +47,7 @@ function ordered(entries, order) {
     if (order === "date") rank = b.time - a.time
     // Folder metadata size does not represent its contents.
     else if (order === "size" && !a.entry.isDir) rank = b.entry.size - a.entry.size
-    return rank || a.entry.name.localeCompare(b.entry.name)
+    return rank || a.entry.name.localeCompare(b.entry.name) || a.at - b.at
   })
   var out = []
   for (var j = 0; j < hits.length; j++) out.push(hits[j].entry)
@@ -312,11 +318,14 @@ function withRoots(entries, dir, home, folders) {
   }))
 }
 
-// Keep deleted files and their missing parent folders reachable in the existing list.
+// Keep deleted files and their missing parent folders reachable in the existing list. Nothing
+// deleted gives the same list back, so a git status landing does not sort the folder again.
 function withDeleted(entries, status, dir, under, hidden) {
-  var out = entries.slice(), seen = Object.create(null), deleted = status.deleted
+  var deleted = status.deleted, names = Object.keys(deleted)
+  if (!names.length) return entries
+  var out = entries.slice(), seen = Object.create(null)
   entries.forEach(function (e) { seen[e.name] = true })
-  Object.keys(deleted).forEach(function (name) {
+  names.forEach(function (name) {
     if (seen[name] || (!hidden && name.charAt(0) === ".")) return
     out.push({ name: name, path: dir.replace(/\/$/, "") + "/" + (under ? under + "/" : "") + name,
                isDir: deleted[name], size: 0, modified: null, missing: true })
@@ -432,6 +441,14 @@ function isUtf8(data) {
         || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) return false
   }
   return true
+}
+
+// Markup cut into pieces of so many lines, each drawn on its own: Pygments and styledDiff() close
+// their tags at every newline.
+function pieces(markup, size) {
+  var lines = String(markup).split("<br>"), out = []
+  for (var i = 0; i < lines.length; i += size) out.push(lines.slice(i, i + size).join("<br>"))
+  return out
 }
 
 // Bound Text rendering cost for large files. Highlighted markup breaks its lines with <br>.

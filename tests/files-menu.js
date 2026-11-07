@@ -224,6 +224,11 @@ try {
   assert.equal(sh(A.compressCommand(at("-odd dir"), at("-odd dir", "both.zip"), ["a.txt", "sub"])).status, 0)
   assert.deepEqual(sh(["bsdtar", "-tf", at("-odd dir", "both.zip")]).stdout.split("\n").filter(Boolean).sort(), ["a.txt", "sub/", "sub/b.txt"])
   fs.unlinkSync(at("-odd dir", "both.zip"))
+  // A camera's photo goes in as it is, though zip's -n matches case.
+  fs.writeFileSync(at("-odd dir", "P.JPG"), "a".repeat(4096))
+  assert.equal(sh(A.compressCommand(at("-odd dir"), at("-odd dir", "photo.zip"), ["P.JPG"])).status, 0)
+  assert.match(sh(["zipinfo", at("-odd dir", "photo.zip")]).stdout, / stor .*P\.JPG/, "an upper-case photo was squeezed again")
+  fs.unlinkSync(at("-odd dir", "P.JPG")); fs.unlinkSync(at("-odd dir", "photo.zip"))
   fs.mkdirSync(at("out"))
   // An archive of one folder named as it is unwraps; loose files go into a folder named after it.
   fs.renameSync(at("-odd dir.zip"), at("out", "-odd dir.zip"))
@@ -311,6 +316,12 @@ trashing.remove([two[0]]); trashing.remove(two)
 assert.deepEqual([trashing.doomed, trashed.length], ["/d/a\n/d/b", 0], "a different list confirmed the armed one")
 trashing.remove(two)
 assert.deepEqual(trashed.pop(), [["gio", "trash", "--", "/d/a", "/d/b"], "trashed 2 items"])
-trashing.copyPath(two)
-assert.deepEqual(trashed.pop(), [["sh", "-c", 'printf %s "$1" | wl-copy', "files", "/d/a\n/d/b"], "copied 2 paths"])
+// Copied as the clipboard gets them, cat standing in for wl-copy: one to a line, past the 128 KiB
+// Linux allows any one argument.
+const copied = list => { trashing.copyPath(list); const [c, done] = trashed.pop()
+  return [String(spawnSync(c[0], [c[1], c[2].replace("wl-copy", "cat"), ...c.slice(3)]).stdout), done] }
+assert.deepEqual(copied(two), ["/d/a\n/d/b", "copied 2 paths"])
+assert.deepEqual(copied([two[0]]), ["/d/a", "copied /d/a"])
+const longList = Array.from({ length: 3000 }, (_, i) => ({ path: "/d/" + String(i).padStart(47, "x"), name: "" + i }))
+assert.equal(copied(longList)[0], longList.map(e => e.path).join("\n"), "3000 paths did not copy")
 console.log("ok: trash arms for exactly its list, and many paths copy one to a line")

@@ -39,7 +39,7 @@ try {
   fs.mkdirSync(at("bin"))
   const stub = (name, body) => fs.writeFileSync(at("bin", name), "#!/bin/sh\n" + body + "\nexec sleep 30\n", { mode: 0o755 })
   stub("bsdtar", 'mkdir "$4/partial" && cat "$2" > "$4/partial/copy"')
-  stub("zip", 'printf partial > "$2"')
+  stub("zip", 'for a do case $a in *.zip) printf partial > "$a";; esac; done')
   stub("cp", 'cat "$3" > "$4"')
 
   // Extract: the scratch folder goes, nothing lands, and the gauge has read the whole archive.
@@ -49,11 +49,9 @@ try {
   const scratch = () => fs.readdirSync(at("x")).find(n => n.startsWith(".extract-"))
   let line = ""
   assert.notEqual(cancelled(A.extractCommand(archive, at("x", "big")), () => scratch() && fs.existsSync(at("x", scratch(), "partial", "copy")) && fs.statSync(at("x", scratch(), "partial", "copy")).size === 3000000,
-    pid => { line = String(spawnSync(gaugeCommand(pid, [archive])[0], gaugeCommand(pid, [archive]).slice(1), { timeout: 1500 }).stdout).split("\n")[0] }), 0)
+    pid => { line = String(spawnSync(gaugeCommand(pid)[0], gaugeCommand(pid).slice(1), { timeout: 1500 }).stdout).split("\n")[0] }), 0)
   assert.deepEqual(fs.readdirSync(at("x")), ["big.zip"], "a cancelled extract left files behind")
-  const [done, total] = line.split(" ").map(Number)
-  assert.equal(total, 3000000)
-  assert.ok(done >= total && done < total * 1.05, "the gauge read " + line)
+  assert.ok(+line >= 3000000 && +line < 3000000 * 1.05, "the gauge read " + line)
 
   // Compress: the half-written archive goes.
   fs.mkdirSync(at("c")); fs.writeFileSync(at("c", "a.txt"), "a")
