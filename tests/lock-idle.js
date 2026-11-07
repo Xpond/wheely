@@ -15,7 +15,7 @@ const scope = { Date: { now: () => now }, lockRequested: true, waking: false, un
   pauseFingerprint() {}, resumeFingerprint() {}, nudgeFingerprint() {},
   wakeProcess: { running: false }, blankProcess: { running: false },
   unlockTimer: { starts: 0, restart() { this.starts++ } },
-  idleBlankTimer: { restart() { blankAt = now + this.interval }, stop() { blankAt = 0 } } }
+  idleBlankTimer: { idleMs: 5000, resumeMs: 15000, restart() { blankAt = now + this.interval }, stop() { blankAt = 0 } } }
 const display = { loadBackground: true, driving: false, tell(name) { if (name === "play") plays++ } }
 Object.defineProperty(display, "blanked", { get: () => hidden })
 vm.createContext(display)
@@ -25,7 +25,7 @@ Object.defineProperty(scope, "blanked", { get: () => hidden, set: value => {
   vm.runInContext(view.match(/^  onBlankedChanged: (.+)$/m)[1], display)
 } })
 scope.root = scope
-for (const key of ["interval", "armedAt"])
+for (const key of ["interval", "armedAt", "resumeMs"])
   Object.defineProperty(scope, key, { get: () => scope.idleBlankTimer[key] })
 for (const name of ["armBlankTimer", "runWake", "finishWake", "runBlank", "wakeOnInput", "driveOffThenUnlock"])
   method(source, name, scope)
@@ -69,7 +69,7 @@ scope.armBlankTimer()
 now = blankAt + 10000
 vm.runInContext(trigger, scope)
 assert.equal(scope.blanked, false, "resuming from suspend blanked immediately")
-assert.equal(blankAt - now, 5000, "resume did not restart the shared timeout")
+assert.equal(blankAt - now, 15000, "resume did not give the panel time to light")
 scope.authenticatingPassword = true
 now = blankAt
 vm.runInContext(trigger, scope)

@@ -187,10 +187,6 @@ fi
 (( ${#rebased[@]} )) && printf 'rebased onto new upstream: %s\n' "${rebased[*]}"
 (( ${#applied[@]} )) && printf 'installed: %s\n' "${applied[*]}"
 (( ${#applied[@]} + ${#conflicts[@]} + ${#foreign[@]} + ${#failed[@]} + ${#untested[@]} )) || echo "already up to date"
-if (( ${#untested[@]} )); then
-  echo "Lock screen left as Omarchy's: wheely is not yet updated for Omarchy $VERSION. Later: git pull && ./install.sh"
-  command -v notify-send >/dev/null && notify-send "wheely" "Lock screen left as Omarchy's until wheely supports Omarchy $VERSION"
-fi
 
 broken=("${conflicts[@]}" "${foreign[@]}" "${held[@]}" "${failed[@]}")
 if (( ${#broken[@]} )); then
@@ -202,12 +198,18 @@ if (( ${#broken[@]} )); then
   (( ${#held[@]} )) && msg+=("Held back so the lock screen's files stay a matching pair: ${held[*]}")
   alert "${msg[@]}"
 else
-  # Critical toasts outlive restarts, so archive a failed run's one as if dismissed; the restart drops it.
-  notes=~/.local/state/omarchy/notifications
-  for n in "$notes"/*.json; do
-    jq -e '.summary == "wheely" and (.body | startswith("Not patched:"))' "$n" &>/dev/null &&
-      mkdir -p "$notes/history" && mv "$n" "$notes/history/"
-  done
+  # Toasts outlive restarts, so dismiss earlier runs' through the shell that owns them, and wait for it
+  # to save that before the restart below, or it would bring them back.
+  if omarchy-notification-dismiss wheely &>/dev/null; then
+    for _ in $(seq 20); do
+      jq -e 'any(.[]; .summary == "wheely")' ~/.local/state/omarchy/notifications/live.json &>/dev/null || break
+      sleep 0.1
+    done
+  fi
+fi
+if (( ${#untested[@]} )); then
+  echo "Lock screen left as Omarchy's: wheely is not yet updated for Omarchy $VERSION. Later: git pull && ./install.sh"
+  command -v notify-send >/dev/null && notify-send "wheely" "Lock screen left as Omarchy's until wheely supports Omarchy $VERSION"
 fi
 
 omarchy restart shell || { alert "Could not restart Omarchy shell"; exit 1; }
