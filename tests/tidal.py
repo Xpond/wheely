@@ -44,15 +44,16 @@ contrast = (luminance(palette["selection_background"]) + 0.05) / (luminance(pale
 assert contrast >= 4.5, ("selection", contrast)
 print("ok: text, accent, terminal colors, secondary text, and selections contrast at least 4.5:1", flush=True)
 
-wallpapers = sorted((theme / "backgrounds").glob("*.jpg"))
+wallpapers = sorted((theme / "backgrounds").glob("0[1-9]-*.jpg"))
 assert len(wallpapers) == 3
 for wallpaper in wallpapers:
     width, height = map(int, subprocess.check_output(
         ["magick", "identify", "-format", "%w %h", str(wallpaper)], text=True).split())
     assert width >= 3840 and height >= 2160 and 1.7 < width / height < 1.85
-posters = sorted((theme / "backgrounds").glob("*.png"))
-assert [p.name for p in posters] == ["00-living-coast-animated.png", "00-muted-coast-animated.png"]
-assert all(struct.unpack(">II", p.read_bytes()[16:24]) == (3840, 2160) for p in posters)
+posters = sorted((theme / "backgrounds").glob("00-*"))
+assert [p.name for p in posters] == ["00-living-coast-animated.jpg", "00-muted-coast-animated.jpg"]
+assert all(subprocess.check_output(["magick", "identify", "-format", "%w %h", str(p)], text=True) == "3840 2160"
+           for p in posters)
 print("ok: three native 4K-or-larger wallpapers and two animated coast posters", flush=True)
 
 # Run Omarchy's real generator against a scratch staging directory, never the user's next theme.
@@ -145,12 +146,12 @@ for variant in ["colorful", "muted"]:
               for n in [148, 152]}
     assert struct.unpack(">II", (capture / "animated-4k.png").read_bytes()[16:24]) == (3840, 2160)
     # Setting the theme wipes in the poster, then the live coast takes over from 148s: a stale poster jumps.
-    poster = theme / "backgrounds" / f"00-{'muted' if variant == 'muted' else 'living'}-coast-animated.png"
+    poster = theme / "backgrounds" / f"00-{'muted' if variant == 'muted' else 'living'}-coast-animated.jpg"
     compare = subprocess.run(["magick", "compare", "-metric", "RMSE", str(poster), str(capture / "animated-4k.png"),
                               "null:"], capture_output=True, text=True)
     mismatch = float(compare.stderr.split("(")[1].split(")")[0])
     assert mismatch < 0.005, (f"{poster.name} is not the coast's first frame ({mismatch:.4f}); refresh it with "
-                              f"magick {capture / 'animated-4k.png'} -alpha off {poster}")
+                              f"magick {capture / 'animated-4k.png'} -alpha off -sampling-factor 4:4:4 -quality 95 {poster}")
     change = sum(abs(a - b) for a, b in zip(frames[148], frames[152])) / len(frames[148])
     assert change > 0.67, "the water does not move"
     pixel = lambda x, y: frames[148][(y * 1920 + x) * 3:(y * 1920 + x) * 3 + 3]

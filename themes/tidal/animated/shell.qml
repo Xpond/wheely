@@ -13,8 +13,9 @@ Scope {
   property string background: ""
   property bool tidalTheme: false
   property string lastStatic: stateDir + "/theme/backgrounds/01-shoreline.jpg"
-  readonly property bool muted: background.endsWith("/00-muted-coast-animated.png")
-  readonly property bool animated: tidalTheme && (muted || background.endsWith("/00-living-coast-animated.png"))
+  // By name, any extension: a copy staged before the posters became JPEGs still animates.
+  readonly property bool muted: /\/00-muted-coast-animated\.\w+$/.test(background)
+  readonly property bool animated: tidalTheme && (muted || /\/00-living-coast-animated\.\w+$/.test(background))
   onTidalThemeChanged: backgroundRefresh.restart()
 
   // Watch the directory: watching the image misses replacement of its symlink.
