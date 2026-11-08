@@ -14,7 +14,8 @@ Item {
   property alias filterSlot: filter
 
   readonly property var rows: sheet.wheel.manualRows.filter(function (r) { return !!r.section })
-  readonly property string term: sheet.wheel.query.trim()
+  // Hidden, the sheet ignores the typing search does.
+  readonly property string term: sheet.visible ? sheet.wheel.query.trim() : ""
   // Rows by what they say: a model hands each delegate its own copy, so identity is no test.
   function idOf(row) { return row.section + "\n" + row.keys + "\n" + row.label }
   readonly property var found: sheet.term ? MenuIndex.search(sheet.rows, sheet.term, sheet.rows.length, {}).map(sheet.idOf) : []

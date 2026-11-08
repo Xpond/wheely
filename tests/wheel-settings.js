@@ -32,7 +32,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     ["SUPER + A", "Custom", "", "Off", "Home + 1", "2", "57", "57"])
   // Either animated theme exposes the shared pause key, including when installed alone.
   const wh = { shortcut: "SUPER + A", pauseKey: "ALT + P", uses: {}, folders: [], skipped: [], themeText: "White\n" }
-  derive(wh, "animatedThemeInstalled", "settingRows")
+  derive(wh, "animatedThemeInstalled", "picks", "settingRows")
   assert.equal(wh.settingRows.some(r => r.setting === "pause"), false, "the pause row showed without an animated theme")
   for (const themes of ["Tidal\nWhite\n", "Wheelie\nWhite\n", "Tidal\nWheelie\nWhite\n"]) {
     wh.themeText = themes
@@ -96,7 +96,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   // Forget picks asks again: Enter forgets every pick; Esc or Backspace keeps them; other keys wait.
   const usesFile = { raw: "", setText(raw) { this.raw = raw } }
   const fg = { editing: "", uses: { "system.lock": 3, "file:/a": 1 } }
-  derive(fg, "editValue")
+  derive(fg, "picks", "editValue")
   for (const name of ["edit", "forgetPicks"]) fg[name] = method(wheelSource, name, { root: fg, usesFile })
   const forgetKey = keymap("plugins/xpo.wheel/MenuKeys.js", fg)
   fg.edit({ setting: "forget" })
@@ -106,7 +106,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     fg.edit({ setting: "forget" }); forgetKey(key)
     assert.deepEqual([fg.editing, Object.keys(fg.uses).length, usesFile.raw], ["", 2, ""], key + " forgot the picks")
   }
-  assert.equal(binding("settingRows", { root: { ...fg, folders: [], skipped: [] }, MenuIndex: M })
+  assert.equal(binding("settingRows", { root: { ...fg, picks: fg.picks, folders: [], skipped: [] }, MenuIndex: M })
     .find(r => r.setting === "forget").trail, "2",
     "the forget row miscounted the picks")
   fg.edit({ setting: "forget" }); forgetKey("Key_Return")

@@ -31,7 +31,7 @@ const shift = 1 << 25, ctrl = 1 << 26
   assert.deepEqual(binding("results", { root: bare, MenuIndex: M }).map(r => r.path), ["/home/test/b/", "/home/test/a"])
   // `/` search hands the wheel's picks over: a file opened before leads a shorter name.
   const picker = { listing: "", mode: "file", term: "a", resultLimit: 40, home: "/home/test",
-    files: M.parseFiles(JSON.stringify(["/home/test/ab", "/home/test/abc"])), uses: { "file:/home/test/abc": 1 } }
+    files: M.parseFiles(["/home/test/ab", "/home/test/abc"].join("\0")), uses: { "file:/home/test/abc": 1 } }
   picker.fileResults = M.fileRows(picker.files, picker.term, 40, picker.home, false, picker.uses)
   assert.deepEqual(binding("results", { root: picker, MenuIndex: M }).map(r => r.label), ["abc", "ab"])
 

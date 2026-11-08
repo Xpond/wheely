@@ -34,7 +34,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     for (const name of names) fs.writeFileSync(path.join(odd, name), "")
     const out = require("node:child_process").execFileSync("python3",
       ["-S", "-E", path.join(__dirname, "../plugins/xpo.wheel/scan.py"), ...M.scanCommand([odd], [], "/nowhere")])
-    const scanned = out.toString("utf8").split("\0").filter(Boolean).reduce((into, batch) => M.parseFiles(batch, into), M.parseFiles(""))
+    const scanned = out.toString("utf8").split("\0\0").filter(Boolean).reduce((into, batch) => M.parseFiles(batch, into), M.parseFiles(""))
     assert.deepEqual(scanned.paths.slice().sort(), names.map(n => path.join(odd, n)).sort(), "a scanned path was altered")
     const picked = M.fileRows(scanned, "report.txt ", 40, "/nowhere").map(r => r.path)
     assert.ok(picked.includes(path.join(odd, "report.txt ")) && new Set(picked).size === picked.length,
@@ -45,8 +45,8 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
 
   // Typing suggests: names and folders under home to skip, from the scan, and subfolders outside home to
   // search. A name starts with what is typed, and is offered once however many folders share it.
-  const files = M.parseFiles(JSON.stringify(["/home/test/Android/", "/home/test/Android/README", "/mnt/android/", "/home/test/p/target/",
-    "/home/test/q/target/", "/home/test/targets/", "/home/test/star/", "/home/test/target.txt", "/mnt/target/", "/home/test/tz/"]))
+  const files = M.parseFiles(["/home/test/Android/", "/home/test/Android/README", "/mnt/android/", "/home/test/p/target/",
+    "/home/test/q/target/", "/home/test/targets/", "/home/test/star/", "/home/test/target.txt", "/mnt/target/", "/home/test/tz/"].join("\0"))
   assert.deepEqual(M.fileRows(files, "andr", 40, home, true).map(r => r.path), ["/home/test/Android/"])
   const names = typed => M.fileSearch([{ files }], typed, true, home, {}).filter(r => r.trail === "anywhere").map(r => r.label)
   assert.deepEqual(names("tar"), ["target", "targets"])
@@ -58,11 +58,11 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
   assert.deepEqual([M.listEntry("/home/test/Android/", home), M.listEntry("/mnt/share/", home)], ["~/Android", "/mnt/share"])
 
   // Late home batches win equal ties; appending never duplicates earlier matches.
-  const scans = [{ files: M.parseFiles("") }, { files: M.parseFiles(JSON.stringify(["/mnt/target/"])) }]
+  const scans = [{ files: M.parseFiles("") }, { files: M.parseFiles(["/mnt/target/"].join("\0")) }]
   assert.deepEqual(M.fileSearch(scans, "tar", false, home, {}).map(r => r.path), ["/mnt/target/"])
-  M.parseFiles(JSON.stringify([home + "/target/"]), scans[0].files)
+  M.parseFiles([home + "/target/"].join("\0"), scans[0].files)
   M.fileSearch(scans, "tar", false, home, {})
-  M.parseFiles(JSON.stringify([home + "/targets/"]), scans[0].files)
+  M.parseFiles([home + "/targets/"].join("\0"), scans[0].files)
   assert.deepEqual(M.fileSearch(scans, "tar", false, home, {}).map(r => r.path),
     [home + "/target/", "/mnt/target/", home + "/targets/"])
   assert.deepEqual(M.fileSearch(scans, "targets", true, home, {}).map(r => r.label), ["targets", "targets"])

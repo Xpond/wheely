@@ -9,6 +9,8 @@ import qs.Ui
 Item {
   id: stack
   property var wheel: null
+  // What a card out of rows shows: one row, so typing leaves hidden cards alone.
+  readonly property var blank: ({ icon: "", label: "", trail: "" })
 
   anchors.top: parent.verticalCenter
   anchors.topMargin: stack.wheel.searchHeight / 2 + Style.spacing.panelGap
@@ -60,17 +62,20 @@ Item {
       font.pixelSize: Style.font.body
     }
 
+    // The cards are made once and show whichever rows are in view: a new card per changed row
+    // cost most of a keystroke, and every card on each scrolling step.
     Repeater {
-      model: stack.wheel.beads
+      model: stack.wheel.resultCap
       component ResultCard: BorderSurface {
         id: resultCard
         required property int index
-        required property var modelData
+        readonly property var modelData: stack.wheel.beads[resultCard.index] || stack.blank
         readonly property int row: stack.wheel.resultTop + index
         readonly property bool active: stack.wheel.resultIndex === resultCard.row
         // A setting row being changed says what saving would do; the field shows what was pressed.
         readonly property bool editing: !!resultCard.modelData.setting && resultCard.modelData.setting === stack.wheel.editing
 
+        visible: resultCard.index < stack.wheel.beads.length
         width: stack.wheel.resultWidth
         height: stack.wheel.resultHeight
         radius: height / 2
@@ -96,7 +101,7 @@ Item {
           spacing: Style.spacing.controlGap
 
           readonly property real textBudget:
-            Math.max(0, width - Style.font.iconLarge - spacing * 2 - chevron.width
+            Math.max(0, width - Style.font.iconLarge - spacing * 2 - (resultCard.modelData.node ? chevron.width : 0)
                         - (valueField.visible ? valueField.width + spacing : 0)
                         - (valueSlider.visible ? valueSlider.width + spacing : 0))
 
@@ -158,8 +163,8 @@ Item {
           Text {
             id: chevron
             anchors.verticalCenter: parent.verticalCenter
-            width: resultCard.modelData.node ? implicitWidth + parent.spacing : 0
             visible: !!resultCard.modelData.node
+            rightPadding: parent.spacing
             text: "\u203a"
             color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
             opacity: 0.5

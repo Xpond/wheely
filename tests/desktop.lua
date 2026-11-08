@@ -1,9 +1,10 @@
-local binds, layers, blur, windows = {}, {}, false, {}
+local binds, layers, blur, windows, environment = {}, {}, false, {}, {}
 -- The key and blur the files under $HOME should produce, and the pause key for an animated theme.
 -- A blur of "user" is the backdrop's blur under a user config that already blurs windows.
 local key, blurred, pause = arg[2] or "SUPER + A", arg[3] ~= "off", arg[4]
 local user_blur = arg[3] == "user"
 hl = {
+  env = function(key, value) environment[key] = value end,
   dsp = { global = function(id) return { global = id } end },
   unbind = function(key) binds[key] = {} end,
   config = function(cfg) blur = cfg.decoration.blur.enabled end,
@@ -16,6 +17,13 @@ o = { bind = function(key, label, command, options)
 end }
 
 dofile(arg[1])
+local shell_bin = os.getenv("HOME") .. "/.local/bin/wheely-shell"
+local rest = {}
+for entry in os.getenv("PATH"):gmatch("[^:]+") do
+  if entry ~= shell_bin then table.insert(rest, entry) end
+end
+assert(environment.PATH == shell_bin .. ":" .. table.concat(rest, ":"),
+  "the shell wrapper must precede Omarchy without reordering other commands")
 
 assert(#binds[key] == 1 and binds[key][1].command.global == "xpo.wheel:toggle",
   "wheel shortcut must deliver press/release directly without a subprocess")

@@ -22,6 +22,7 @@ For focused checks, run these entry points from the repository root:
 | `python3 tests/lock-process.py` | The lock worker against a simulated compositor and authentication: locking, status, designs, wake and fallback. |
 | `python3 tests/mycelium-render.py`, `python3 tests/meadow-render.py` | Offscreen renders of those two designs, checked pixel by pixel; `lock-render.py` renders every design natively. |
 | `python3 tests/desktop.py` | Hyprland setup by `scripts/user-config.py`: personal edits survive install/revert, interrupted or rejected installs roll back, and the shipped Lua (run through `desktop.lua`) binds the saved wheel key, and the wallpaper pause key only while an animated theme is active. `install.py` reuses its `verify`, and `install_fixture.py` its `prepare`. |
+| `python3 tests/shell-launch.py` | The managed launcher preserves upstream supervision, arguments and exit status, and gives explicit allocator settings precedence over its defaults. |
 
 Each JavaScript suite can also run alone, for example
 `node tests/wheel-ring.js`. `qml.js` and `wheel-source.js` contain shared

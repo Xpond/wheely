@@ -1,5 +1,4 @@
-"""Frame fd's NUL-ended paths in bounded JSON-list batches for Quickshell's SplitParser."""
-import json
+"""Frame fd's NUL-ended paths in bounded batches for Quickshell's SplitParser."""
 import os
 import select
 import signal
@@ -32,12 +31,12 @@ try:
         if chunk:
             pending += chunk
         # fd ends each path with a NUL, which no path holds; any other byte, newlines and trailing
-        # spaces too, is part of a name. A batch is a JSON list of whole paths, ended by a NUL.
+        # spaces too, is part of a name. A batch is whole paths, ended by a second NUL: fd prints
+        # no empty path, so two in a row end only a batch.
         if len(pending) >= 65536 or not chunk or time.monotonic() - flushed >= 0.016:
-            end = len(pending) if chunk == b"" else pending.rfind(b"\0") + 1
+            end = pending.rfind(b"\0") + 1
             if end:
-                paths = [os.fsdecode(path) for path in pending[:end].split(b"\0") if path]
-                sys.stdout.buffer.write(json.dumps(paths).encode() + b"\0")
+                sys.stdout.buffer.write(pending[:end] + b"\0")
                 sys.stdout.buffer.flush()
                 pending = pending[end:]
                 flushed = time.monotonic()

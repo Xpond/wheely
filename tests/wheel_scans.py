@@ -1,6 +1,7 @@
 """Scan cancellation, epochs and incremental joins in the wheel."""
 import json
 import re
+from wheel_memory import check as check_memory
 
 
 def check(wheel, run_case, block):
@@ -35,11 +36,14 @@ def check(wheel, run_case, block):
 """ + re.search(r"  readonly property string emptyText:.*?(?=\n\n)", wheel, re.S).group() + "\n"
         out += wheel[wheel.index("  property var fileResults:"):wheel.index("  component FileScan:")]
         out += block(wheel, r"  component FileScan: Process \{") + "\n"
+        out += "  property real arcTarget: 0\n  property real sliceStep: 45\n" + block(wheel, r"  Timer \{\n    id: spin") + "\n"
         for name, wait in [("home", seconds), ("folder", folder_seconds)]:
             command = ["sh", "-c", "sleep " + wait + '; printf "/epoch-%s/' + name + '\\0" "$1"', "scan"]
             out += "  FileScan { id: " + name + "Scan; source: " + json.dumps("home" if name == "home" else "folders")
             out += "; walk: " + json.dumps(command)[:-1] + ", String(epoch)] }\n"
         return out + handlers
+
+    check_memory(scan, run)
 
     run("scan-close-reopen", scan("0.15") + """
   Component.onCompleted: root.mode = "file"
@@ -51,14 +55,19 @@ def check(wheel, run_case, block):
     else { console.log("PASS"); Qt.quit() }
   } }
 """)
+    # The worker, and the heap its paths grew, exist only from a search's scan to the close.
     run("scan-close", scan("5") + r'''
   Component.onCompleted: {
+    if (root.fileWorker) { console.error("FAIL worker before a search"); Qt.exit(1); return }
     homeScan.walk = ["sh", "-c", "printf '/pending\\0'; sleep 5"]
     root.mode = "file"
   }
-  Timer { interval: 30; running: true; onTriggered: root.opened = false }
+  Timer { interval: 30; running: true; onTriggered: {
+    if (!root.fileWorker) { console.error("FAIL no worker for a search"); Qt.exit(1); return }
+    root.opened = false
+  } }
   Timer { interval: 500; running: true; onTriggered: {
-    if (root.filesReady || homeScan.running) { console.error("FAIL retained scan"); Qt.exit(1) }
+    if (root.filesReady || homeScan.running || root.fileWorker) { console.error("FAIL retained scan"); Qt.exit(1) }
     else { console.log("PASS"); Qt.quit() }
   } }
 ''')
@@ -67,6 +76,7 @@ def check(wheel, run_case, block):
     # waits for a file created only after the first batch is visible.
     run("scan-streaming", scan("5") + r'''
   property int stage: 0
+  property double asked: 0
   Component.onCompleted: {
     homeScan.walk = ["python3", "-c", "import os,sys,time; from pathlib import Path; p=Path(os.environ['XDG_RUNTIME_DIR'])/'next'; os.write(1,b'/first path\\0/caf\\xc3');\nwhile not p.exists(): time.sleep(.01)\nos.write(1,b'\\xa9\\0'); time.sleep(5)"]
     root.mode = "file"
@@ -77,11 +87,14 @@ def check(wheel, run_case, block):
         console.error("FAIL did not stream complete lines", root.paths()); Qt.exit(1); return
       }
       root.stage = 1
+      root.asked = Date.now()
       Quickshell.execDetached(["sh", "-c", "touch \"$XDG_RUNTIME_DIR/next\""])
     } else if (root.stage === 1 && root.fileResults.length === 2) {
       if (root.paths() !== '["/café","/first path"]' || !homeScan.running) {
         console.error("FAIL lost UTF-8 tail", root.paths()); Qt.exit(1); return
       }
+      // A later batch goes to the worker as it arrives, not on a throttle's tick.
+      if (Date.now() - root.asked > 90) { console.error("FAIL held a batch", Date.now() - root.asked, "ms"); Qt.exit(1); return }
       root.stage = 2
       root.opened = false
       later.start()
@@ -92,6 +105,15 @@ def check(wheel, run_case, block):
     else { console.log("PASS"); Qt.quit() }
   } }
 ''')
+
+    # Closing mid-lap stops the lap, which would otherwise step the hidden ring on.
+    run("close-stops-lap", scan("5") + """
+  Component.onCompleted: { spin.stepsLeft = 8; spin.restart(); root.opened = false }
+  Timer { interval: 300; running: true; onTriggered: {
+    if (spin.running || root.arcTarget !== 0) { console.error("FAIL lap ran on", root.arcTarget); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
+""")
 
     # An empty completed walk must stop saying Scanning and must not restart on every keystroke.
     run("scan-empty", scan("5") + '''
@@ -162,9 +184,11 @@ def check(wheel, run_case, block):
   } }
 ''')
 
-    # Subfolders are listed only while a path is typed into the folders list: a model with no
-    # folder lists the working directory and watches it.
+    # Subfolders are listed only while a path is typed into the folders list of an open wheel: a
+    # model with no folder lists the working directory and watches it.
     run("subfolders-on-demand", """
+  property bool opened: true
+  property bool windowed: false
   property string listing: ""
   property string query: ""
 """ + block(wheel, r"  readonly property var subfolderPaths:") + "\n"
@@ -174,7 +198,9 @@ def check(wheel, run_case, block):
     root.listing = "folders"; root.query = "/us"
   } }
   Timer { interval: 900; running: true; onTriggered: {
-    if (root.subfolderPaths.indexOf("/usr") < 0) { console.error("FAIL /", root.subfolderPaths); Qt.exit(1) }
+    if (root.subfolderPaths.indexOf("/usr") < 0) { console.error("FAIL /", root.subfolderPaths); Qt.exit(1); return }
+    root.opened = false
+    if (subfolders.item) { console.error("FAIL watched after close"); Qt.exit(1) }
     else { console.log("PASS"); Qt.quit() }
   } }
 """)

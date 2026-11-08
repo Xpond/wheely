@@ -94,8 +94,10 @@ Item {
   property bool reading: false
   // The query the manual was opened from, given back when it closes.
   property string readFrom: ""
+  // Counted apart, so a pick that only bumps a count rebuilds no rows.
+  readonly property int picks: Object.keys(root.uses).length
   readonly property var settingRows: MenuIndex.settingRows(root.shortcut, !!root.ringIds, root.folders, root.skipped,
-                                                        Object.keys(root.uses).length, root.panelsCentered,
+                                                        root.picks, root.panelsCentered,
                                                         root.animatedThemeInstalled ? root.pauseKey : "")
   // The setting row being changed in place: the field shows the value, the row what saving would do.
   property string editing: ""
@@ -113,7 +115,7 @@ Item {
   readonly property string pending: root.refused ? "" : root.pressed
   readonly property string taken: root.pending ? MenuIndex.bindingAt(root.bindText, root.pending) : ""
   readonly property string editValue: root.editing === "backdrop" ? root.backdrop + "%"
-    : root.editing === "forget" ? "Forget " + Object.keys(root.uses).length + " picks"
+    : root.editing === "forget" ? "Forget " + root.picks + " picks"
     : root.pressed || "Press a shortcut"
   readonly property string editNote: root.editing === "backdrop" ? "←→ adjusts"
     : root.editing === "forget" ? "enter forgets · esc keeps" : root.pressed === null ? "esc cancels"
@@ -140,7 +142,7 @@ Item {
   // a model with no folder lists the shell's working directory, home, and watches it.
   Loader {
     id: subfolders
-    active: root.listing === "folders" && root.query.charAt(0) === "/"
+    active: (root.opened || root.windowed) && root.listing === "folders" && root.query.charAt(0) === "/"
     sourceComponent: FolderListModel {
       folder: "file://" + root.query.slice(0, root.query.lastIndexOf("/") + 1)
       showFiles: false
@@ -154,7 +156,7 @@ Item {
   property var index: []
   property var uses: ({})
   // A leading sigil selects one search source; the ring editor searches only what a ring holds.
-  readonly property string mode: root.editingRing || root.listing ? "" : MenuIndex.modeOf(root.query)
+  readonly property string mode: root.editingRing || root.listing || root.reading ? "" : MenuIndex.modeOf(root.query)
   readonly property string term: MenuIndex.termOf(root.query)
   // The worker owns scanned paths for the current open; the UI keeps only its results.
   property bool filesReady: false
@@ -163,7 +165,9 @@ Item {
   readonly property int resultCap: !root.windowed ? 8 : Math.max(1, Math.min(8, Math.floor(
     (pinned.height / 2 - root.searchHeight / 2 - Style.spacing.panelGap - Style.spacing.panelPadding + Style.spacing.md)
     / (root.resultHeight + Style.spacing.md))))
-  readonly property var results: root.listing === "history" ? MenuIndex.historyRows(root.index, root.uses, root.home)
+  // The manual filters its own rows, so while it shows nothing else searches.
+  readonly property var results: root.reading ? []
+    : root.listing === "history" ? MenuIndex.historyRows(root.index, root.uses, root.home)
     : root.listing && !root.query ? MenuIndex.listedRows(root.listing, root.listed)
     : root.listing === "skipped" ? root.fileResults
     : root.listing ? MenuIndex.subfolderRows(root.subfolderPaths, root.query, root.home)
@@ -795,78 +799,81 @@ Item {
   onUsesChanged: if (root.fileSearchKey) { root.fileRequest++; Qt.callLater(root.sendFiles) }
   // Keep one job in flight; its reply sends any new batches with the latest query.
   function sendFiles() {
-    if (root.fileBusy || !fileWorker.ready || !root.fileSearchKey || !root.opened && !root.windowed
+    if (root.fileBusy || !root.fileWorker || !root.fileWorker.ready || !root.fileSearchKey || !root.opened && !root.windowed
         || !root.filesReady && !root.fileQueue.length) return
     root.fileBusy = true
-    fileWorker.sendMessage({ epoch: root.scanEpoch, request: root.fileRequest, chunks: root.fileQueue,
+    root.fileWorker.sendMessage({ epoch: root.scanEpoch, request: root.fileRequest, chunks: root.fileQueue,
       query: root.listing === "skipped" ? root.query : root.term, foldersOnly: root.listing === "skipped",
       home: root.home, uses: root.uses })
     root.fileQueue = []
   }
-  WorkerScript {
-    id: fileWorker
-    source: "MenuIndex.js"
-    onReadyChanged: if (ready) Qt.callLater(root.sendFiles)
-    onMessage: message => {
-      if (message.epoch !== root.scanEpoch) return
-      root.fileBusy = false
-      root.filesReady = true
-      if (message.error) console.warn("Wheel file search:", message.error)
-      if (message.request === root.fileRequest) {
-        root.fileResultRequest = message.request
-        root.fileResults = message.rows
-        if (root.fileAction && (message.rows.length || !homeScan.running && !folderScan.running && !root.fileQueue.length)) {
-          const action = root.fileAction
-          root.fileAction = ""
-          if (action === "copy") root.takePath()
-          else if (action !== "terminal" || !root.terminal()) root.run(root.results[root.resultIndex])
+  // Unload the worker, then collect the main engine's copies of its scan batches after close.
+  // It lives only from a search's scan until the wheel and the pinned search are both gone.
+  Loader {
+    id: worker
+    active: false
+    sourceComponent: WorkerScript {
+      source: "MenuIndex.js"
+      onReadyChanged: if (ready) Qt.callLater(root.sendFiles)
+      onMessage: message => {
+        if (message.epoch !== root.scanEpoch) return
+        root.fileBusy = false
+        root.filesReady = true
+        if (message.error) console.warn("Wheel file search:", message.error)
+        if (message.request === root.fileRequest) {
+          root.fileResultRequest = message.request
+          root.fileResults = message.rows
+          if (root.fileAction && (message.rows.length || !homeScan.running && !folderScan.running && !root.fileQueue.length)) {
+            const action = root.fileAction
+            root.fileAction = ""
+            if (action === "copy") root.takePath()
+            else if (action !== "terminal" || !root.terminal()) root.run(root.results[root.resultIndex])
+          }
         }
+        if (root.fileQueue.length || message.request !== root.fileRequest)
+          Qt.callLater(root.sendFiles)
       }
-      if (root.fileQueue.length || message.request !== root.fileRequest)
-        Qt.callLater(root.sendFiles)
     }
   }
+  readonly property var fileWorker: worker.item
   component FileScan: Process {
     id: scan
     property var walk: []
     command: ["python3", "-S", "-E", decodeURIComponent(Qt.resolvedUrl("scan.py").toString().replace("file://", ""))].concat(walk)
     property string source: "home"
     property int epoch: 0
-    // Send the first batch promptly, throttle later batches, and flush on exit.
+    // Each batch goes to the worker as it arrives, which takes one job at a time; an empty scan
+    // still sends one, so its search answers.
     property bool published: false
-    property var batches: []
-    property Timer flush: Timer { interval: 100; onTriggered: scan.publish() }
-    function begin() { flush.stop(); epoch = root.scanEpoch; batches = []; running = true }
-    function publish() {
+    function begin() { epoch = root.scanEpoch; running = true }
+    function publish(text) {
       if (epoch !== root.scanEpoch) return
-      if (!batches.length && published) return
-      root.fileQueue = root.fileQueue.concat(batches.length ? batches : [{ source: scan.source, text: "" }])
-      batches = []
+      root.fileQueue = root.fileQueue.concat([{ source: scan.source, text: text }])
       published = true
       Qt.callLater(root.sendFiles)
     }
     stdout: SplitParser {
-      splitMarker: "\u0000"
-      onRead: data => {
-        if (scan.epoch !== root.scanEpoch) return
-        scan.batches.push({ source: scan.source, text: data })
-        if (!scan.published) scan.publish()
-        else if (!scan.flush.running) scan.flush.start()
-      }
+      splitMarker: "\u0000\u0000"
+      onRead: data => scan.publish(data)
     }
     onExited: {
-      flush.stop()
       if (epoch !== root.scanEpoch) Qt.callLater(root.scanFiles)
-      else publish()
+      else if (!published) publish("")
     }
   }
   FileScan { id: homeScan; walk: MenuIndex.scanCommand([root.home], root.skipped, root.home) }
   FileScan { id: folderScan; source: "folders"; walk: MenuIndex.scanCommand(root.folders, root.skipped, root.home) }
 
   property int scanEpoch: 0
+  Timer {
+    id: scanCleanup
+    interval: 250
+    onTriggered: if (!root.opened && !root.windowed) gc()
+  }
   // The skip list suggests home's folders alone, so only a search scans the added folders.
   function scanFiles() {
     if (!root.opened && !root.windowed || root.mode !== "file" && root.listing !== "skipped") return
+    worker.active = true
     if (!homeScan.published && !homeScan.running) homeScan.begin()
     if (root.mode === "file" && root.folders.length && !folderScan.published && !folderScan.running) {
       folderScan.begin()
@@ -876,11 +883,14 @@ Item {
   function dropScan(rescan) {
     root.fileAction = ""
     root.scanEpoch++
-    if (fileWorker.ready) fileWorker.sendMessage({ epoch: root.scanEpoch, reset: true, rescan: !!rescan })
+    if (!root.opened && !root.windowed) {
+      if (root.fileWorker) scanCleanup.restart()
+      worker.active = false
+    }
+    else if (root.fileWorker && root.fileWorker.ready)
+      root.fileWorker.sendMessage({ epoch: root.scanEpoch, reset: true, rescan: !!rescan })
     homeScan.running = folderScan.running = false
     homeScan.published = folderScan.published = false
-    homeScan.flush.stop(); folderScan.flush.stop()
-    homeScan.batches = []; folderScan.batches = []
     root.fileQueue = []; root.fileResults = []
     root.filesReady = false
     root.fileBusy = false
@@ -895,6 +905,7 @@ Item {
   onOpenedChanged: {
     if (root.shell) root.shell.panelSurfaceVisible(root.opened)
     if (!root.opened) {
+      spin.stop()
       root.dropScan()
       root.charge = 0
       root.hold = 0
@@ -919,31 +930,32 @@ Item {
     bindList.running = true
   }
 
+  // `omarchy theme list` and the rest, without the dispatcher's start-up on every open.
   Process {
     id: themeList
     running: true
-    command: ["omarchy", "theme", "list"]
+    command: ["omarchy-theme-list"]
     stdout: StdioCollector { onStreamFinished: root.themeText = text }
   }
 
   Process {
     id: themeNow
     running: true
-    command: ["omarchy", "theme", "current"]
+    command: ["omarchy-theme-current"]
     stdout: StdioCollector { onStreamFinished: root.currentTheme = text.trim() }
   }
 
   Process {
     id: fontList
     running: true
-    command: ["omarchy", "font", "list"]
+    command: ["omarchy-font-list"]
     stdout: StdioCollector { onStreamFinished: root.fontText = text }
   }
 
   Process {
     id: fontNow
     running: true
-    command: ["omarchy", "font", "current"]
+    command: ["omarchy-font-current"]
     stdout: StdioCollector { onStreamFinished: root.currentFont = text.trim() }
   }
 
@@ -1078,7 +1090,9 @@ Item {
     conditionScan.running = true
   }
 
-  onMenuItemsChanged: root.checkConditions()
+  // The menu arrives in pieces as the shell starts, a file at a time; one check answers them all.
+  Timer { id: menuSettle; interval: 250; onTriggered: root.checkConditions() }
+  onMenuItemsChanged: menuSettle.restart()
   onStaticRowsChanged: if (root.opened) root.rebuildIndex()
   onStyleRowsChanged: if (root.opened) root.rebuildIndex()
   onBindRowsChanged: if (root.opened) root.rebuildIndex()
@@ -1118,6 +1132,15 @@ Item {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.shown ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
+
+    // The mark's 1200px mask takes ~15ms to decode, a stall as the spin peaks if the scene did it:
+    // decoded off-thread over the four-second wait, the scene's own Image finds it cached.
+    Image {
+      id: markDecode
+      visible: false
+      asynchronous: true
+      source: root.opened && (root.markWait > 0 || root.markOpacity > 0) ? Qt.resolvedUrl("mark.png") : ""
+    }
 
     // Idle, the reveal scene holds ~44 MB, so it exists only while the mark shows.
     Loader {

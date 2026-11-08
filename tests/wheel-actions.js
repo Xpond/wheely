@@ -28,7 +28,7 @@ for (const [entry, expected] of [
     Util: { execDetached: command => effects.push(["action", command]) },
     Quickshell: { execDetached: argv => effects.push(["exec", [...argv]]) },
     Hyprland: { dispatch: command => effects.push(["window", command]) } })
-  const openedChanged = new Function("root", "Qt", openedSource).bind(null, root, Qt)
+  const openedChanged = new Function("root", "Qt", "spin", openedSource).bind(null, root, Qt, { stop() {} })
 
   run(null)
   assert.deepEqual([picks, dismissals, effects], [[], [], []], "an empty selection does nothing")

@@ -101,6 +101,7 @@ Item {
   function countUse(e) { root.picks++ }
   function copy(text) { root.copied.push(text) }
   function dropScan() {}
+  QtObject { id: spin; function stop() {} }
 ''' + "\n".join(block(wheel, pattern) for pattern in [r"  function run\(", r"  function close\(",
                                                       r"  Timer \{\n    id: unmap", r"  function dismiss\(",
                                                       r"  onOpenedChanged: \{"]) + '''
@@ -117,6 +118,11 @@ Item {
   } }
 ''')
 
+    # The wheel's condition scan as it runs: the script, its re-asking, and the menu's settling.
+    conditions = (line(wheel, r"^  readonly property var conditions:.*$") + block(wheel, r"  Process {\n    id: conditionScan")
+                  + "\n" + block(wheel, r"  function checkConditions\(") + "\n"
+                  + line(wheel, r"^  Timer { id: menuSettle;.*$") + line(wheel, r"^  onMenuItemsChanged:.*$"))
+
     # A check asked for while one runs has to run once that one ends, with the newer script, and
     # an answer that comes back unchanged must rebuild nothing.
     run("conditions-recheck", '''
@@ -125,8 +131,7 @@ Item {
   property int changes: 0
   property int settled: -1
   onConditionsChanged: root.changes++
-''' + line(wheel, r"^  readonly property var conditions:.*$") + block(wheel, r"  Process {\n    id: conditionScan")
-        + "\n" + block(wheel, r"  function checkConditions\(") + "\n" + line(wheel, r"^  onMenuItemsChanged:.*$") + '''
+''' + conditions + '''
   Component.onCompleted: root.checkConditions()
   Timer { interval: 100; running: true; onTriggered:
     root.menuItems = MenuIndex.merge(root.menuItems, { quick: { label: "Quick", action: "q", when: "true" } }) }
@@ -137,6 +142,47 @@ Item {
   } }
   Timer { interval: 2200; running: true; onTriggered: {
     if (root.changes !== root.settled) { console.error("FAIL an unchanged answer rebuilt"); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
+''')
+
+    # A pick that only bumps a count, as opening a submenu again does, rebuilds no setting rows.
+    run("picks-keep-settings", '''
+  property var uses: ({ a: 1 })
+  property string shortcut: "SUPER + A"
+  property var ringIds: null
+  property var folders: []
+  property var skipped: []
+  property bool panelsCentered: true
+  property bool animatedThemeInstalled: false
+  property string pauseKey: ""
+  property int rebuilt: 0
+  onSettingRowsChanged: root.rebuilt++
+''' + line(wheel, r"^  readonly property int picks:.*$") + line(wheel, r"^  readonly property var settingRows:.*\n.*\n.*$") + '''
+  Timer { interval: 10; running: true; onTriggered: {
+    root.rebuilt = 0
+    root.uses = MenuIndex.withPick(root.uses, "a")
+    var bumped = root.rebuilt
+    root.uses = MenuIndex.withPick(root.uses, "b")
+    if (bumped !== 0 || root.rebuilt !== 1) { console.error("FAIL rebuilt", bumped, root.rebuilt); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
+''')
+
+    # The menu arrives a file at a time as the shell starts; the pieces share one check.
+    run("conditions-settle", '''
+  property var menuItems: ({})
+  property string conditionText: ""
+  property int runs: 0
+''' + conditions + '''
+  Connections { target: conditionScan; function onRunningChanged() { if (conditionScan.running) root.runs++ } }
+  Timer { interval: 40; running: true; repeat: true; property int piece: 0; onTriggered: {
+    var add = {}; add["piece" + piece] = { label: "Piece", action: "p", when: "true" }
+    root.menuItems = MenuIndex.merge(root.menuItems, add)
+    if (++piece === 4) stop()
+  } }
+  Timer { interval: 900; running: true; onTriggered: {
+    if (root.runs !== 1 || !root.conditions.when.piece3) { console.error("FAIL", root.runs, "checks for one menu"); Qt.exit(1) }
     else { console.log("PASS"); Qt.quit() }
   } }
 ''')
@@ -201,10 +247,14 @@ Item {
     sourceComponent: Component { WheelResults { wheel: root } }
     onLoaded: item.parent = stage
   }
-  function center(row) {
-    var cards = [], walk = item => item.children.forEach(c => { if (c.modelData) cards.push(c); walk(c) })
+  function cards() {
+    var out = [], walk = item => item.children.forEach(c => { if (c.modelData) out.push(c); walk(c) })
     walk(stack.item)
-    return cards[row].mapToItem(stage, cards[row].width / 2, cards[row].height / 2)
+    return out
+  }
+  function center(row) {
+    var card = root.cards()[row]
+    return card.mapToItem(stage, card.width / 2, card.height / 2)
   }
   Timer { interval: 200; running: true; onTriggered: {
     var p = root.center(2)
@@ -219,6 +269,15 @@ Item {
     p = root.center(1)
     pointer.mouseClick(stage, p.x, p.y, Qt.LeftButton, Qt.NoModifier, -1)
     if (root.ran !== "Result 1") { console.error("FAIL clicking a result did not run it"); Qt.exit(1); return }
+    // New rows reuse the cards, and the cards past them hide.
+    var before = root.cards()
+    root.results = [{ label: "Submenu", icon: "x", trail: "Menu", node: "a" }, { label: "4", copy: "4", icon: "=", trail: "" },
+                    { label: "Shortcut", icon: "k", trail: "SUPER + A", setting: "shortcut" }]
+    var after = root.cards()
+    if (after.length !== before.length || after.some((c, i) => c !== before[i])) { console.error("FAIL rebuilt the cards"); Qt.exit(1); return }
+    if (after.map(c => c.visible).join() !== "true,true,true,false,false,false,false,false") {
+      console.error("FAIL shown", after.map(c => c.visible)); Qt.exit(1); return
+    }
     console.log("PASS"); Qt.quit()
   } }
 ''')
