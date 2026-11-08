@@ -2,8 +2,8 @@
 
 Generated on 2026-10-11 with `google/gemini-3-pro-image`
 through OpenRouter, at 4K and 16:9. The provider returned native
-5504 × 3072 JPEGs at its 4K tier. These are the unmodified outputs, with no
-upscaling, recompression, or color edits.
+5504 × 3072 JPEGs at its 4K tier. The shipped files are those outputs resized to
+3870 × 2160 and re-encoded at JPEG quality 90, with no other edits.
 
 ## 01-shoreline
 
