@@ -380,7 +380,7 @@ asks `pacman -T` once for every package they name and answers
 `CONDITION_READERS` share output and exit status in simple checks: a bare reader
 (optionally negated), or `[[ ]]` comparisons against literals joined by `&&` or `||`.
 Literals include Bash's `$'…'` quoting for the clock's escaped multiline formats.
-Those calls use cache files shared with `$(...)` and removed when the script exits.
+A shared read is a variable assigned on first use, `${var=$(reader)}`.
 Other expressions run unchanged and end the cache group, since they may change
 the environment or redefine a command. No reader's command name is shadowed, so
 executable lookups keep their meaning. The script runs in the background:

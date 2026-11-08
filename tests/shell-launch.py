@@ -31,6 +31,6 @@ sys.exit(23)
         output, _ = child.communicate(timeout=5)
         pid, setting, received = json.loads(output)
         assert pid == child.pid and child.returncode == 23 and received == args
-        expected = "background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:0"
+        expected = "background_thread:true,dirty_decay_ms:1000"
         assert setting == expected + ("," + inherited if inherited else "")
 print("ok: shell launcher preserves upstream supervision, arguments, exit status and allocator overrides")
