@@ -324,7 +324,12 @@ search is open. Normal closes without a search schedule nothing. The managed
 decay time, so freed pages return to the OS even while the worker thread is idle.
 In an isolated 93,228-path scan, unloading alone left about 61 MiB above baseline;
 collection plus purging reduced that to about 11–13 MiB five seconds after close.
-Runtime caches still keep RSS above its initial value. `Enter` on a path opens Files there;
+Runtime caches still keep RSS above its initial value. The wrapper also turns transparent
+huge pages off except where a program asks for them (`PR_SET_THP_DISABLE` with
+`PR_THP_DISABLE_EXCEPT_ADVISED`, kernel 6.18+). Under the kernel's `always` mode they back
+mostly empty memory: three minutes after a restart the shell held 415–421 MiB resident with
+them and 317–318 MiB without. Apps the shell launches inherit it, `uwsm-app` included,
+as under the kernel's `madvise` mode. `Enter` on a path opens Files there;
 a path outside the browser's folders opens through `omarchy-open-path`.
 
 **The calculator** (`=`, `Calc.js`) takes `+ - * / ^` and parentheses, `^` binding

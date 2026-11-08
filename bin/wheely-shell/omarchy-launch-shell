@@ -1,4 +1,7 @@
 #!/bin/bash
 # Purge freed scan pages while the worker thread is idle; explicit user settings win.
 export MALLOC_CONF="background_thread:true,dirty_decay_ms:1000${MALLOC_CONF:+,$MALLOC_CONF}"
-exec "${OMARCHY_PATH:-/usr/share/omarchy}/bin/omarchy-launch-shell" "$@"
+# Huge pages only where a program asks for them: under the kernel's THP "always" mode they back
+# mostly empty memory in the long-lived shell. What the shell launches inherits this.
+exec python3 -Ic 'import ctypes, os, sys; ctypes.CDLL(None).prctl(41, 1, 2, 0, 0); os.execvp(sys.argv[1], sys.argv[1:])' \
+  "${OMARCHY_PATH:-/usr/share/omarchy}/bin/omarchy-launch-shell" "$@"
