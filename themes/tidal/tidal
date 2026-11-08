@@ -51,7 +51,9 @@ case "${1:-help}" in
     exec omarchy theme bg set "$HOME/.local/state/omarchy/current/theme/backgrounds/$wallpaper"
     ;;
   watch)
-    exec quickshell --no-duplicate --daemonize -p "$destination/animated"
+    # Without transparent huge pages: they back mostly empty memory in this long-lived process.
+    exec python3 -Ic 'import ctypes, os, sys; ctypes.CDLL(None).prctl(41, 1, 0, 0, 0); os.execvp(sys.argv[1], sys.argv[1:])' \
+      quickshell --no-duplicate --daemonize -p "$destination/animated"
     ;;
   stop|pause|resume|toggle)
     exec quickshell ipc -p "$destination/animated" call tidal "$1"
