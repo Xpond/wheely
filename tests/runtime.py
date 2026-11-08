@@ -140,4 +140,28 @@ Scope {
   } }
 ''')
 
+    # The mark decodes off-thread while the spin builds, so the scene's own Image is a cache hit.
+    shutil.copyfile(repo / "plugins/xpo.wheel/mark.png", base / "mark.png")
+    run("mark-decodes-ahead", '''
+  property bool opened: true
+  property int markWait: 0
+  property real markOpacity: 0
+  Item {
+    id: surface
+''' + re.search(r"    Image \{\n      id: markDecode.*?\n    \}\n", wheel, re.S).group() + '''
+  }
+  Component { id: scene; Image { source: Qt.resolvedUrl("mark.png"); visible: false } }
+  Timer { interval: 50; running: true; onTriggered: {
+    if (markDecode.source != "") { console.error("FAIL decoded at rest"); Qt.exit(1); return }
+    root.markWait = 40
+    if (markDecode.status !== Image.Loading) { console.error("FAIL decoded on the UI thread"); Qt.exit(1) }
+  } }
+  Connections { target: markDecode; function onStatusChanged() {
+    if (markDecode.status !== Image.Ready) return
+    var t = Date.now(), mask = scene.createObject(surface)
+    if (mask.status !== Image.Ready || Date.now() - t > 5) { console.error("FAIL scene decoded again", Date.now() - t); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
+''')
+
     check_wheel_settings(wheel, base, env, run, block, line)

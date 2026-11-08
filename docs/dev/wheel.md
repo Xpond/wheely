@@ -27,7 +27,7 @@ traps, how search is built, and what the tests check.
       MenuKeys.js      the key map: which verb a key means
       Calc.js          the calculator behind a leading `=`
       Pinned.js        the pinned search's window and focus helpers, shared with Files
-      scan.py          fd's NUL-ended paths as JSON-list batches: names keep their newlines and spaces
+      scan.py          fd's NUL-ended paths in batches ended by a second NUL: names keep their newlines and spaces
 
 The ring and the results take the dial as `wheel`, the way the browser's own
 components take their panel, so each one's single dependency is visible at the
@@ -71,7 +71,10 @@ clears it immediately. The thin strokes have a satin finish without an offset ed
 or drop shadow, lit by a grazing key light that is the `key`
 uniform: it points at whichever of the sun or the moon is up (The day), so the
 mark is lit from the left at dawn, overhead at noon and from the right at dusk.
-The bevel normals are baked into `mark.png`'s GB channels.
+The bevel normals are baked into `mark.png`'s GB channels. Decoding its 1200px
+mask takes about 15 ms, so a hidden `Image` decodes it off-thread during the
+four-second wait and the scene's own finds it cached, rather than stalling as the
+spin peaks.
 
 `QuietPoints.qml` fills cells of roughly 100×90px with stationary, jittered points
 in three sizes and brightnesses for depth, dimmer around the controls. Their soft
@@ -311,7 +314,17 @@ length as it scans, keeping the first 40 of each tie. A file opened before leads
 rank, never climbing into a better one. Home and the added folders scan apart in
 batches (`scan.py`) that a background worker ranks as they arrive, home's ties first,
 so results show before either walk finishes; keyboard actions wait for the current
-query's results, and closing cancels both scans. `Enter` on a path opens Files there;
+query's results, and closing cancels both scans. Each batch goes to the worker as it
+lands, which takes one job at a time, so ranking overlaps the walk. The worker exists
+only from a search's scan until the wheel and the pinned search are both gone.
+Closing a search also schedules main-engine garbage collection 250 ms later, to
+release the UI's copies of scan batches. It skips collection if the wheel or pinned
+search is open. Normal closes without a search schedule nothing. The managed
+`omarchy-launch-shell` wrapper enables jemalloc background purging with a one-second
+decay time, so freed pages return to the OS even while the worker thread is idle.
+In an isolated 93,228-path scan, unloading alone left about 61 MiB above baseline;
+collection plus purging reduced that to about 11–13 MiB five seconds after close.
+Runtime caches still keep RSS above its initial value. `Enter` on a path opens Files there;
 a path outside the browser's folders opens through `omarchy-open-path`.
 
 **The calculator** (`=`, `Calc.js`) takes `+ - * / ^` and parentheses, `^` binding
@@ -362,11 +375,18 @@ Every check goes out as **one**
 bash script, each line echoing `<id>:w` or `<id>:c` when its check holds.
 Asked one at a time the package checks alone took over a second, so the script
 asks `pacman -T` once for every package they name and answers
-`omarchy-pkg-present` from that. Known readers in simple comparisons — such as
-`[[ $(omarchy-default-browser) == brave ]]` — share one read. Other Bash expressions
-run unchanged, preserving exit status, quoting and short-circuit guards. The script
-runs in the background: the wheel opens on the last answers and the new ones
-land a moment later, rebuilding only if they changed (see the trap above).
+`omarchy-pkg-present` from that. The checks ask the same few readers over and over
+(`omarchy-bar position` alone some thirty times), so the read-only ones in
+`CONDITION_READERS` share output and exit status in simple checks: a bare reader
+(optionally negated), or `[[ ]]` comparisons against literals joined by `&&` or `||`.
+Literals include Bash's `$'…'` quoting for the clock's escaped multiline formats.
+A shared read is a variable assigned on first use, `${var=$(reader)}`.
+Other expressions run unchanged and end the cache group, since they may change
+the environment or redefine a command. No reader's command name is shadowed, so
+executable lookups keep their meaning. The script runs in the background:
+the wheel opens on the last answers and the new ones land a moment later,
+rebuilding only if they changed (see the trap above). The menu loads a file at a
+time as the shell starts, so a change waits 250 ms for the rest before it checks.
 
 Applications come from `shell.appLibrary` (`services/AppLibrary.qml`), which
 wraps Quickshell's `DesktopEntries`: it sorts, drops entries marked hidden,
@@ -410,8 +430,9 @@ Quickshell, fails on a warning it doesn't expect (`tests/qslog.py`).
 Both are asked for 40, and the stack shows 8: `resultTop` is the first
 row on screen and `showResult()` walks it by one whenever the selection steps
 past an edge, jumping outright when the selection wraps around an end. The
-`Repeater` is fed that window, so eight delegates exist however deep the list
-runs. A rail beside the stack -- the same one the file browser runs beside its
+`Repeater` makes eight cards once and each shows whichever row of that window is
+its own, hiding past the window's end: a fresh card for each changed row cost most of
+a keystroke, and all eight on every scrolling step. A rail beside the stack -- the same one the file browser runs beside its
 list -- is what says the ninth row is there at all, and `Ctrl+Home` and
 `Ctrl+End` are what reach the two ends of it without walking.
 
@@ -448,7 +469,8 @@ keys any text field has are one "text keys" row. The sheet never scrolls:
 `manualColumns()` packs the rows into the shortest columns, a long section continuing
 under its name in the next, and the sheet picks up to four columns, whichever shrinks
 it least, then scales to fit. The field moves into its header on an empty query, so
-typing fades rows; `Esc` restores the search.
+typing fades rows; `Esc` restores the search. While the sheet shows, nothing else
+searches and a `/` starts no file scan; hidden, it does not filter.
 
 `tests/wheel-manual.js` checks that the manual's Files menu keys match the menu's key
 map both ways, that every fixed menu action without a key is named, and that columns

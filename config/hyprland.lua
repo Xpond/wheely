@@ -1,5 +1,13 @@
 -- Managed by wheely: don't edit this block, ./install.sh rewrites it. Put overrides after END wheely.
 
+-- Omarchy puts its bin first; only our shell launcher needs to precede it.
+local shell_bin = os.getenv("HOME") .. "/.local/bin/wheely-shell"
+local shell_path = { shell_bin }
+for entry in os.getenv("PATH"):gmatch("[^:]+") do
+  if entry ~= shell_bin then table.insert(shell_path, entry) end
+end
+hl.env("PATH", table.concat(shell_path, ":"))
+
 -- The wheel's backdrop row saves "off" here at 0%, as data; anything else keeps the backdrop blurred.
 local blur_file = io.open(os.getenv("HOME") .. "/.config/omarchy/wheel-blur")
 local backdrop_blur = not (blur_file and blur_file:read("*l") or ""):match("^%s*off%s*$")

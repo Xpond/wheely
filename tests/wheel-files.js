@@ -7,7 +7,7 @@ assert.equal(M.termOf("/wheel"), "wheel", "a leading sigil was kept")
 assert.equal(M.termOf("wheel"), "wheel", "a sigil was stripped where none led")
 
 // fd uses a trailing slash to distinguish directories.
-const scanned = M.parseFiles(JSON.stringify([`${home}/Downloads/`, `${home}/.config/hypr/hyprland.conf`]))
+const scanned = M.parseFiles([`${home}/Downloads/`, `${home}/.config/hypr/hyprland.conf`].join("\0"))
 const dir = M.fileRows(scanned, "downloads", 1, home)[0]
 const file = M.fileRows(scanned, "hyprland", 1, home)[0]
 assert.ok(dir && dir.label === "Downloads" && dir.trail === "~",

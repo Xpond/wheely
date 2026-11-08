@@ -1,0 +1,4 @@
+#!/bin/bash
+# Purge freed scan pages while the worker thread is idle; explicit user settings win.
+export MALLOC_CONF="background_thread:true,dirty_decay_ms:1000${MALLOC_CONF:+,$MALLOC_CONF}"
+exec "${OMARCHY_PATH:-/usr/share/omarchy}/bin/omarchy-launch-shell" "$@"

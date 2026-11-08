@@ -31,7 +31,8 @@ esac
 def verify(user, repo, installed=True):
     config = (user / ".config/hypr/hyprland.lua").read_text()
     assert ("-- BEGIN wheely\n" in config) == installed
-    for name in ("omarchy-open-path", "omarchy-wheel-close", "omarchy-lock-design", "omarchy-wallpaper-toggle"):
+    for name in ("omarchy-open-path", "omarchy-wheel-close", "omarchy-lock-design", "omarchy-wallpaper-toggle",
+                 "wheely-shell"):
         link = user / ".local/bin" / name
         assert link.is_symlink() == installed
         if installed:
@@ -231,7 +232,7 @@ def check():
     print("ok: shipped Lua binds the direct shortcut and pause key as saved, and shared blur")
 
     # The render loop stays out of the session: each process wheely runs sets its own.
-    assert "hl.env" not in (source / "config/hyprland.lua").read_text()
+    assert "QSG_RENDER_LOOP" not in (source / "config/hyprland.lua").read_text()
     for root in ("patches/shell/shell.qml", "lock-session/shell.qml", "themes/tidal/animated/shell.qml", "themes/wheelie/scene/wallpaper.qml"):
         assert "//@ pragma Env QSG_RENDER_LOOP=threaded\n" in (source / root).read_text(), root
     print("ok: every Quickshell root sets its own render loop")
