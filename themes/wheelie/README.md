@@ -22,7 +22,7 @@ omarchy theme set wheelie
 The installer prepares the complete theme before stopping the running one, so a failed
 copy leaves it untouched; the scene stops only for the directory swap. Rerun the
 installer if a later step fails. The baked scene in `scene/` goes in `animated/`.
-A native still, `00-wheelie-animated.png`, is the theme's first background; four static
+A native still, `00-wheelie-animated.jpg`, is the theme's first background; four static
 scenes follow it. Theme-change and post-boot hooks start the wallpaper controller,
 `scene/wallpaper.qml`. While that still is selected, the controller runs
 the live scene on every display. The scene is cropped to fill each screen and sits above

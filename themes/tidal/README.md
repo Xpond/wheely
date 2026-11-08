@@ -36,8 +36,8 @@ thumbnails are animated:
 
 | Wallpaper | Palette |
 |---|---|
-| **Living Coast — Animated** (`00-living-coast-animated.png`) | Turquoise water and warm ivory sand |
-| **Muted Coast — Animated** (`00-muted-coast-animated.png`) | Dark charcoal water and a warm grey shore |
+| **Living Coast — Animated** (`00-living-coast-animated.jpg`) | Turquoise water and warm ivory sand |
+| **Muted Coast — Animated** (`00-muted-coast-animated.jpg`) | Dark charcoal water and a warm grey shore |
 
 Choose any static image to switch back. You can also select either animation with:
 
@@ -92,10 +92,10 @@ display's coast within one second. Waking it preserves the tide and any manual p
 | [Shallows](backgrounds/02-shallows.jpg) | Sunlit caustics over a quiet central sand bank |
 | [Ebb](backgrounds/03-ebb.jpg) | Sculpted sand flats and branching tidal channels |
 
-The JPEGs were generated at Google Gemini 3 Pro Image's native 4K tier (5504 × 3072)
+The static JPEGs were generated at Google Gemini 3 Pro Image's native 4K tier (5504 × 3072)
 and are shipped resized to 3870 × 2160 at JPEG quality 90, with no other edits. Both
-animated coasts render at screen resolution; their picker thumbnails are lossless
-3840 × 2160 shader captures.
+animated coasts render at screen resolution; their picker thumbnails are 3840 × 2160
+shader captures at JPEG quality 95 with full-resolution color (4:4:4).
 Prompts, model, and generation provenance are in [PROMPTS.md](PROMPTS.md).
 Each JPEG's metadata marks it as AI-generated (IPTC `trainedAlgorithmicMedia`) and names the model.
 The code is under the repository's [MIT license](../../LICENSE). No copyright is claimed in the

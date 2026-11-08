@@ -24,7 +24,7 @@ env = os.environ | {"QT_QPA_PLATFORM": "offscreen", "QT_QPA_PLATFORMTHEME": "gen
 def stage(theme):
     """Omarchy's copy of the current theme, which the background link points into."""
     (theme / "backgrounds").mkdir(parents=True)
-    for name in ("00-wheelie-animated.png", "static.png"):
+    for name in ("00-wheelie-animated.jpg", "static.png"):
         (theme / "backgrounds" / name).touch()
 
 
@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
     state.mkdir()
     (state / "theme.name").write_text("wheelie\n")
     stage(state / "theme")
-    (state / "background").symlink_to(state / "theme/backgrounds/00-wheelie-animated.png")
+    (state / "background").symlink_to(state / "theme/backgrounds/00-wheelie-animated.jpg")
     activity = output / "activity.json"
     activity.write_text('{"dpmsStatus": true}')
     shell = config / "wallpaper.qml"
@@ -128,7 +128,7 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
             for _ in range(2):
                 select("static.png")
                 wait_for(lambda s: not s["animated"] and not s["loaded"])
-                select("00-wheelie-animated.png")
+                select("00-wheelie-animated.jpg")
                 wait_for(lambda s: s["running"])
             # Setting the theme again replaces the folder the link points into, and empties
             # theme.name before writing it. Neither may restart the scene or lift a pause.
