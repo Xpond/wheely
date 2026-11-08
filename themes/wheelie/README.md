@@ -115,5 +115,7 @@ scripts/build-shaders.sh themes/wheelie/scene/*.{frag,vert}
   from `black-forest-labs/flux-3-image`, 4K, 16:9, with the bottom
   vignette added, then resized like the others.
 
-Contact shadows and lighting are code-defined. All of the images are AI-generated and,
-like the code, distributed under the repository's [MIT license](../../LICENSE).
+Contact shadows and lighting are code-defined. All of the images are AI-generated, and each
+static background's metadata says so (IPTC `trainedAlgorithmicMedia`) and names the model.
+The code is under the repository's [MIT license](../../LICENSE). No copyright is claimed in the
+generated images; to the extent any rights exist, they are offered under the same license.

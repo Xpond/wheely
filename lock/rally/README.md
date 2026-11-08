@@ -13,7 +13,8 @@ and wheel wells have solid dark backing so the bright pavement cannot show throu
 The plate is **3840×2160**: generated at 1672×941 with OpenAI's gpt-image (ChatGPT image
 generation), upscaled 4× with Real-ESRGAN's `realesrgan-x4plus` model, fitted to 4K with Lanczos
 and stored as a quality-90 JPEG.
-It is distributed under the repository's [MIT license](../../LICENSE).
+No copyright is claimed in the generated plate; to the extent any rights exist, they are offered
+under the repository's [MIT license](../../LICENSE), like the code.
 
 The car is framed at 89% scale about screen centre, then lowered by 4% of screen
 height. The shadow and floor reflection share these transforms through the drive-off.
