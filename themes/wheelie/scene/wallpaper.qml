@@ -13,7 +13,8 @@ Scope {
   readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/omarchy/current"
   property string background: ""
   property bool wheelieTheme: false
-  readonly property bool animated: wheelieTheme && background.endsWith("/00-wheelie-animated.png")
+  // By name, any extension: a copy staged before the poster became a JPEG still animates.
+  readonly property bool animated: wheelieTheme && /\/00-wheelie-animated\.\w+$/.test(background)
 
   // Watch the directory: watching the image misses replacement of its symlink.
   FileView {

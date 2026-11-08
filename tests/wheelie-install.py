@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix="wheelie-install-") as temp:
     for folder in ("hooks", "backgrounds", "scene"):
         (source / folder).mkdir()
     shutil.copy2(repo / "hooks/wheelie-wallpaper", source / "hooks/wheelie-wallpaper")
-    for name in ("colors.toml", "icons.theme", "preview.jpg", "backgrounds/00-wheelie-animated.png",
+    for name in ("colors.toml", "icons.theme", "preview.jpg", "backgrounds/00-wheelie-animated.jpg",
                  "backgrounds/static.jpg", "scene/wallpaper.qml", "scene/ambient-dust.vert.qsb",
                  "scene/ambient-dust.frag.qsb", "scene/ambient-dust.vert", "scene/ambient-dust.frag"):
         (source / name).write_text("new " + name)
@@ -75,7 +75,7 @@ if name == "mv":
         if failure == "none":
             assert result.returncode == 0, result.stderr
             assert (destination / "animated/wallpaper.qml").read_text() == "new scene/wallpaper.qml"
-            poster = "backgrounds/00-wheelie-animated.png"
+            poster = "backgrounds/00-wheelie-animated.jpg"
             assert (destination / poster).read_text() == "new " + poster
             for name in ("ambient-dust.vert.qsb", "ambient-dust.frag.qsb"):
                 assert (destination / "animated" / name).is_file()

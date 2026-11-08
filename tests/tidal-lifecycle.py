@@ -18,7 +18,7 @@ shutil.copytree(repo / "themes/tidal/animated", config, dirs_exist_ok=True)
 # Keep state outside the config so Quickshell hot reload cannot mask watcher bugs.
 state = output / "state"
 state.mkdir(exist_ok=True)
-for name in ["one.jpg", "two.jpg", "00-living-coast-animated.png", "00-muted-coast-animated.png"]:
+for name in ["one.jpg", "two.jpg", "00-living-coast-animated.jpg", "00-muted-coast-animated.jpg"]:
     (state / name).write_bytes(b"unused: this fixture creates no wallpaper surfaces")
 background = state / "background"
 background.unlink(missing_ok=True)
@@ -82,12 +82,12 @@ with log_path.open("w") as log:
         wait_for("READY watching")
         wait_for("STATE false")
         for _ in range(2):
-            select("00-living-coast-animated.png", True)
-            select("00-muted-coast-animated.png", True, True)
-            select("00-living-coast-animated.png", True)
+            select("00-living-coast-animated.jpg", True)
+            select("00-muted-coast-animated.jpg", True, True)
+            select("00-living-coast-animated.jpg", True)
             select("two.jpg", False)
         select("two.jpg", False)
-        select("00-muted-coast-animated.png", True, True)
+        select("00-muted-coast-animated.jpg", True, True)
         (state / "unrelated").unlink(missing_ok=True)
         after = len(log_path.read_text())
         (state / "unrelated").write_text("changed")
@@ -103,8 +103,8 @@ with log_path.open("w") as log:
         # Waking the display keeps a manual pause, and re-applying the theme, which empties theme.name
         # and replaces the folder the link points into, neither recreates the surface nor lifts it.
         (state / "theme").mkdir(exist_ok=True)
-        (state / "theme/00-living-coast-animated.png").touch()
-        select("theme/00-living-coast-animated.png", True)
+        (state / "theme/00-living-coast-animated.jpg").touch()
+        select("theme/00-living-coast-animated.jpg", True)
         after = len(log_path.read_text())
         subprocess.run(["quickshell", "ipc", "-p", str(config), "call", "tidal", "pause"], check=True, timeout=5)
         wait_for("RUNNING false", after)
@@ -115,7 +115,7 @@ with log_path.open("w") as log:
         theme.write_text("")
         time.sleep(0.3)
         (state / "theme").mkdir()
-        (state / "theme/00-living-coast-animated.png").touch()
+        (state / "theme/00-living-coast-animated.jpg").touch()
         theme.write_text("tidal\n")
         time.sleep(0.3)
         assert not re.search(r"SURFACE|RUNNING true|STATE false", log_path.read_text()[after:]), log_path.read_text()
@@ -155,7 +155,7 @@ help_text = subprocess.check_output([str(installed / "tidal"), "help"], env=cli_
 assert "animate [colorful|muted]" in help_text
 for args, wallpaper in [([], "living"), (["colorful"], "living"), (["muted"], "muted")]:
     subprocess.run([str(installed / "tidal"), "animate", *args], env=cli_env, check=True)
-    expected = Path.home() / f".local/state/omarchy/current/theme/backgrounds/00-{wallpaper}-coast-animated.png"
+    expected = Path.home() / f".local/state/omarchy/current/theme/backgrounds/00-{wallpaper}-coast-animated.jpg"
     assert cli_log.read_text().splitlines() == ["theme", "bg", "set", str(expected)]
 invalid = subprocess.run([str(installed / "tidal"), "animate", "unknown"], env=cli_env, capture_output=True, text=True)
 assert invalid.returncode == 1 and "Usage:" in invalid.stderr
