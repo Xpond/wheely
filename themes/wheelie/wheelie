@@ -44,7 +44,9 @@ case "${1:-help}" in
     printf 'Wheelie installed. Apply it with: omarchy theme set wheelie\n'
     ;;
   watch)
-    exec quickshell --no-duplicate --daemonize -p "$destination/animated/wallpaper.qml"
+    # Without transparent huge pages: they back mostly empty memory in this long-lived process.
+    exec python3 -Ic 'import ctypes, os, sys; ctypes.CDLL(None).prctl(41, 1, 0, 0, 0); os.execvp(sys.argv[1], sys.argv[1:])' \
+      quickshell --no-duplicate --daemonize -p "$destination/animated/wallpaper.qml"
     ;;
   pause|resume|toggle)
     exec quickshell ipc -p "$destination/animated/wallpaper.qml" call wheelie "$1"
