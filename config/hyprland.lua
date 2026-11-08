@@ -3,7 +3,7 @@
 -- Omarchy puts its bin first; only our shell launcher needs to precede it.
 local shell_bin = os.getenv("HOME") .. "/.local/bin/wheely-shell"
 local shell_path = { shell_bin }
-for entry in (os.getenv("PATH") or "/usr/local/bin:/usr/bin"):gmatch("[^:]+") do
+for entry in os.getenv("PATH"):gmatch("[^:]+") do
   if entry ~= shell_bin then table.insert(shell_path, entry) end
 end
 hl.env("PATH", table.concat(shell_path, ":"))
