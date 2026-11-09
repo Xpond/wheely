@@ -14,7 +14,7 @@ with tempfile.TemporaryDirectory(prefix="wheely-launch-") as temporary:
     launcher = upstream / "omarchy-launch-shell"
     launcher.write_text('''#!/usr/bin/env python3
 import ctypes, json, os, sys
-thp = ctypes.CDLL(None).prctl(42, 0, 0, 0, 0)
+thp = ctypes.CDLL(None).prctl(42, 0, 0, 0, 0)  # PR_GET_THP_DISABLE
 print(json.dumps([os.getpid(), os.environ['MALLOC_CONF'], sys.argv[1:], thp]))
 sys.exit(23)
 ''')
@@ -35,5 +35,4 @@ sys.exit(23)
         assert thp == 3, f"THP should be off except where advised, got {thp}"
         expected = "background_thread:true,dirty_decay_ms:1000"
         assert setting == expected + ("," + inherited if inherited else "")
-print("ok: shell launcher preserves upstream supervision, arguments, exit status and allocator overrides,\n"
-      "    and disables huge pages except where advised")
+print("ok: shell launcher preserves upstream supervision, arguments, exit status and allocator overrides")

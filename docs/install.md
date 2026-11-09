@@ -30,7 +30,9 @@ If it goes missing anyway, the lock screen still locks, without its design.
 The shell-launch wrapper delegates to Omarchy's own launcher with jemalloc background
 purging enabled and a one-second decay time. This returns freed search pages while
 the shell is idle. Existing `MALLOC_CONF` options take precedence; the setting applies
-to the shell's process environment, not the whole desktop. Its dedicated directory
+to the shell's process environment, not the whole desktop. It also turns transparent huge pages
+off except where a program asks for them (kernel 6.18+), about 100 MiB less resident memory;
+apps the shell launches inherit this. Its dedicated directory
 precedes Omarchy on the compositor's command path without reordering other commands. Revert removes the wrapper and managed path configuration.
 
 Video previews need `qt6-multimedia` and `qt6-multimedia-ffmpeg`
