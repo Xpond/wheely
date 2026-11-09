@@ -97,7 +97,7 @@ and are shipped resized to 3870 × 2160 at JPEG quality 90, with no other edits.
 animated coasts render at screen resolution; their picker thumbnails are 3840 × 2160
 shader captures at JPEG quality 95 with full-resolution color (4:4:4).
 Prompts, model, and generation provenance are in [PROMPTS.md](PROMPTS.md).
-Each JPEG's metadata marks it as AI-generated (IPTC `trainedAlgorithmicMedia`) and names the model.
+Each static JPEG's metadata marks it as AI-generated (IPTC `trainedAlgorithmicMedia`) and names the model.
 The code is under the repository's [MIT license](../../LICENSE). No copyright is claimed in the
 generated images; to the extent any rights exist, they are offered under the same license.
 

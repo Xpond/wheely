@@ -214,9 +214,9 @@ Item {
     return out
   }
 
-  // Project once per size; the car stays still during tracing.
+  // Project once per size, not while unsized; the car stays still during tracing.
   function project() {
-    if (projected.width === width && projected.height === height) return
+    if (!width || !height || projected.width === width && projected.height === height) return
     projected = Qt.size(width, height)
     // About 480 units wide at this angle; roof to near wheel about 200 tall.
     var S = Math.min(width * 0.88 / 480, height * 0.8 / 200), cx = width / 2, cy = height / 2 - 4 * S, D = 1400

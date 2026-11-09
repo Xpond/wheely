@@ -1,4 +1,7 @@
 //@ pragma Env QSG_RENDER_LOOP=threaded
+// Free each decoded image once it is on the GPU (~80 MiB at 1080p); every Image sets
+// cache: false, or a second display of the same size would get the freed copy.
+//@ pragma Env QSG_TRANSIENT_IMAGES=1
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
