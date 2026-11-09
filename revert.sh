@@ -49,7 +49,7 @@ clear_copies
 for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
   written="$STATE/installed/$f"
-  if [[ -z $(stock_sum "$f") ]]; then
+  if [[ -z ${SUMS[$f]-} ]]; then
     echo "Not restored: $f — no package checksum to verify stock against; left untouched" >&2
     failed=1; continue
   fi
