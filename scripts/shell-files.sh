@@ -8,15 +8,14 @@ FILES=(Ui/KeyboardPanel.qml Ui/PanelKeyCatcher.qml plugins/bar/Bar.qml
        plugins/clipboard/Clipboard.qml plugins/lock/LockView.qml plugins/lock/Service.qml
        services/PluginShellApi.qml shell.qml)
 
-stock_sum() {
-  [[ -n $PACKAGE_DB ]] || return 1
-  zcat "$PACKAGE_DB/mtree" | awk -v path="./usr/share/omarchy/shell/$1" \
-    '$1 == path { for (i = 2; i <= NF; i++) if ($i ~ /^sha256digest=/) print substr($i, 14) }'
-}
+# Each shell file's checksum, read once: the checks below ask about the same few files again and again.
+declare -A SUMS=()
+[[ -z $PACKAGE_DB ]] || while read -r path sum; do SUMS[$path]=$sum; done < <(zcat "$PACKAGE_DB/mtree" |
+  awk 'sub(/^\.\/usr\/share\/omarchy\/shell\//, "", $1) { for (i = 2; i <= NF; i++) if ($i ~ /^sha256digest=/) print $1, substr($i, 14) }')
 
 is_stock() {
-  local want
-  want=$(stock_sum "$1") && [[ -n $want && -f $2 && $(sha256sum < "$2") == "$want  -" ]]
+  local want=${SUMS[$1]-}
+  [[ -n $want && -f $2 && $(sha256sum < "$2") == "$want  -" ]]
 }
 
 # An interrupted or recorded install, the current patch, or any committed version of it.

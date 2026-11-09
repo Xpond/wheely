@@ -31,7 +31,11 @@ function ordered(entries, order) {
   var hits = []
   for (var i = 0; i < entries.length; i++) {
     var e = entries[i]
-    hits.push({ entry: e, time: order === "date" ? when(e.modified) : 0, at: i })
+    // Keys read once, not through the entry in every comparison: 100k sort in half to two thirds the time.
+    // Deleted rows arrive with git's status, after the rest; last, they move no selection.
+    // Folder metadata size does not represent its contents.
+    hits.push({ entry: e, group: (e.missing ? 2 : 0) + (e.isDir ? 0 : 1), name: e.name, at: i,
+                rank: order === "date" ? -when(e.modified) : order === "size" && !e.isDir ? -e.size : 0 })
   }
   // V4's sort slows badly on input already in another order, as FolderListModel's code-point
   // order is to localeCompare (100k names: seconds); shuffled, it never does. Ties keep the
@@ -40,14 +44,7 @@ function ordered(entries, order) {
     var r = Math.floor(Math.random() * (k + 1)), swap = hits[k]; hits[k] = hits[r]; hits[r] = swap
   }
   hits.sort(function (a, b) {
-    // Deleted rows arrive with git's status, after the rest; last, they move no selection.
-    if (!a.entry.missing !== !b.entry.missing) return a.entry.missing ? 1 : -1
-    if (a.entry.isDir !== b.entry.isDir) return a.entry.isDir ? -1 : 1
-    var rank = 0
-    if (order === "date") rank = b.time - a.time
-    // Folder metadata size does not represent its contents.
-    else if (order === "size" && !a.entry.isDir) rank = b.entry.size - a.entry.size
-    return rank || a.entry.name.localeCompare(b.entry.name) || a.at - b.at
+    return a.group - b.group || a.rank - b.rank || a.name.localeCompare(b.name) || a.at - b.at
   })
   var out = []
   for (var j = 0; j < hits.length; j++) out.push(hits[j].entry)

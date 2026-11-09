@@ -33,8 +33,8 @@ Item {
         force: Qt.vector4d(0, 0.4 * r, 1, 0) }
     ]
   }
-  Image { id: grain; source: "sand-grain.svg"; visible: false }
-  Image { id: wisp; source: "dust.svg"; visible: false }
+  Image { id: grain; source: "sand-grain.svg"; visible: false; cache: false }
+  Image { id: wisp; source: "dust.svg"; visible: false; cache: false }
 
   Repeater {
     // The spray goes first, so the haze and drifting sand pass in front of it.

@@ -176,8 +176,9 @@ Scope {
     body_x = dict(re.findall(r"BODY (\S+) (\d+)", log))
     for name in pairs:
         a, b = (base / "out" / (name + suffix) for suffix in ("-rich.png", "-styled.png"))
-        diff = subprocess.run(["magick", "compare", "-metric", "AE", a, b, "null:"],
-                              capture_output=True, text=True).stderr.split()[0]
+        # Identical files are identical pixels; only a differing pair needs counting.
+        diff = "0" if a.read_bytes() == b.read_bytes() else subprocess.run(
+            ["magick", "compare", "-metric", "AE", a, b, "null:"], capture_output=True, text=True).stderr.split()[0]
         if size(a) != size(b) or diff != "0":
             failed.append("%s: %s vs %s, %s pixels differ" % (name, size(a), size(b), diff))
         if name.startswith(("one.txt-", "markup.js-", "fallback.txt-")):

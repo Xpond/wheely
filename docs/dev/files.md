@@ -13,6 +13,8 @@ traps, wiring, and what the tests check.
       FilesList.qml     the directory, one row per entry
       FilesPreview.qml  the scroller, and the editor inside it
       FilesVideo.qml    muted video preview, controls and native mpv handoff
+      FilesProps.qml    Properties, in the preview's place
+      FilesTip.qml      a hovered name's popup, for the list and a folder's preview
       FilesHints.qml    the foot: the legend, and what a held file would do
       FilesMenu.qml     context, keyboard and pointer state for the right-click menu
       FilesMenuCard.qml the main menu and submenu cards

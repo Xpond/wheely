@@ -19,7 +19,7 @@ Item {
     property real textureAspect: stormImage.implicitWidth / Math.max(1, stormImage.implicitHeight) * kept
     property var storm: Image {
       id: stormImage
-      source: "storm.png"
+      source: "storm.png"; cache: false
       visible: false
       smooth: true
       // Drawn up to 1.15 times the scene's width; 0 keeps the plate's native size.

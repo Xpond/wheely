@@ -4,9 +4,9 @@ import QtQuick
 //
 // The callbacks are closed over one plugin id by shell.qml. A plugin can call
 // them directly, but it cannot widen their scope: ordinary plugins are limited
-// to their own id, and menu/full-bar callbacks independently enforce their
-// non-authentication UI scope. Host objects never cross this facade; visual
-// plugins still share the QML scene and are not process-sandboxed.
+// to their own id, and full-bar callbacks independently enforce their explicit
+// non-authentication UI scope. This object avoids directly injecting the host
+// shell, but it is not a QML sandbox: visual plugins share the host object tree.
 QtObject {
   id: api
 

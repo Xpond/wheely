@@ -44,7 +44,7 @@ native mpv, which Omarchy includes.
 The eight patched files live in `/usr/share/omarchy/shell`, owned by the Omarchy package.
 Copying them in (install) and restoring them (revert) are the only `sudo` calls, and each
 runs only when a file actually needs changing. Everything else stays in your home directory.
-Two of the patches set environment variables for the whole shell: a threaded render loop,
+The `shell.qml` patch sets two environment variables for the whole shell: a threaded render loop,
 and software decoding for video previews.
 
 ## Omarchy updates

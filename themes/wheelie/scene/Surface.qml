@@ -73,7 +73,7 @@ Item {
           function rect(x, y, w, h) { return Qt.vector4d(x / width, y / height, w / width, h / height) }
 
           Image {
-            source: "base.jpg"; smooth: true
+            source: "base.jpg"; smooth: true; cache: false
             width: parent.width; height: parent.height
             sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
           }
@@ -98,7 +98,7 @@ Item {
           }
           // Everything but the sky, redrawn over the storm.
           Image {
-            source: "cutout.png"
+            source: "cutout.png"; cache: false
             x: root.layout.cutout[0]; y: root.layout.cutout[1]
             width: root.layout.cutout[2]; height: root.layout.cutout[3]
             sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
@@ -126,7 +126,7 @@ Item {
               property real exposure: axle.modelData === "rear" ? 0.92 : 1.0
               property vector4d rect: scene.rect(axle.x, axle.y, width, height)
               property var source: Image {
-                source: axle.modelData + ".png"
+                source: axle.modelData + ".png"; cache: false
                 visible: false
                 smooth: true
                 sourceSize: Qt.size(axle.decoded, axle.decoded)

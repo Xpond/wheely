@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Size wallpaper textures from the window's ratio, which a fractional output reports truly."""
+"""Size wallpaper textures from the window's ratio, which a fractional output reports truly,
+and give each Wheelie display its own decoded images."""
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,12 @@ repo = Path(__file__).resolve().parents[1]
 # The hosts hand each Surface their window's ratio; Screen's is rounded up, 1.5 to 2.
 for host in ["themes/wheelie/scene/wallpaper.qml", "themes/tidal/animated/shell.qml"]:
     assert re.search(r"Surface \{[^}]*dpr: wallpaper\.devicePixelRatio", (repo / host).read_text()), host
+# Wheelie frees each decoded image once it is on the GPU, so an Image shared through Qt's
+# pixmap cache would come up blank on a second display of the same size.
+assert "//@ pragma Env QSG_TRANSIENT_IMAGES=1" in (repo / "themes/wheelie/scene/wallpaper.qml").read_text()
+for qml_file in (repo / "themes/wheelie/scene").glob("*.qml"):
+    for image in re.findall(r"\bImage \{[^}]*\}", qml_file.read_text()):
+        assert "cache: false" in image, (qml_file, image)
 
 qml = '''import QtQuick
 import Quickshell
