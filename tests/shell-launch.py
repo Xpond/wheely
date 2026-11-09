@@ -13,8 +13,9 @@ with tempfile.TemporaryDirectory(prefix="wheely-launch-") as temporary:
     upstream.mkdir(parents=True)
     launcher = upstream / "omarchy-launch-shell"
     launcher.write_text('''#!/usr/bin/env python3
-import json, os, sys
-print(json.dumps([os.getpid(), os.environ['MALLOC_CONF'], sys.argv[1:]]))
+import ctypes, json, os, sys
+thp = ctypes.CDLL(None).prctl(42, 0, 0, 0, 0)  # PR_GET_THP_DISABLE
+print(json.dumps([os.getpid(), os.environ['MALLOC_CONF'], sys.argv[1:], thp]))
 sys.exit(23)
 ''')
     launcher.chmod(0o755)
@@ -29,8 +30,9 @@ sys.exit(23)
         args = ["space here", "$(literal)"]
         child = subprocess.Popen([launcher.name, *args], env=env, stdout=subprocess.PIPE, text=True)
         output, _ = child.communicate(timeout=5)
-        pid, setting, received = json.loads(output)
+        pid, setting, received, thp = json.loads(output)
         assert pid == child.pid and child.returncode == 23 and received == args
+        assert thp == 3, f"THP should be off except where advised, got {thp}"
         expected = "background_thread:true,dirty_decay_ms:1000"
         assert setting == expected + ("," + inherited if inherited else "")
 print("ok: shell launcher preserves upstream supervision, arguments, exit status and allocator overrides")
