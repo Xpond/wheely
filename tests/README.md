@@ -12,7 +12,7 @@ For focused checks, run these entry points from the repository root:
 
 | Command | Coverage and layout |
 | --- | --- |
-| `node tests/check.js` | 29 JavaScript logic suites: file operations and ordering, wheel menus/search/calculator/bindings/conditions/input/settings/file rows, shell panels, lock lifecycle/designs, mycelium, sky and trails. Every suite runs and each failure is reported. Four need an installed Omarchy: `wheel-settings.js` reads the shell's `Commons`, `wheel-folders.js` runs `fd`, `shell-panels.js` the `omarchy` CLI, and `scene.js` `qsb`. |
+| `node tests/check.js` | 30 JavaScript logic suites: file operations and ordering, wheel menus/search/calculator/bindings/conditions/input/settings/file rows, shell panels, lock lifecycle/designs, mycelium, sky and trails. Every suite runs and each failure is reported. Four need an installed Omarchy: `wheel-settings.js` reads the shell's `Commons`, `wheel-folders.js` runs `fd`, `shell-panels.js` the `omarchy` CLI, and `scene.js` `qsb`. |
 | `node tests/wheel-live.js` | Wheel invariants against this machine's installed Omarchy menu and keybindings; requires a running desktop session. |
 | `python3 tests/runtime.py` | Offscreen QML behavior, after compiling each plugin whole, which needs a Wayland session. Calls `plugin_shell.py`, `wheel_refresh.py`, `wheel_scans.py`, `wheel_menu.py`, `file_runtime.py` (including `file_edits.py`), `files_info.py`, `files_lifecycle.py`, `files_git_runtime.py`, and `wheel_settings.py`. |
 | `python3 tests/install.py` | Install/revert, package updates and failure recovery using temporary paths. `install_fixture.py` supplies the isolated system and command stubs. |
