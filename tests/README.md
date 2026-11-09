@@ -57,6 +57,9 @@ directories. Additional checks and their dependencies are documented with the fe
   no graphics session.
 - `python3 tests/wallpaper-toggle.py` checks that the shared pause shortcut routes
   to the active Tidal or Wheelie CLI and leaves other or missing themes alone.
+- `python3 tests/theme-dpr.py` checks that both wallpapers size their textures from the
+  window's true ratio at fractional scale, and that each display decodes its own Wheelie
+  images, which the scene frees once uploaded; it opens a temporary Wayland window.
 
 `files-markdown.py`, `lock-render.py`, `tidal.py`, and `tidal-geometry.py` use native Wayland windows;
 the other rendering suites default to offscreen fixtures. `lock-process.py` simulates
