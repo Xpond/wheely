@@ -92,7 +92,9 @@ is loaded off the UI thread but never decoded on it (200 MB blocked the shell fo
 seconds). A NUL byte in the first kilobyte marks a binary, rather than an extension
 list. Video previews decode in software: Qt picks hardware decoding even for codecs
 the GPU lacks (AV1 on older cards) and shows black, so an `Env` pragma in the shell's
-`shell.qml` sets `QT_FFMPEG_DECODING_HW_DEVICE_TYPES=,`.
+`shell.qml` sets `QT_FFMPEG_DECODING_HW_DEVICE_TYPES=,`. A second sets
+`QT_FFMPEG_ENCODING_HW_DEVICE_TYPES=,`: Qt otherwise still probes the encoders on the
+first preview, loading CUDA and VAAPI for good (about 330 ms and 130 MiB in a bare player).
 
 **The diff view** (`Ctrl+D`) shows staged and unstaged changes against `HEAD` in the
 highlighter's One Dark. git's header goes, each `@@` becomes a `⋯` break, and instead
