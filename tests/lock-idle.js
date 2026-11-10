@@ -15,7 +15,7 @@ const scope = { Date: { now: () => now }, lockRequested: true, waking: false, un
   pauseFingerprint() {}, resumeFingerprint() {}, nudgeFingerprint() {},
   wakeProcess: { running: false }, blankProcess: { running: false },
   unlockTimer: { starts: 0, restart() { this.starts++ } },
-  idleBlankTimer: { idleMs: 5000, resumeMs: 15000, restart() { blankAt = now + this.interval }, stop() { blankAt = 0 } } }
+  idleBlankTimer: { idleMs: 5000, resumeMs: Number(source.match(/resumeMs: (\d+)/)[1]), restart() { blankAt = now + this.interval }, stop() { blankAt = 0 } } }
 const display = { loadBackground: true, driving: false, tell(name) { if (name === "play") plays++ } }
 Object.defineProperty(display, "blanked", { get: () => hidden })
 vm.createContext(display)
@@ -69,7 +69,7 @@ scope.armBlankTimer()
 now = blankAt + 10000
 vm.runInContext(trigger, scope)
 assert.equal(scope.blanked, false, "resuming from suspend blanked immediately")
-assert.equal(blankAt - now, 15000, "resume did not give the panel time to light")
+assert.equal(blankAt - now, 60000, "resume did not give the panel a minute to light")
 scope.authenticatingPassword = true
 now = blankAt
 vm.runInContext(trigger, scope)

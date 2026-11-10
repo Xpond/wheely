@@ -880,7 +880,8 @@ Item {
     // A resume reaches this as soon as the kernel thaws, seconds before the
     // panel lights (on NVIDIA it waits out a VT switch and a modeset), so the
     // idle run-up blanked the lock just as it appeared.
-    readonly property int resumeMs: 15000
+    // 60 s, not upstream's 15: after hours asleep this panel lit with only seconds of it left.
+    readonly property int resumeMs: 60000
     interval: idleMs
     repeat: false
     property double armedAt: 0
