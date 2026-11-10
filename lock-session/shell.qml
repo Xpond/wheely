@@ -50,7 +50,17 @@ ShellRoot {
   Connections {
     target: root.service
     function onPasswordPamConfiguredChanged() { root.dispatch() }
+    // Also to the journal: this worker's own log lives in /run, which a reboot erases.
+    function onLastEventAtChanged() { root.journal(root.service.lastEvent) }
+    // Diagnostics: when input reaches the lock (the first after a 1 s pause) and each wake's span.
+    function onLastInputChanged() {
+      if (root.service.lastInput - root.previousInput > 1000) root.journal("input")
+      root.previousInput = root.service.lastInput
+    }
+    function onWakingChanged() { root.journal(root.service.waking ? "wake: start" : "wake: done") }
   }
+  property double previousInput: 0
+  function journal(text) { Quickshell.execDetached(["logger", "-t", "wheely-lock", text]) }
   Component {
     id: connection
     Socket {

@@ -27,6 +27,8 @@ at least ten seconds so the monitor can recover.
 
 If the real lock gets stuck, switch to a TTY with `Ctrl+Alt+F2`, log in, and run
 `./revert.sh` from this checkout to restore Omarchy's own lock, then restart the session.
+Lock events (locking, blanking, waking, unlocking) also go to the journal, so they survive a reboot:
+`journalctl -t wheely-lock -t systemd-sleep --since yesterday`.
 
 Writing a design, the files involved, and how it is verified:
 [`dev/lockscreen.md`](dev/lockscreen.md).
