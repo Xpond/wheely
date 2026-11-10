@@ -1,6 +1,7 @@
 //@ pragma OmarchyLoadPatch
 //@ pragma Env QSG_RENDER_LOOP=threaded
 //@ pragma Env QT_FFMPEG_DECODING_HW_DEVICE_TYPES=,
+//@ pragma Env QT_FFMPEG_ENCODING_HW_DEVICE_TYPES=,
 import QtQuick
 import QtQml.Models
 import Quickshell
