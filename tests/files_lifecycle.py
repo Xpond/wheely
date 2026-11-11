@@ -1,5 +1,5 @@
-"""Closed file panels must not restart previews when their directory changes, and popping out
-into a window must keep the preview it had. Rows follow every change to the directory, query and order."""
+"""Closed file panels must not restart previews when their directory changes or keep a folder listed,
+and popping out into a window must keep the preview it had. Rows follow every change to the directory, query and order."""
 
 
 def check(files, run, block, line):
@@ -18,6 +18,9 @@ def check(files, run, block, line):
   readonly property var listedEntries: entries
   property string query: ""
   property string order: "name"
+  property string home: "/home"
+  property string dir: "/home/big"
+  function enter(next) { root.dir = next }
   QtObject { id: ops; property string doomed: "" }
   function readChanges() {}
   QtObject { id: gitStatus; function cancel() {} }
@@ -61,6 +64,8 @@ def check(files, run, block, line):
       root.check(!root.settledSel, "hidden directory update restarted preview")
       root.check(!root.editing && !root.dirty && !root.discarding && !root.naming,
                  "close retained editing, dirty, discard or naming state")
+      root.check(root.dir === root.home, "close left the folder listed")
+      root.dir = "/home/big"
       root.opened = true; break
     case 4:
       root.check(root.settledSel === root.sel, "reopen did not preview updated selection")
@@ -70,10 +75,12 @@ def check(files, run, block, line):
       root.opened = true; break
     case 6:
       root.editing = root.dirty = root.discarding = true; root.naming = "new"
+      root.dir = "/home/big"
       root.popOut()
       root.check(root.settledSel === root.sel, "popping out dropped the preview")
       root.check(root.editing && root.dirty && root.discarding && root.naming === "new",
                  "popping out discarded active editing state")
+      root.check(root.dir === "/home/big", "popping out left the folder")
       root.sel = ({ path: "windowed-change" }); break
     case 7:
       root.check(root.settledSel === root.sel, "windowed selection did not settle")
