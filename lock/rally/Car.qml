@@ -85,8 +85,19 @@ Item {
   // Speed streaks trail from these: headlamps, taillamp, mirror, roof, chassis ends, tyres.
   readonly property var streakFrom: [[14, 63, -80], [14, 63, -59], [14, 63, 59], [14, 63, 80], [401, 85, -81], [167.4, 103, -100],
     [210, 130, -64], [300, 131, -64], [210, 130, 64], [1, 15, -88], [397, 16, -88], [100, -2, -88], [322, -2, -88]]
-  readonly property var model: Model.carModel()
-  readonly property var parts: model.parts
+  // Built after the lock's first frame, which shows no car yet: ~55 ms of script the cover need not wait for.
+  property var model: null
+  readonly property var parts: model ? model.parts : []
+  property bool waiting: false
+  Connections {
+    target: car.Window.window
+    enabled: !car.model
+    function onFrameSwapped() {
+      car.model = Model.carModel()
+      car.project()
+      if (car.waiting) car.play()
+    }
+  }
   // Trace and paint durations in milliseconds.
   readonly property int traced: Math.ceil(parts.reduce(function(end, part) { return Math.max(end, part.end) }, 0))
   readonly property int paintTime: 600
@@ -216,7 +227,7 @@ Item {
 
   // Project once per size, not while unsized; the car stays still during tracing.
   function project() {
-    if (!width || !height || projected.width === width && projected.height === height) return
+    if (!model || !width || !height || projected.width === width && projected.height === height) return
     projected = Qt.size(width, height)
     // About 480 units wide at this angle; roof to near wheel about 200 tall.
     var S = Math.min(width * 0.88 / 480, height * 0.8 / 200), cx = width / 2, cy = height / 2 - 4 * S, D = 1400
@@ -309,7 +320,7 @@ Item {
   }
 
   function frame() {
-    if (!parts[0].whole || (finished === parts.length && clock >= traced)) return
+    if (!model || !parts[0].whole || (finished === parts.length && clock >= traced)) return
     var done = 0, drawn = [[], [], [], [], []], heat = [[], [], []]
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]
@@ -376,7 +387,7 @@ Item {
   NumberAnimation on clock { id: run; from: 0; to: car.duration; duration: car.duration; running: false }
   NumberAnimation on drive { id: go; from: 0; to: 1; duration: car.driveTime; running: false }
 
-  function play() { go.stop(); drive = 0; run.restart() }
-  function hide() { go.stop(); run.stop(); drive = 0; clock = 0 }
+  function play() { go.stop(); drive = 0; waiting = !model; if (model) run.restart(); else clock = 0 }
+  function hide() { waiting = false; go.stop(); run.stop(); drive = 0; clock = 0 }
   function driveOff() { go.restart() }
 }

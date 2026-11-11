@@ -80,6 +80,8 @@ but a flat transform can't show the squat's parallax: at full pitch it strays 4.
 to 20px at 1080p (twice that at 4K). Re-posing the body exactly cost about 40ms of projection and
 tessellation a frame and held the first 500ms near 25fps; the whole drive now keeps the display's 144fps.
 `project()` runs once per size: width and height each report a resize, and the car completes at its size.
+The model is built, and first projected, after the window's first frame: that frame shows only the city,
+so its ~55 ms of script would only delay the cover. `play()` before then waits for it.
 
 ## Paint and shader
 
