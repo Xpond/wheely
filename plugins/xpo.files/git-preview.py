@@ -13,6 +13,18 @@ while not directory.is_dir() and directory != directory.parent:
 relative = os.path.relpath(folder, directory)
 git = ["git", "--no-optional-locks", "--literal-pathspecs", "-C", str(directory)]
 
+# Any folder listed is read, whoever wrote its .git/config, and git runs commands that config names:
+# an fsmonitor hook, and clean filters on a changed file. Neither runs here; filters from the user's
+# own config still do (git-lfs). Set through the environment, which no name in it can break out of.
+named = subprocess.run(git + ["config", "-z", "--show-scope", "--name-only", "--get-regexp",
+                              r"^filter\..*\.(clean|process)$"], capture_output=True).stdout.split(b"\0")
+keys = [b"core.fsmonitor"] + [key for scope, key in zip(named[::2], named[1::2])
+                              if scope not in (b"system", b"global")]
+os.environb[b"GIT_CONFIG_COUNT"] = str(len(keys)).encode()
+for i, key in enumerate(keys):
+    os.environb[b"GIT_CONFIG_KEY_%d" % i] = key
+    os.environb[b"GIT_CONFIG_VALUE_%d" % i] = b"false" if i == 0 else b""
+
 if mode == "status":
     where = subprocess.run(git + ["rev-parse", "--show-toplevel", "--show-prefix"], capture_output=True)
     if where.returncode:
@@ -25,7 +37,8 @@ if mode == "status":
     path = listed.removesuffix(b"/") or b"."
     # Stopped, this script stops git too: the exit runs the kill below.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(1))
-    status = subprocess.Popen(git + ["-C", top, "status", "--porcelain", "-z", "--no-renames",
+    # A submodule's own work tree is never read: its config is its own, and could name a filter.
+    status = subprocess.Popen(git + ["-C", top, "status", "--porcelain", "-z", "--no-renames", "--ignore-submodules=dirty",
                                      "--untracked-files=normal", "--", path, path + b"/-"],
                               stdout=subprocess.PIPE)
     try:
