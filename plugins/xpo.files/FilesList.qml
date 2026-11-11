@@ -44,15 +44,17 @@ Item {
     id: list
     anchors.fill: parent
     clip: true
-    model: root.panel.rows
+    // A count, not the rows: the view would copy an array row by row on every change, 127 ms at 100k.
+    model: root.panel.rows.length
     currentIndex: root.panel.index
+    reuseItems: true
     boundsBehavior: Flickable.StopAtBounds
     onContentYChanged: root.rest(true)
 
     delegate: Item {
       id: entry
       required property int index
-      required property var modelData
+      readonly property var modelData: root.panel.rows[entry.index] || ({ name: "", path: "" })
       readonly property bool active: root.panel.index === entry.index
       // What is armed is a list of paths, one to a line.
       readonly property bool doomed: ("\n" + root.panel.doomed + "\n").indexOf("\n" + entry.modelData.path + "\n") >= 0
@@ -114,9 +116,11 @@ Item {
           elide: Text.ElideRight
           text: entry.modelData.name
           color: entry.active ? Commons.Color.menu.selectedText : Commons.Color.menu.text
-          opacity: entry.active ? 1.0 : (entry.modelData.isDir ? 0.88 : 0.66)
+          // A row git still tracks but the disk no longer has is struck through and faded.
+          opacity: entry.active ? 1.0 : entry.modelData.missing ? 0.4 : (entry.modelData.isDir ? 0.88 : 0.66)
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.body
+          font.strikeout: !!entry.modelData.missing
         }
 
         // Uncommitted changes: git's letter on a file, a dot on a folder holding some.
@@ -135,7 +139,7 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           text: entry.modelData.isDir
                 ? (entry.active ? "›" : "")
-                : FilesIndex.humanSize(entry.modelData.size)
+                : entry.modelData.missing ? "" : FilesIndex.humanSize(entry.modelData.size)
           color: entry.active ? Commons.Color.accent : Commons.Color.menu.text
           opacity: entry.active ? 0.75 : 0.45
           font.family: Style.font.menuFamily
@@ -144,6 +148,9 @@ Item {
       }
     }
   }
+
+  // New rows start from the top, as a new model did, also when their count is the same.
+  Connections { target: root.panel; function onRowsChanged() { list.positionViewAtBeginning() } }
 
   // A right-click selects its row and opens the menu there, or the folder's own menu below the
   // rows. The right button only: left clicks, hover and the wheel go on to the rows.
