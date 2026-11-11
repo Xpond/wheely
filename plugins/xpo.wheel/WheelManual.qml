@@ -11,7 +11,9 @@ import "MenuIndex.js" as MenuIndex
 Item {
   id: sheet
   property var wheel: null
-  readonly property Item filterSlot: made.item ? made.item.filter : null
+  // The sheet, once made.
+  property Item panel: null
+  readonly property Item filterSlot: sheet.panel ? sheet.panel.filter : null
 
   readonly property var rows: sheet.wheel.manualRows.filter(function (r) { return !!r.section })
   // Hidden, the sheet ignores the typing search does.
@@ -45,7 +47,7 @@ Item {
   }
   readonly property var columns: MenuIndex.manualColumns(sheet.rows, sheet.count)
   // The whole manual is always on screen: never scrolled, only shrunk.
-  readonly property real fit: made.item ? Math.min(1, sheet.tall / made.item.height, sheet.room / made.item.width) : 1
+  readonly property real fit: sheet.panel ? Math.min(1, sheet.tall / sheet.panel.height, sheet.room / sheet.panel.width) : 1
 
   anchors.fill: parent
   opacity: sheet.wheel.reading ? 1 : 0
@@ -53,12 +55,13 @@ Item {
   Behavior on opacity { NumberAnimation { duration: sheet.wheel.fadeDuration; easing.type: Easing.OutCubic } }
 
   // Made on first read and kept: built hidden at startup it took ~45 ms and held ~9 MiB, read or not.
-  Loader {
-    id: made
-    anchors.centerIn: parent
-    active: sheet.wheel.manualRead
-    sourceComponent: BorderSurface {
+  // A Repeater, not a Loader: a Loader is a focus scope, and the query field moved into it loses its keys.
+  Repeater {
+    model: sheet.wheel.manualRead ? 1 : 0
+    BorderSurface {
       property alias filter: filter
+      anchors.centerIn: parent
+      Component.onCompleted: sheet.panel = this
       scale: sheet.fit
       width: content.width + sheet.gap * 2
       height: content.height + sheet.gap * 2
