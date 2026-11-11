@@ -36,6 +36,7 @@ Scope {
     id: wheel
     property var manualRows: MenuIndex.manualRows(''' + repr((plugin / "manual.md").read_text()) + ''')
     property string query: ""
+    property bool manualRead: true
     property bool reading: true
     property bool windowed: root.screens[root.at][2]
     property int fadeDuration: 0
@@ -48,12 +49,14 @@ Scope {
     id: window
     width: root.screens[root.at][0]; height: root.screens[root.at][1]; visible: true; color: "#806050"
     WheelManual { id: sheet; wheel: wheel }
+    // The wheel's query field, moved into the sheet's header while reading.
+    TextInput { id: field; focus: true; parent: sheet.filterSlot }
   }
   Timer {
     interval: 200; running: true; repeat: true
     onTriggered: {
       try {
-        var s = root.screens[root.at], panel = sheet.children[0]
+        var s = root.screens[root.at], panel = sheet.panel
         var shown = panel.mapToItem(window.contentItem, 0, 0, panel.width, panel.height)
         var name = "''' + str(out) + '''/" + s[0] + "x" + s[1] + ".png", last = root.at === root.screens.length - 1
         console.log("SCREEN", s[0] + "x" + s[1], "columns", sheet.count, "scale", sheet.fit.toFixed(3))
@@ -62,6 +65,7 @@ Scope {
         window.contentItem.grabToImage(function (image) {
           try {
             root.check(image.saveToFile(name), "capture failed")
+            root.check(field.activeFocus, "the query field lost its keys in the sheet")
             root.check(shown.y >= 0 && shown.y + shown.height <= s[1] + 0.5, "panel runs off the bottom")
             root.check(shown.x >= 0 && shown.x + shown.width <= s[0] + 0.5, "panel runs off the side")
             root.check(sheet.fit >= s[3], "shrunk past readable at " + s[0] + "x" + s[1])
