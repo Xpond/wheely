@@ -116,9 +116,11 @@ Item {
           elide: Text.ElideRight
           text: entry.modelData.name
           color: entry.active ? Commons.Color.menu.selectedText : Commons.Color.menu.text
-          opacity: entry.active ? 1.0 : (entry.modelData.isDir ? 0.88 : 0.66)
+          // A row git still tracks but the disk no longer has is struck through and faded.
+          opacity: entry.active ? 1.0 : entry.modelData.missing ? 0.4 : (entry.modelData.isDir ? 0.88 : 0.66)
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.body
+          font.strikeout: !!entry.modelData.missing
         }
 
         // Uncommitted changes: git's letter on a file, a dot on a folder holding some.
@@ -137,7 +139,7 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           text: entry.modelData.isDir
                 ? (entry.active ? "›" : "")
-                : FilesIndex.humanSize(entry.modelData.size)
+                : entry.modelData.missing ? "" : FilesIndex.humanSize(entry.modelData.size)
           color: entry.active ? Commons.Color.accent : Commons.Color.menu.text
           opacity: entry.active ? 0.75 : 0.45
           font.family: Style.font.menuFamily
