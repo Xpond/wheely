@@ -31,6 +31,7 @@ Item {
     property var ground: car.ground
     onGroundChanged: requestPaint()
     onPaint: {
+      if (!car.view) return
       var g = getContext("2d"), a = ground[0], b = ground[1], c = car.view([211, -2, 0])
       g.reset(); g.translate(c[0], c[1])
       g.rotate(Math.atan2(b.y - a.y, b.x - a.x))
