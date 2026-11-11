@@ -141,6 +141,8 @@ Item {
             visible: !resultCard.modelData.copy
             width: Math.min(implicitWidth, resultRow.textBudget - trailText.width)
             elide: Text.ElideRight
+            // Titles and names are anyone's: plain, so a page's title cannot make the shell fetch an <img>.
+            textFormat: Text.PlainText
             text: resultCard.editing ? stack.wheel.editNote : resultCard.modelData.label
             color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
             font.family: Style.font.menuFamily
@@ -152,6 +154,7 @@ Item {
             width: Math.min(implicitWidth,
                             Math.max(resultRow.textBudget * 0.4,
                                      resultRow.textBudget - labelText.implicitWidth))
+            textFormat: Text.PlainText
             text: resultCard.modelData.setting ? "" : resultCard.modelData.trail
             color: Commons.Color.menu.text
             opacity: 0.45
@@ -188,6 +191,7 @@ Item {
           Text {
             id: valueText
             anchors.centerIn: parent
+            textFormat: Text.PlainText
             text: resultCard.modelData.trail
             color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
             font.family: Style.font.menuFamily
@@ -221,6 +225,7 @@ Item {
           visible: !!resultCard.modelData.copy
           width: Math.min(implicitWidth, resultRow.width - 2 * (Style.font.iconLarge + resultRow.spacing))
           elide: Text.ElideLeft
+          textFormat: Text.PlainText
           text: resultCard.modelData.label
           color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
           font.family: Style.font.menuFamily

@@ -347,7 +347,8 @@ function flattenLinks(text) {
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
 }
 
-// Escape raw tags outside code; Qt can swallow later blocks after an unclosed tag.
+// Escape raw tags outside code; Qt can swallow later blocks after an unclosed tag. Images go too, in
+// every form (a reference, brackets in the text): Qt would fetch them, remote ones included.
 function escapeTags(md) {
   var lines = String(md || "").split("\n")
   var fenced = false
@@ -356,7 +357,7 @@ function escapeTags(md) {
     if (fenced || /^(\t| {4})/.test(lines[i])) continue
     // Odd split members are code spans.
     lines[i] = lines[i].split(/(`+[^`]*`+)/).map(function (part, n) {
-      return n % 2 ? part : part.replace(/</g, "&lt;")
+      return n % 2 ? part : part.replace(/</g, "&lt;").replace(/!\[/g, "&#33;[")
     }).join("")
   }
   return lines.join("\n")

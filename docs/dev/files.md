@@ -163,6 +163,15 @@ existing parent and chooses the comparison baseline. Each request owns its
 process and collector; cancelled output cannot update a later selection, and
 a stopped status read stops git too. Outside a repository the helper prints
 nothing.
+
+Every folder listed is read, whoever wrote its `.git/config`, and git runs
+commands that config names: a `core.fsmonitor` hook, and a clean filter on any
+file whose timestamps changed. A downloaded archive holding a `.git` ran either
+on being browsed. `git-preview.py` sets `core.fsmonitor=false` and blanks every
+filter's `clean` and `process` not from the user's system or global config, so
+git-lfs still works; through `GIT_CONFIG_*`, which no filter's name can break out
+of. A submodule's work tree is never read (`--ignore-submodules=dirty`): its
+config is its own. `tests/files-git.js` runs all three against a real repository.
 `node tests/files-index.js` and `node tests/files-git.js` exercise real Git
 repositories; `python3 tests/runtime.py` also checks cancellation, deleted
 directory navigation and backing out of it, large-file previews, and pairing
@@ -546,7 +555,11 @@ typed spans rather than as text. One `<dir>` written inside a sentence in
 tail of the file read as a column of empty bullets. `escapeTags()` escapes every
 angle bracket outside code, so a tag is shown as it was written; code spans and
 fenced and indented blocks are left alone, where `&lt;` would be four literal
-characters rather than one.
+characters rather than one. It writes every `![` outside code as `&#33;[` too:
+Qt fetches an image, a remote one included, and `flattenLinks()` misses a
+reference (`![a][r]`) or brackets in its text. Titles and file names in the
+wheel and in Files are `Text.PlainText` for the same reason, since a web page
+sets its own window title.
 
 **Both `FolderListModel` handlers are gated on `Ready`.** A load raises `count`
 on its way to `Ready`, so ungated the model was snapshotted twice per directory

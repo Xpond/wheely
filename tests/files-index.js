@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict")
-const { library } = require("./qml.js")
+const { library, read: source } = require("./qml.js")
 const M = library("plugins/xpo.wheel/MenuIndex.js")
 const F = library("plugins/xpo.files/FilesIndex.js")
 
@@ -36,6 +36,23 @@ assert.equal(F.lineLabel("one"), "1 line")
 assert.equal(F.lineLabel("one\ntwo"), "2 lines")
 assert.equal(F.lineLabel("one\ntwo\n"), "2 lines")
 console.log("ok: line counts")
+
+// Qt fetches a Markdown image, remote ones included, so a previewed file could call out: none survives
+// outside code, in any form. Code keeps its text.
+const shown = F.escapeTags(F.flattenLinks("![a][r]\n\n![a [b]](http://x/n.png)\n\n![c](http://x/i.png)\n\n" +
+  "[r]: http://x/r.png\n\n`![k][r]`\n\n```\n![f][r]\n```\n"))
+assert.deepEqual(shown.match(/!\[[^\]]*\]/g), ["![k]", "![f]"], shown)
+console.log("ok: Markdown previews load no image")
+
+// Window titles and file names are anyone's: shown as plain text, so markup in one fetches nothing.
+for (const [file, shows] of [["plugins/xpo.wheel/WheelResults.qml", /text: .*modelData\.(label|trail)/],
+                             ["plugins/xpo.files/FilesList.qml", /text: entry\.modelData\.name$/]]) {
+  const lines = source(file).split("\n"), at = lines.flatMap((l, i) => shows.test(l.trim()) ? [i] : [])
+  assert.ok(at.length, file)
+  for (const i of at) assert.equal(lines[i - 1].trim(), "textFormat: Text.PlainText", file + ":" + (i + 1))
+}
+assert.match(source("plugins/xpo.files/FilesTip.qml"), /id: label[\s\S]*?textFormat: Text\.PlainText/)
+console.log("ok: titles and file names render as plain text")
 
 // git's header goes once a hunk follows; a "\ No newline" note marks its line. Each old line sits above the most
 // alike new line, in order: new lines it passes over come first, lines alike to nothing stay alone. The gutter
