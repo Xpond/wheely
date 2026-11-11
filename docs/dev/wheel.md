@@ -464,7 +464,9 @@ wheel installed.
 **The manual.** `manual.md`'s table rows are search rows (`manualRows()`): `help` lists
 them, `help rename` finds the Files row for `F2`, and they have no key of their own, so
 they are never counted or pinned. Enter on one shows the whole manual as one sheet,
-`WheelManual.qml`, drawn from the parsed rows, never the file. A row is a few words, and
+`WheelManual.qml`, drawn from the parsed rows, never the file. The sheet is made on the
+first read and kept (`manualRead`, set before `reading` so the field has a header to move
+into): built hidden at startup it took about 45 ms and 9 MiB, read or not. A row is a few words, and
 keys any text field has are one "text keys" row. The sheet never scrolls:
 `manualColumns()` packs the rows into the shortest columns, a long section continuing
 under its name in the next, and the sheet picks up to four columns, whichever shrinks

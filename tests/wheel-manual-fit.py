@@ -36,6 +36,7 @@ Scope {
     id: wheel
     property var manualRows: MenuIndex.manualRows(''' + repr((plugin / "manual.md").read_text()) + ''')
     property string query: ""
+    property bool manualRead: true
     property bool reading: true
     property bool windowed: root.screens[root.at][2]
     property int fadeDuration: 0
@@ -53,7 +54,7 @@ Scope {
     interval: 200; running: true; repeat: true
     onTriggered: {
       try {
-        var s = root.screens[root.at], panel = sheet.children[0]
+        var s = root.screens[root.at], panel = sheet.children[0].item
         var shown = panel.mapToItem(window.contentItem, 0, 0, panel.width, panel.height)
         var name = "''' + str(out) + '''/" + s[0] + "x" + s[1] + ".png", last = root.at === root.screens.length - 1
         console.log("SCREEN", s[0] + "x" + s[1], "columns", sheet.count, "scale", sheet.fit.toFixed(3))
