@@ -430,6 +430,8 @@ Item {
       root.dirty = false
       root.discarding = false
       root.naming = ""
+      // Opening always enters a folder, so a big one left listed would only hold memory and rescans.
+      root.enter(root.home)
     }
   }
 
