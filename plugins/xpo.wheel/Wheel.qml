@@ -92,6 +92,8 @@ Item {
   // The manual is search rows, and Enter on one shows all of it on one sheet.
   property var manualRows: []
   property bool reading: false
+  // Set on the first read, before reading: the manual's sheet is made then, and the query field moves into it.
+  property bool manualRead: false
   // The query the manual was opened from, given back when it closes.
   property string readFrom: ""
   // Counted apart, so a pick that only bumps a count rebuilds no rows.
@@ -555,6 +557,7 @@ Item {
 
   // The sheet starts on an empty query, so its first letter is a fresh filter.
   function readManual() {
+    root.manualRead = true
     root.readFrom = root.query
     root.reading = true
     root.query = ""

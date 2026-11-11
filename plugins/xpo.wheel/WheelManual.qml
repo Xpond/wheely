@@ -11,7 +11,9 @@ import "MenuIndex.js" as MenuIndex
 Item {
   id: sheet
   property var wheel: null
-  property alias filterSlot: filter
+  // The sheet, once made.
+  property Item panel: null
+  readonly property Item filterSlot: sheet.panel ? sheet.panel.filter : null
 
   readonly property var rows: sheet.wheel.manualRows.filter(function (r) { return !!r.section })
   // Hidden, the sheet ignores the typing search does.
@@ -45,191 +47,197 @@ Item {
   }
   readonly property var columns: MenuIndex.manualColumns(sheet.rows, sheet.count)
   // The whole manual is always on screen: never scrolled, only shrunk.
-  readonly property real fit: Math.min(1, sheet.tall / panel.height, sheet.room / panel.width)
+  readonly property real fit: sheet.panel ? Math.min(1, sheet.tall / sheet.panel.height, sheet.room / sheet.panel.width) : 1
 
   anchors.fill: parent
   opacity: sheet.wheel.reading ? 1 : 0
   visible: opacity > 0
   Behavior on opacity { NumberAnimation { duration: sheet.wheel.fadeDuration; easing.type: Easing.OutCubic } }
 
-  BorderSurface {
-    id: panel
-    anchors.centerIn: parent
-    scale: sheet.fit
-    width: content.width + sheet.gap * 2
-    height: content.height + sheet.gap * 2
-    radius: Style.space(24)
-    color: sheet.wheel.surfaceFill
-    borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
+  // Made on first read and kept: built hidden at startup it took ~45 ms and held ~9 MiB, read or not.
+  // A Repeater, not a Loader: a Loader is a focus scope, and the query field moved into it loses its keys.
+  Repeater {
+    model: sheet.wheel.manualRead ? 1 : 0
+    BorderSurface {
+      property alias filter: filter
+      anchors.centerIn: parent
+      Component.onCompleted: sheet.panel = this
+      scale: sheet.fit
+      width: content.width + sheet.gap * 2
+      height: content.height + sheet.gap * 2
+      radius: Style.space(24)
+      color: sheet.wheel.surfaceFill
+      borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
 
-    ClickShield {}
+      ClickShield {}
 
-    Column {
-      id: content
-      x: sheet.gap
-      y: sheet.gap
-      spacing: sheet.gap
-
-      Item {
-        width: columnsRow.width
-        height: filter.height
-
-        Text {
-          id: title
-          anchors.verticalCenter: parent.verticalCenter
-          text: "Wheely manual"
-          color: Commons.Color.menu.text
-          font.family: Style.font.menuFamily
-          font.pixelSize: Style.fontPx(1.333)
-          font.bold: true
-        }
-        // The wheel's query field moves here while the manual is open.
-        BorderSurface {
-          id: filter
-          anchors.centerIn: parent
-          // Centered, and clear of the title and the hint on either side.
-          width: Math.min(sheet.wheel.searchWidth, parent.width - (Math.max(title.width, hint.width) + sheet.gap) * 2)
-          height: sheet.wheel.searchHeight
-          radius: height / 2
-          color: sheet.wheel.surfaceFill
-          borderSpec: Border.flat(sheet.term ? Commons.Color.accent : sheet.wheel.surfaceEdge, Style.spacing.hairline)
-          Text {
-            anchors.centerIn: parent
-            text: "type to filter"
-            visible: !sheet.term
-            opacity: 0.45
-            color: Commons.Color.menu.text
-            font.family: Style.font.menuFamily
-            font.pixelSize: Style.font.subtitle
-          }
-        }
-        Text {
-          id: hint
-          anchors.verticalCenter: parent.verticalCenter
-          anchors.right: parent.right
-          text: (sheet.wheel.windowed ? "" : "ctrl+t pin  ·  ") + "esc back"
-          opacity: 0.5
-          color: Commons.Color.menu.text
-          font.family: Style.font.menuFamily
-          font.pixelSize: Style.font.body
-        }
-      }
-
-      Row {
-        id: columnsRow
+      Column {
+        id: content
+        x: sheet.gap
+        y: sheet.gap
         spacing: sheet.gap
 
-        Repeater {
-          model: sheet.columns
-          Column {
-            required property var modelData
-            width: sheet.columnWidth
-            spacing: sheet.gap
+        Item {
+          width: columnsRow.width
+          height: filter.height
 
-            Repeater {
-              model: parent.modelData
-              BorderSurface {
-                id: section
-                required property var modelData
-                width: sheet.columnWidth
-                height: body.height + sheet.pad * 2
-                radius: Style.space(18)
-                color: Util.alpha(Commons.Color.menu.text, 0.03)
-                borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
+          Text {
+            id: title
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Wheely manual"
+            color: Commons.Color.menu.text
+            font.family: Style.font.menuFamily
+            font.pixelSize: Style.fontPx(1.333)
+            font.bold: true
+          }
+          // The wheel's query field moves here while the manual is open.
+          BorderSurface {
+            id: filter
+            anchors.centerIn: parent
+            // Centered, and clear of the title and the hint on either side.
+            width: Math.min(sheet.wheel.searchWidth, parent.width - (Math.max(title.width, hint.width) + sheet.gap) * 2)
+            height: sheet.wheel.searchHeight
+            radius: height / 2
+            color: sheet.wheel.surfaceFill
+            borderSpec: Border.flat(sheet.term ? Commons.Color.accent : sheet.wheel.surfaceEdge, Style.spacing.hairline)
+            Text {
+              anchors.centerIn: parent
+              text: "type to filter"
+              visible: !sheet.term
+              opacity: 0.45
+              color: Commons.Color.menu.text
+              font.family: Style.font.menuFamily
+              font.pixelSize: Style.font.subtitle
+            }
+          }
+          Text {
+            id: hint
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right
+            text: (sheet.wheel.windowed ? "" : "ctrl+t pin  ·  ") + "esc back"
+            opacity: 0.5
+            color: Commons.Color.menu.text
+            font.family: Style.font.menuFamily
+            font.pixelSize: Style.font.body
+          }
+        }
 
-                Column {
-                  id: body
-                  x: sheet.pad
-                  y: sheet.pad
-                  width: parent.width - sheet.pad * 2
+        Row {
+          id: columnsRow
+          spacing: sheet.gap
 
-                  Text {
-                    bottomPadding: Style.spacing.sm
-                    text: section.modelData.name.toUpperCase()
-                    opacity: section.modelData.rows.some(sheet.lit) ? 0.6 : 0.2
-                    color: Commons.Color.menu.text
-                    font.family: Style.font.menuFamily
-                    font.pixelSize: Style.font.body
-                    font.letterSpacing: 1.5
-                  }
+          Repeater {
+            model: sheet.columns
+            Column {
+              required property var modelData
+              width: sheet.columnWidth
+              spacing: sheet.gap
 
-                  Repeater {
-                    model: section.modelData.rows
-                    // A rule above every row but the first parts one key from the next.
-                    Item {
-                      id: entry
-                      required property var modelData
-                      required property int index
-                      readonly property bool lit: sheet.lit(modelData)
-                      width: body.width
-                      height: Math.max(keys.height, label.y - keys.y + label.height) + Style.spacing.sm * 2
+              Repeater {
+                model: parent.modelData
+                BorderSurface {
+                  id: section
+                  required property var modelData
+                  width: sheet.columnWidth
+                  height: body.height + sheet.pad * 2
+                  radius: Style.space(18)
+                  color: Util.alpha(Commons.Color.menu.text, 0.03)
+                  borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
 
-                      Rectangle {
-                        visible: entry.index > 0
-                        width: parent.width
-                        height: Style.spacing.hairline
-                        color: sheet.wheel.surfaceEdge
-                      }
+                  Column {
+                    id: body
+                    x: sheet.pad
+                    y: sheet.pad
+                    width: parent.width - sheet.pad * 2
 
+                    Text {
+                      bottomPadding: Style.spacing.sm
+                      text: section.modelData.name.toUpperCase()
+                      opacity: section.modelData.rows.some(sheet.lit) ? 0.6 : 0.2
+                      color: Commons.Color.menu.text
+                      font.family: Style.font.menuFamily
+                      font.pixelSize: Style.font.body
+                      font.letterSpacing: 1.5
+                    }
+
+                    Repeater {
+                      model: section.modelData.rows
+                      // A rule above every row but the first parts one key from the next.
                       Item {
-                        anchors.fill: parent
-                        opacity: entry.lit ? 1 : 0.25
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                        id: entry
+                        required property var modelData
+                        required property int index
+                        readonly property bool lit: sheet.lit(modelData)
+                        width: body.width
+                        height: Math.max(keys.height, label.y - keys.y + label.height) + Style.spacing.sm * 2
 
-                        // Lines break between combos, never inside one.
-                        Flow {
-                          id: keys
-                          y: Style.spacing.sm
-                          width: sheet.keyWidth
-                          spacing: Style.spacing.sm
-                          Repeater {
-                            model: MenuIndex.combosOf(entry.modelData)
-                            Row {
-                              id: combo
-                              required property var modelData
-                              height: sheet.capHeight
-                              spacing: Style.spacing.xs
-                              Text {
-                                visible: !!combo.modelData.plain
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: combo.modelData.plain
-                                color: Commons.Color.menu.text
-                                font.family: Style.font.menuFamily
-                                font.pixelSize: sheet.keySize
-                              }
-                              Repeater {
-                                model: combo.modelData.caps
-                                BorderSurface {
-                                  required property string modelData
-                                  width: Math.max(sheet.capHeight, cap.implicitWidth + Style.spacing.sm * 2)
-                                  height: sheet.capHeight
-                                  radius: Style.spacing.xs * 2
-                                  color: Util.alpha(Commons.Color.menu.text, 0.06)
-                                  borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
-                                  Text {
-                                    id: cap
-                                    anchors.centerIn: parent
-                                    text: parent.modelData
-                                    color: Commons.Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: sheet.keySize
+                        Rectangle {
+                          visible: entry.index > 0
+                          width: parent.width
+                          height: Style.spacing.hairline
+                          color: sheet.wheel.surfaceEdge
+                        }
+
+                        Item {
+                          anchors.fill: parent
+                          opacity: entry.lit ? 1 : 0.25
+                          Behavior on opacity { NumberAnimation { duration: 120 } }
+
+                          // Lines break between combos, never inside one.
+                          Flow {
+                            id: keys
+                            y: Style.spacing.sm
+                            width: sheet.keyWidth
+                            spacing: Style.spacing.sm
+                            Repeater {
+                              model: MenuIndex.combosOf(entry.modelData)
+                              Row {
+                                id: combo
+                                required property var modelData
+                                height: sheet.capHeight
+                                spacing: Style.spacing.xs
+                                Text {
+                                  visible: !!combo.modelData.plain
+                                  anchors.verticalCenter: parent.verticalCenter
+                                  text: combo.modelData.plain
+                                  color: Commons.Color.menu.text
+                                  font.family: Style.font.menuFamily
+                                  font.pixelSize: sheet.keySize
+                                }
+                                Repeater {
+                                  model: combo.modelData.caps
+                                  BorderSurface {
+                                    required property string modelData
+                                    width: Math.max(sheet.capHeight, cap.implicitWidth + Style.spacing.sm * 2)
+                                    height: sheet.capHeight
+                                    radius: Style.spacing.xs * 2
+                                    color: Util.alpha(Commons.Color.menu.text, 0.06)
+                                    borderSpec: Border.flat(sheet.wheel.surfaceEdge, Style.spacing.hairline)
+                                    Text {
+                                      id: cap
+                                      anchors.centerIn: parent
+                                      text: parent.modelData
+                                      color: Commons.Color.menu.text
+                                      font.family: Style.font.menuFamily
+                                      font.pixelSize: sheet.keySize
+                                    }
                                   }
                                 }
                               }
                             }
                           }
-                        }
-                        // Its first line level with the first row of keys.
-                        Text {
-                          id: label
-                          x: sheet.keyWidth + Style.spacing.md
-                          y: keys.y + Math.max(0, (sheet.capHeight - contentHeight / Math.max(1, lineCount)) / 2)
-                          width: parent.width - x
-                          text: entry.modelData.label
-                          wrapMode: Text.Wrap
-                          color: Commons.Color.menu.text
-                          font.family: Style.font.menuFamily
-                          font.pixelSize: sheet.textSize
+                          // Its first line level with the first row of keys.
+                          Text {
+                            id: label
+                            x: sheet.keyWidth + Style.spacing.md
+                            y: keys.y + Math.max(0, (sheet.capHeight - contentHeight / Math.max(1, lineCount)) / 2)
+                            width: parent.width - x
+                            text: entry.modelData.label
+                            wrapMode: Text.Wrap
+                            color: Commons.Color.menu.text
+                            font.family: Style.font.menuFamily
+                            font.pixelSize: sheet.textSize
+                          }
                         }
                       }
                     }
