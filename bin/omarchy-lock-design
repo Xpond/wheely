@@ -17,7 +17,7 @@ case ${1:-} in
     printf '%s\n' "${name:-wallpaper}"
     ;;
   set)
-    [[ -f $designs/${2:-}/Scene.qml ]] || { echo "No lock-screen design named '${2:-}'" >&2; exit 1; }
+    [[ ${2:-} =~ ^[a-z0-9-]+$ && -f $designs/$2/Scene.qml ]] || { echo "No lock-screen design named '${2:-}'" >&2; exit 1; }
     # Replace the file whole, so the lock screen never reads it half-written.
     mkdir -p "${choice%/*}" && printf '%s\n' "$2" > "$choice.new" && mv "$choice.new" "$choice"
     ;;

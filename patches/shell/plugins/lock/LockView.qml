@@ -25,7 +25,8 @@ Item {
   property bool blanked: false
   // Designs live outside the shell, a folder each; lock-design names the one shown.
   property string designs: Quickshell.env("HOME") + "/.local/share/wheely/lock/"
-  property string design: chosen.text().trim() || "wallpaper"
+  // A name, never a path: the file is anyone's who can write it, and a scene is code beside the password.
+  property string design: /^[a-z0-9-]+$/.test(chosen.text().trim()) ? chosen.text().trim() : "wallpaper"
 
   readonly property string placeholderText: Commons.I18n.t("lock.enterPassword")
   readonly property int fieldWidth: 380

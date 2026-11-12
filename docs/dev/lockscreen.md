@@ -11,7 +11,8 @@ The patched `LockView.qml` is the host: it keeps the password field, the connect
 number of files. The choice is one word in `~/.config/wheely/lock-design` (`wallpaper`
 when absent), read each time the lock or its preview shows, so a switch needs no install
 or restart. Designs are not Omarchy plugins: only this host loads them onto the lock
-surface, so an installed plugin cannot draw where the password is typed.
+surface, and only by a plain name (`a-z`, digits, `-`) in `lock/`, never a path. A design
+is code beside the password field, so `lock/` and the checkout behind it are trusted.
 
 A design is a folder in `lock/` holding a `Scene.qml`, plus whatever QML, JavaScript,
 shaders and images it loads relative to itself. The scene fills the screen behind the field,

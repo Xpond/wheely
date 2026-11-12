@@ -14,7 +14,7 @@ const scope = { Date: { now: () => now }, lockRequested: true, waking: false, un
   authenticatingPassword: false, lastInput: 0, wakeUntil: 0, logEvent() {},
   pauseFingerprint() {}, resumeFingerprint() {}, nudgeFingerprint() {},
   wakeProcess: { running: false }, blankProcess: { running: false },
-  unlockTimer: { starts: 0, restart() { this.starts++ } },
+  unlockTimer: { starts: 0, running: false, restart() { this.starts++; this.running = true }, stop() { this.running = false } },
   idleBlankTimer: { idleMs: 5000, resumeMs: Number(source.match(/resumeMs: (\d+)/)[1]), restart() { blankAt = now + this.interval }, stop() { blankAt = 0 } } }
 const display = { loadBackground: true, driving: false, tell(name) { if (name === "play") plays++ } }
 Object.defineProperty(display, "blanked", { get: () => hidden })
@@ -27,7 +27,7 @@ Object.defineProperty(scope, "blanked", { get: () => hidden, set: value => {
 scope.root = scope
 for (const key of ["interval", "armedAt", "resumeMs"])
   Object.defineProperty(scope, key, { get: () => scope.idleBlankTimer[key] })
-for (const name of ["armBlankTimer", "runWake", "finishWake", "runBlank", "wakeOnInput", "driveOffThenUnlock"])
+for (const name of ["armBlankTimer", "runWake", "finishWake", "runBlank", "wakeOnInput", "driveOffThenUnlock", "noteSleepRequested"])
   method(source, name, scope)
 function exit(process, handler) { process.running = false; vm.runInContext(handler, scope) }
 
@@ -81,6 +81,10 @@ scope.lockRequested = true
 scope.driveOffThenUnlock()
 scope.driveOffThenUnlock()
 assert.equal(scope.unlockTimer.starts, 1, "authentication started the exit more than once")
+// A suspend asks for the lock first; mid-exit that request must hold it, or the machine wakes unlocked.
+scope.fingerprintPaused = false
+scope.noteSleepRequested()
+assert.deepEqual([scope.unlocking, scope.unlockTimer.running], [false, false], "a lock asked for during the exit still unlocked")
 console.log("ok: one wake replays the design; monitor recovery, overlapping commands and password keys preserve usable typing time")
 
 // Ready outputs lock immediately; a missing output still follows the stabilization path.

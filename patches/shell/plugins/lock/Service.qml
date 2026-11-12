@@ -376,6 +376,13 @@ Item {
   // countdown then pauses it again if nothing else happens. The idle service
   // repeats the same request without sleeping, so the sleep has to be seen.
   function noteSleepRequested() {
+    // Asked for while the design drives off, the lock stays: a suspend then would wake unlocked.
+    if (unlocking) {
+      unlockTimer.stop()
+      unlocking = false
+      logEvent("unlock: cancelled")
+      armBlankTimer()
+    }
     if (!lockRequested || !fingerprintPaused) return
     // logind holds a suspend for its inhibitor delay, at most 15 seconds here.
     fingerprintResumeTimer.ticksLeft = 20
