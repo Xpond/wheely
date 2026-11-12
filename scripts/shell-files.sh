@@ -18,9 +18,10 @@ is_stock() {
   [[ -n $want && -f $2 && $(sha256sum < "$2") == "$want  -" ]]
 }
 
-# An interrupted or recorded install, the current patch, or any committed version of it.
+# A recorded install, the current patch, or any committed version of it. A run stopped partway
+# needs no mark: replace() leaves the file it was replacing, or the one recorded before it ran.
 is_ours() {
-  [[ -f $STATE/installed/$1.pending ]] || cmp -s "$2" "$STATE/installed/$1" ||
+  cmp -s "$2" "$STATE/installed/$1" ||
     cmp -s "$2" "$REPO/patches/shell/$1" ||
     [[ -n $(git -C "$REPO" log --all -1 --format=%h --find-object="$(git hash-object "$2" 2>/dev/null)" \
             -- "patches/shell/$1" 2>/dev/null) ]]

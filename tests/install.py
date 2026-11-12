@@ -198,6 +198,10 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     leftovers = lambda: list(fixture.shell.rglob("*.wheely-new"))
     assert fixture.run(failure="partial").returncode == 1 and fixture.installed(relative) == fixture.stock[relative]
     assert not leftovers()
+    # The failed copy claims nothing: an edit made since is still someone else's.
+    (fixture.shell / relative).write_bytes(edited)
+    assert fixture.run().returncode == 1 and fixture.installed(relative) == edited
+    (fixture.shell / relative).write_bytes(fixture.stock[relative])
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     assert fixture.run().returncode == 0 and fixture.installed(relative) == fixture.patched(relative)
     assert fixture.run("revert.sh", "partial").returncode == 1 and fixture.installed(relative) == fixture.patched(relative)

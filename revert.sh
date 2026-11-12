@@ -1,6 +1,7 @@
 #!/bin/bash
 # Remove installed plugins and put back Omarchy's own shell files where ours are installed.
 set -euo pipefail
+(( EUID )) || { echo "Run as your own user, not root" >&2; exit 1; }
 
 SHELL_DIR=/usr/share/omarchy/shell
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -67,13 +68,13 @@ for f in "${FILES[@]}"; do
       echo "Not restored: $f — could not back it up first" >&2
       failed=1; continue
     fi
-    if ! touch "$written.pending" || ! replace "$stock" "$installed" || ! is_stock "$f" "$installed"; then
+    if ! replace "$stock" "$installed" || ! is_stock "$f" "$installed"; then
       echo "Could not restore $f; rerun revert.sh" >&2
       failed=1; continue
     fi
     echo "restored $f"
   fi
-  rm -f "$written" "$written.pending" "$STATE/rebased/orig/$f" "$STATE/rebased/shell/$f"
+  rm -f "$written" "$STATE/rebased/orig/$f" "$STATE/rebased/shell/$f"
 done
 find "$STATE" -depth -type d -empty -delete 2>/dev/null || true
 
