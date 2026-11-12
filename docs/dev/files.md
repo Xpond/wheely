@@ -171,7 +171,11 @@ on being browsed. `git-preview.py` sets `core.fsmonitor=false` and blanks every
 filter's `clean` and `process` not from the user's system or global config, so
 git-lfs still works; through `GIT_CONFIG_*`, which no filter's name can break out
 of. A submodule's work tree is never read (`--ignore-submodules=dirty`): its
-config is its own. `tests/files-git.js` runs all three against a real repository.
+config is its own. Its hooks never run either (`core.hooksPath=/dev/null`; a
+diff rewrites the index, which has one), nor the fetch a partial clone makes for
+a blob it lacks (`GIT_NO_LAZY_FETCH`), so such a blob has no diff.
+`tests/files-git.js` runs each against a real repository.
+
 `node tests/files-index.js` and `node tests/files-git.js` exercise real Git
 repositories; `python3 tests/runtime.py` also checks cancellation, deleted
 directory navigation and backing out of it, large-file previews, and pairing
@@ -555,11 +559,13 @@ typed spans rather than as text. One `<dir>` written inside a sentence in
 tail of the file read as a column of empty bullets. `escapeTags()` escapes every
 angle bracket outside code, so a tag is shown as it was written; code spans and
 fenced and indented blocks are left alone, where `&lt;` would be four literal
-characters rather than one. It writes every `![` outside code as `&#33;[` too:
-Qt fetches an image, a remote one included, and `flattenLinks()` misses a
-reference (`![a][r]`) or brackets in its text. Titles and file names in the
-wheel and in Files are `Text.PlainText` for the same reason, since a web page
-sets its own window title.
+characters rather than one. It parts every `![` with a zero-width space too, in
+code as well, since what Qt reads as code is not always what `escapeTags()`
+does: Qt fetches an image, a remote one included, and `flattenLinks()` misses a
+reference (`![a][r]`) or brackets in its text. Titles, labels on the ring, file
+names in the list and everything in Properties (a link's target may hold a URL)
+are `Text.PlainText` for the same reason, since a web page sets its own window
+title.
 
 **Both `FolderListModel` handlers are gated on `Ready`.** A load raises `count`
 on its way to `Ready`, so ungated the model was snapshotted twice per directory

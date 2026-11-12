@@ -38,14 +38,16 @@ assert.equal(F.lineLabel("one\ntwo\n"), "2 lines")
 console.log("ok: line counts")
 
 // Qt fetches a Markdown image, remote ones included, so a previewed file could call out: none survives
-// outside code, in any form. Code keeps its text.
+// in any form, in code or out, since what Qt takes for code is its own call.
 const shown = F.escapeTags(F.flattenLinks("![a][r]\n\n![a [b]](http://x/n.png)\n\n![c](http://x/i.png)\n\n" +
-  "[r]: http://x/r.png\n\n`![k][r]`\n\n```\n![f][r]\n```\n"))
-assert.deepEqual(shown.match(/!\[[^\]]*\]/g), ["![k]", "![f]"], shown)
+  "[r]: http://x/r.png\n\n`![k][r]`\n\n```\n![f][r]\n```\n\npara\n    ![l][r]\n\n``![u][r]`\n"))
+assert.equal(shown.includes("!["), false, shown)
 console.log("ok: Markdown previews load no image")
 
 // Window titles and file names are anyone's: shown as plain text, so markup in one fetches nothing.
 for (const [file, shows] of [["plugins/xpo.wheel/WheelResults.qml", /text: .*modelData\.(label|trail)/],
+                             ["plugins/xpo.wheel/WheelRing.qml", /text: slice\.modelData\.label$/],
+                             ["plugins/xpo.files/FilesProps.qml", /text: (root\.entry .*name|line\.modelData\[1\])/],
                              ["plugins/xpo.files/FilesList.qml", /text: entry\.modelData\.name$/]]) {
   const lines = source(file).split("\n"), at = lines.flatMap((l, i) => shows.test(l.trim()) ? [i] : [])
   assert.ok(at.length, file)
