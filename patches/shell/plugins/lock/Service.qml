@@ -89,6 +89,10 @@ Item {
   readonly property bool checkingStrandedLock: strandedLockRetryTimer.running || strandedLockCheckProc.running
   property bool unlocking: false
   property bool blanked: false
+  // Once this lock has turned the display off. A suspend waits for that (status reports secure only
+  // then), so the design's entrance is seen before the machine sleeps, and the first key after it
+  // wakes finds a blanked lock, whose wake plays the design again.
+  property bool settled: false
   property bool waking: false
   property double wakeUntil: 0
   property double lastInput: 0
@@ -107,7 +111,7 @@ Item {
     requested: root.lockRequested,
     pending: root.pendingSessionLock,
     sessionLocked: sessionLock.locked,
-    secure: sessionLock.secure,
+    secure: sessionLock.secure && root.settled,
     realScreens: root.realScreenCount(),
     passwordPam: root.passwordPamConfigured,
     fingerprint: root.fingerprintConfigured,
@@ -271,6 +275,7 @@ Item {
     resetAuthenticationState()
     unlockTimer.stop()
     unlocking = false
+    settled = false
     lockRequested = true
     wakeUntil = 0
     armBlankTimer()
@@ -441,6 +446,7 @@ Item {
     if (!blankProcess.running) blankProcess.running = true
     if (!blanked) logEvent("display: blank")
     blanked = true
+    settled = true
   }
 
   function submitPassword(value) {
@@ -866,6 +872,28 @@ Item {
     id: wakeProcess
     command: ["bash", "-c", "omarchy-system-wake"]
     onExited: root.finishWake()
+  }
+
+  // A suspend leaves the display as the lock set it, off, and on a desktop nothing lights it again:
+  // the first input then waited out the monitor's own wake in the dark. A resume met while blanked
+  // lights the display at once, and leaves the design for that first input to play.
+  Process { id: lightProcess; command: wakeProcess.command }
+  Timer {
+    id: blankedSleepWatch
+    interval: 1000
+    repeat: true
+    running: root.blanked && !root.waking
+    property double lastTickMs: 0
+    onRunningChanged: lastTickMs = Date.now()
+    onTriggered: {
+      var now = Date.now()
+      var slept = FingerprintModel.spannedSleep(now - lastTickMs, interval)
+      lastTickMs = now
+      if (!slept) return
+      root.logEvent("display: lit by resume")
+      lightProcess.running = true
+      root.armBlankTimer(idleBlankTimer.resumeMs)
+    }
   }
 
   Process {

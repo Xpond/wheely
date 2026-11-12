@@ -172,25 +172,38 @@ ShellRoot { Lock.Service {} }
 
         requested_at = time.time() * 1000
         assert ipc("lock") == "ok"
-        until(lambda: status().get("secure"), "lock never became secure")
+        until(lambda: status().get("sessionLocked"), "lock never took hold")
         frame = until(lambda: re.search(r"LOCK_FRAME (\d+)", logs()), "lock surface never rendered")
         print(f"lock request to first frame: {int(frame[1]) - requested_at:.0f} ms", flush=True)
         pid = child_pid()
+        # A suspend waits on secure, which the lock withholds until it has blanked: the design's
+        # five seconds are seen before the machine sleeps, and the first key after wakes a blank.
+        assert not status().get("secure"), "a suspend would cut the design's entrance short"
+        until(lambda: status().get("secure"), "a blanked lock still held a suspend back")
+        assert status()["lastEvent"] == "display: blank" and time.time() * 1000 - requested_at > 4500
+        # Stopped past the watch's tick, the worker sees the wall clock jump as a suspend does it.
+        # It lights the display and leaves the design hidden for the first input.
+        os.kill(pid, signal.SIGSTOP)
+        time.sleep(4)
+        os.kill(pid, signal.SIGCONT)
+        until(lambda: status()["lastEvent"] == "display: lit by resume", "a resume left a blanked lock dark")
+        until(lambda: list(home.glob("wake.*")), "a resume ran no wake command", timeout=3)
+        print("ok: a suspend waits for the lock's blank, and a resume lights it without playing the design", flush=True)
         parent.terminate()
         parent.wait(timeout=3)
         time.sleep(1)
         assert Path(f"/proc/{pid}").exists(), "shell exit killed the active lock"
         parent = start()
-        until(lambda: status().get("secure"), "shell restart did not reconnect")
+        until(lambda: status().get("sessionLocked"), "shell restart did not reconnect")
         assert child_pid() == pid, "shell restart replaced the active lock"
         parent.kill()
         parent.wait(timeout=3)
         time.sleep(1)
         parent = start()
-        until(lambda: status().get("secure"), "shell crash did not reconnect")
+        until(lambda: status().get("sessionLocked"), "shell crash did not reconnect")
         assert child_pid() == pid, "shell crash replaced the active lock"
         os.kill(pid, signal.SIGKILL)
-        until(lambda: child_pid() and child_pid() != pid and status().get("secure"), "crashed lock did not recover")
+        until(lambda: child_pid() and child_pid() != pid and status().get("sessionLocked"), "crashed lock did not recover")
         assert ipc("authenticated", child=True) == "ok"
         until(lambda: not status().get("locked"), "authenticated unlock did not release")
         assert "RELEASE_DELAY 550" in logs(), "mycelium's unlock did not wait its own releaseDelay"
@@ -202,7 +215,7 @@ ShellRoot { Lock.Service {} }
         entry = worker / "shell.qml"
         entry.write_text("invalid qml\n")
         assert ipc("lock") == "ok"
-        until(lambda: status().get("secure"), "failed worker did not fall back to an in-process lock")
+        until(lambda: status().get("sessionLocked"), "failed worker did not fall back to an in-process lock")
         assert not child_pid(), "fallback lock started a worker"
         parent.terminate()
         parent.wait(timeout=3)
@@ -210,7 +223,7 @@ ShellRoot { Lock.Service {} }
         parent = start()
         until(lambda: status().get("passwordPam"), "missing bridge left no lock service")
         assert ipc("lock") == "ok"
-        until(lambda: status().get("secure"), "missing bridge did not lock in-process")
+        until(lambda: status().get("sessionLocked"), "missing bridge did not lock in-process")
         assert not child_pid(), "missing bridge started a worker"
         print("ok: a failed worker or missing bridge locks in-process", flush=True)
     finally:
