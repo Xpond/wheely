@@ -304,7 +304,7 @@ if name == 'old.txt':
   Timer { interval: 0; running: true; onTriggered: {
     var text = {name: 'a.txt', path: '/d/a.txt', size: 1, isDir: false}, image = {name: 'b.jpg', path: '/d/b.jpg', size: 1, isDir: false}
     for (var e of [text, image, null, image, text]) { root.settledSel = e; root.events.push(e ? e.name : 'none') }
-    if (root.events.join() !== 'diff,a.txt,measure /d/b.jpg,b.jpg,none,measure /d/b.jpg,b.jpg,diff,a.txt') {
+    if (root.events.join() !== 'diff,a.txt,measure jpg:/d/b.jpg,b.jpg,none,measure jpg:/d/b.jpg,b.jpg,diff,a.txt') {
       console.error('FAIL a selection change acted on the last entry', root.events.join()); Qt.exit(1); return
     }
     console.log('PASS'); Qt.quit()
