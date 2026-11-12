@@ -204,6 +204,11 @@ ShellRoot { Lock.Service {} }
         assert child_pid() == pid, "shell crash replaced the active lock"
         os.kill(pid, signal.SIGKILL)
         until(lambda: child_pid() and child_pid() != pid and status().get("sessionLocked"), "crashed lock did not recover")
+        # A suspend asks for the lock before it sleeps. Landing in the design's exit, that request
+        # keeps the lock: taken as already done, the machine would wake unlocked.
+        assert ipc("authenticated", child=True) == "ok" and ipc("lock") == "ok"
+        time.sleep(1.5)
+        assert status().get("locked") and status()["lastEvent"] == "unlock: cancelled", status()
         assert ipc("authenticated", child=True) == "ok"
         until(lambda: not status().get("locked"), "authenticated unlock did not release")
         assert "RELEASE_DELAY 550" in logs(), "mycelium's unlock did not wait its own releaseDelay"

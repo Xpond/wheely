@@ -114,7 +114,10 @@ Item {
     showDesign()
   }
   onLoadBackgroundChanged: if (loadBackground) tell("play")
-  onDrivingChanged: if (driving) tell("leave")
+  // An unlock called off mid-exit, by a suspend asking for the lock, brings the design back; one that
+  // finished has its input off already.
+  function replay() { if (inputEnabled && !blanked) tell("play") }
+  onDrivingChanged: driving ? tell("leave") : Qt.callLater(replay)
   onBlankedChanged: if (loadBackground && !driving) tell(blanked ? "hide" : "play")
 
   FileView {

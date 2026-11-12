@@ -85,6 +85,13 @@ assert.equal(scope.unlockTimer.starts, 1, "authentication started the exit more 
 scope.fingerprintPaused = false
 scope.noteSleepRequested()
 assert.deepEqual([scope.unlocking, scope.unlockTimer.running], [false, false], "a lock asked for during the exit still unlocked")
+// The design, already leaving, comes back; after a finished unlock, its input off, it does not.
+const told = [], shown = { inputEnabled: true, blanked: false, driving: true, tell: name => told.push(name), Qt: { callLater: f => f() } }
+method(view, "replay", shown)
+const drivingChanged = view.match(/^  onDrivingChanged: (.+)$/m)[1]
+for (const [driving, inputEnabled] of [[true, false], [false, true], [true, false], [false, false]])
+  vm.runInContext(drivingChanged, Object.assign(shown, { driving, inputEnabled }))
+assert.deepEqual(told, ["leave", "play", "leave"], "a cancelled unlock left the design gone")
 console.log("ok: one wake replays the design; monitor recovery, overlapping commands and password keys preserve usable typing time")
 
 // Ready outputs lock immediately; a missing output still follows the stabilization path.
