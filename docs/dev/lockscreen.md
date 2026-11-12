@@ -70,9 +70,11 @@ monitor recover (one 4K display took about 4.2 seconds to show a picture after D
 returned); input never shortens it, and afterwards the normal five seconds apply. A display
 lit by a resume with no input is blanked again after five seconds, fifteen after a
 suspend. These rules hold for every design, whatever its animation is doing. One wake
-starts the animation. A resume from suspend that finds the lock lit hides the design the same
-way, until the first input: before 4.5.0-3 the lock blanked five seconds after a resume and
-waking that blank played it, where now it would play out before the panel shows a picture. The
+starts the animation. A suspend gets the same five seconds: `status` reports `secure` only once
+this lock has blanked, and `omarchy-system-sleep-lock` holds the suspend until it does, so the
+entrance is seen before the machine sleeps and the first key after it wakes a blank. A resume
+met while blanked lights the display by itself (a 1 s watch sees the wall clock jump), so that
+first key plays the design on a lit panel instead of waiting out the monitor in the dark. The
 countdown pauses while the wake command runs, and an in-flight blank finishes before a
 queued wake starts. Input after a quiet second runs the wake scripts; steady typing or a
 moving mouse only restarts the timeout. The allowance is a margin, not a signal that the
