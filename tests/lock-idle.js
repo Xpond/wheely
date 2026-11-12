@@ -10,7 +10,7 @@ const trigger = "(function() {" + source.match(/id: idleBlankTimer[^]*?onTrigger
 const wakeExit = source.match(/id: wakeProcess[^]*?onExited: (.+)/)[1]
 const blankExit = source.match(/id: blankProcess[^]*?onExited: (.+)/)[1]
 let now = 100000, blankAt = 0, hidden = false, plays = 0
-const scope = { Date: { now: () => now }, lockRequested: true, waking: false, unlocking: false,
+const scope = { Date: { now: () => now }, resumed: false, lockRequested: true, waking: false, unlocking: false,
   authenticatingPassword: false, lastInput: 0, wakeUntil: 0, logEvent() {},
   pauseFingerprint() {}, resumeFingerprint() {}, nudgeFingerprint() {},
   wakeProcess: { running: false }, blankProcess: { running: false },
@@ -69,7 +69,14 @@ scope.armBlankTimer()
 now = blankAt + 10000
 vm.runInContext(trigger, scope)
 assert.equal(scope.blanked, false, "resuming from suspend blanked immediately")
+// The design waits out the resume as if blanked, and plays on the first input: until Omarchy 4.5.0-3
+// the lock blanked 5 s after a resume, and waking that blank was what played it.
+assert.equal(scope.resumed, true, "a resume from suspend left the design playing to a dark panel")
+assert.match(source, /^ +blanked: root\.blanked \|\| root\.resumed$/m)
 assert.equal(blankAt - now, 60000, "resume did not give the panel a minute to light")
+scope.wakeOnInput()
+assert.equal(scope.resumed, false, "the first input after a resume did not play the design")
+exit(scope.wakeProcess, wakeExit)
 scope.authenticatingPassword = true
 now = blankAt
 vm.runInContext(trigger, scope)

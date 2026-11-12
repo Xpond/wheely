@@ -89,6 +89,9 @@ Item {
   readonly property bool checkingStrandedLock: strandedLockRetryTimer.running || strandedLockCheckProc.running
   property bool unlocking: false
   property bool blanked: false
+  // From a resume from suspend until the first input, the design waits as if blanked: it plays
+  // for someone at the keyboard, not to a panel still dark from the sleep.
+  property bool resumed: false
   property bool waking: false
   property double wakeUntil: 0
   property double lastInput: 0
@@ -271,6 +274,7 @@ Item {
     resetAuthenticationState()
     unlockTimer.stop()
     unlocking = false
+    resumed = false
     lockRequested = true
     wakeUntil = 0
     armBlankTimer()
@@ -432,6 +436,7 @@ Item {
   function wakeOnInput() {
     var quiet = Date.now() - lastInput > 1000
     lastInput = Date.now()
+    resumed = false
     if (quiet || blanked) runWake()
     else if (lockRequested) armBlankTimer()
   }
@@ -610,7 +615,7 @@ Item {
         failedAttempts: root.failedAttempts
         inputEnabled: root.lockRequested && !root.unlocking
         driving: root.unlocking
-        blanked: root.blanked
+        blanked: root.blanked || root.resumed
         loadBackground: root.locked
         passwordText: root.enteredPassword
         onPasswordTextEdited: function(password) { root.enteredPassword = password }
@@ -890,6 +895,7 @@ Item {
       // blank the freshly woken unlock screen under the user. Wall-clock time
       // exposes the gap: take a fresh run-up instead of blanking.
       if (Date.now() - armedAt > interval + 2000) {
+        root.resumed = true
         root.armBlankTimer(resumeMs)
         return
       }
