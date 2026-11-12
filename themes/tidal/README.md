@@ -23,7 +23,9 @@ Space pauses the tide; Escape closes the gallery. Previewing changes no desktop 
 omarchy theme set tidal
 ```
 
-The installer replaces `~/.config/omarchy/themes/tidal` with the theme's runtime files.
+The installer replaces `~/.config/omarchy/themes/tidal` with the theme's colours and
+wallpapers, and `~/.local/share/wheely/themes/tidal` with what runs: this command and the
+animation. The themes folder is any theme's to replace, so nothing in it is ever run.
 It also installs Omarchy theme-change and post-boot hooks for background selection.
 Omarchy generates matching app configurations from `colors.toml`; `shell.toml`
 supplies the soft grey surfaces and sea-glass selections.
@@ -42,8 +44,8 @@ thumbnails are animated:
 Choose any static image to switch back. You can also select either animation with:
 
 ```bash
-~/.config/omarchy/themes/tidal/tidal animate
-~/.config/omarchy/themes/tidal/tidal animate muted
+~/.local/share/wheely/themes/tidal/tidal animate
+~/.local/share/wheely/themes/tidal/tidal animate muted
 ```
 
 The camera holds a settled shoreline, with a gentle ebb and return over 24 seconds.
@@ -67,10 +69,10 @@ same interpolation and slopes without recalculating hashes for each pixel.
 The shader also skips noise whose weight is exactly zero, which the held tide makes common.
 
 ```bash
-~/.config/omarchy/themes/tidal/tidal pause
-~/.config/omarchy/themes/tidal/tidal resume
-~/.config/omarchy/themes/tidal/tidal toggle
-~/.config/omarchy/themes/tidal/tidal stop
+~/.local/share/wheely/themes/tidal/tidal pause
+~/.local/share/wheely/themes/tidal/tidal resume
+~/.local/share/wheely/themes/tidal/tidal toggle
+~/.local/share/wheely/themes/tidal/tidal stop
 ```
 
 With Wheely installed, Ctrl+Space pauses and resumes Tidal or Wheelie while one

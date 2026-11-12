@@ -10,10 +10,15 @@ repo = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix="wallpaper-toggle-") as temporary:
     home = Path(temporary)
     config = home / ".config"
-    themes = config / "omarchy/themes"
+    themes = home / "data/wheely/themes"
     for name in ("tidal", "wheelie"):
         (themes / name).mkdir(parents=True)
         shutil.copy2(repo / "themes" / name / name, themes / name / name)
+        # A file of that name in the theme's own folder, which another theme may replace, never runs.
+        theirs = config / "omarchy/themes" / name / name
+        theirs.parent.mkdir(parents=True)
+        theirs.write_text('#!/bin/sh\necho theirs >> "$CALL_LOG"\n')
+        theirs.chmod(0o755)
     state = home / ".local/state/omarchy/current"
     state.mkdir(parents=True)
     commands = home / "bin"
@@ -22,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix="wallpaper-toggle-") as temporary:
     stub = commands / "quickshell"
     stub.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >> "$CALL_LOG"\n')
     stub.chmod(0o755)
-    env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(config), CALL_LOG=str(log),
+    env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(home / "data"), CALL_LOG=str(log),
                PATH=str(commands) + os.pathsep + os.environ["PATH"])
     for name in (None, "tidal", "wheelie", "another-theme", "../../bin/unwanted"):
         if name is not None:
