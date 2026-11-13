@@ -56,11 +56,13 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     config.mkdir(parents=True)
     (config / "lock-design").write_text("mycelium\n")
     for name in ["omarchy-hyprland-session-locked", "fprintd-list", "omarchy-system-wake",
-                 "omarchy-brightness-display", "omarchy-brightness-keyboard"]:
+                 "omarchy-brightness-display", "omarchy-brightness-keyboard", "logger"]:
         # A wake leaves its file until it finishes, so one killed with its worker stays behind.
         command = 'touch "$HOME/wake.$$"; sleep 2; rm "$HOME/wake.$$"' if name == "omarchy-system-wake" else 'exit 1'
         if name == "omarchy-hyprland-session-locked":
             command = "exit 2" # The compositor cannot report its lock state during startup.
+        if name == "logger":
+            command = "exit 0" # The simulated lock's events stay out of the journal that wake diagnostics read.
         path = stubs / name
         path.write_text("#!/bin/sh\n" + command + "\n")
         path.chmod(0o755)
