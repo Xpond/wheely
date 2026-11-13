@@ -122,6 +122,7 @@ Item {
              + Math.abs(Math.sin(parent.angle)) * height) / 2
         x: parent.width / 2 + reach * Math.cos(parent.angle) - width / 2
         y: parent.height / 2 + reach * Math.sin(parent.angle) - height / 2
+        textFormat: Text.PlainText
         text: slice.modelData.label
         color: Qt.tint(Commons.Color.menu.text, Util.alpha(Commons.Color.accent, slice.emphasis))
         opacity: 0.6 + 0.4 * slice.emphasis

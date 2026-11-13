@@ -163,6 +163,13 @@ existing parent and chooses the comparison baseline. Each request owns its
 process and collector; cancelled output cannot update a later selection, and
 a stopped status read stops git too. Outside a repository the helper prints
 nothing.
+
+A browsed `.git` is untrusted: a downloaded archive holding one could make git
+run its fsmonitor hook, filters, hooks or a partial clone's fetch.
+`git-preview.py` turns each off (`GIT_CONFIG_*`, `GIT_NO_LAZY_FETCH`), keeps
+filters from the user's system or global config (git-lfs), and skips submodule
+work trees. `tests/files-git.js` runs each attack.
+
 `node tests/files-index.js` and `node tests/files-git.js` exercise real Git
 repositories; `python3 tests/runtime.py` also checks cancellation, deleted
 directory navigation and backing out of it, large-file previews, and pairing
@@ -546,7 +553,10 @@ typed spans rather than as text. One `<dir>` written inside a sentence in
 tail of the file read as a column of empty bullets. `escapeTags()` escapes every
 angle bracket outside code, so a tag is shown as it was written; code spans and
 fenced and indented blocks are left alone, where `&lt;` would be four literal
-characters rather than one.
+characters rather than one. It also parts every `![` with a zero-width space,
+code included, since Qt fetches images (remote ones too) and does not always
+agree on what is code. Window titles, ring labels, file names and Properties
+are `Text.PlainText` for the same reason.
 
 **Both `FolderListModel` handlers are gated on `Ready`.** A load raises `count`
 on its way to `Ready`, so ungated the model was snapshotted twice per directory

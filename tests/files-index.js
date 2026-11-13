@@ -37,6 +37,13 @@ assert.equal(F.lineLabel("one\ntwo"), "2 lines")
 assert.equal(F.lineLabel("one\ntwo\n"), "2 lines")
 console.log("ok: line counts")
 
+// Qt fetches a Markdown image, remote ones included, so a previewed file could call out: none survives
+// in any form, in code or out, since what Qt takes for code is its own call.
+const shown = F.escapeTags(F.flattenLinks("![a][r]\n\n![a [b]](http://x/n.png)\n\n![c](http://x/i.png)\n\n" +
+  "[r]: http://x/r.png\n\n`![k][r]`\n\n```\n![f][r]\n```\n\npara\n    ![l][r]\n\n``![u][r]`\n"))
+assert.equal(shown.includes("!["), false, shown)
+console.log("ok: Markdown previews load no image")
+
 // git's header goes once a hunk follows; a "\ No newline" note marks its line. Each old line sits above the most
 // alike new line, in order: new lines it passes over come first, lines alike to nothing stay alone. The gutter
 // numbers lines as the file now has them, and the heading counts what was added and removed.

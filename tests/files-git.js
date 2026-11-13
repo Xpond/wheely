@@ -62,6 +62,55 @@ try {
   console.log("ok: new files, unborn HEAD, literal names and deleted folders have diffs")
 } finally { fs.rmSync(repo, { recursive: true, force: true }) }
 
+// A folder's own .git may be anyone's: the fsmonitor hook and clean filters its config names, a
+// submodule's filters, a partial clone's fetch and its hooks never run while Files reads it. A filter
+// from the user's own config still does.
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-git-hostile-"))
+  const top = path.join(dir, "repo"), sub = path.join(dir, "sub"), ran = path.join(dir, "ran")
+  const env = { ...process.env, HOME: dir, GIT_CONFIG_NOSYSTEM: "1" }
+  const at = (where, ...args) => {
+    const r = spawnSync("git", ["-C", where, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false",
+                                "-c", "protocol.file.allow=always", ...args], { encoding: "utf8", env })
+    assert.equal(r.status, 0, r.stderr)
+  }
+  const hostile = "sh -c 'touch \"$0\"; cat' " + JSON.stringify(ran)
+  try {
+    fs.writeFileSync(path.join(dir, ".gitconfig"), '[filter "upper"]\n\tclean = tr a-z A-Z\n')
+    for (const where of [top, sub]) {
+      fs.mkdirSync(where)
+      at(where, "init", "-q")
+      fs.writeFileSync(path.join(where, ".gitattributes"), "*.txt filter=" + path.basename(where) + "\n*.up filter=upper\n")
+      fs.writeFileSync(path.join(where, "a.txt"), "a\n")
+    }
+    fs.writeFileSync(path.join(top, "b.up"), "abc\n")
+    at(sub, "add", "."); at(sub, "commit", "-qm", "sub")
+    at(top, "submodule", "-q", "add", sub, "sub"); at(top, "add", "."); at(top, "commit", "-qm", "top")
+    // Staged, then written back: a diff that finds a.txt unchanged rewrites the index, which has a hook.
+    fs.writeFileSync(path.join(top, "a.txt"), "b\n"); at(top, "add", "a.txt")
+    fs.writeFileSync(path.join(top, "a.txt"), "a\n")
+    fs.writeFileSync(path.join(top, ".git/hooks/post-index-change"), "#!/bin/sh\ntouch " + JSON.stringify(ran) + "\n", { mode: 0o755 })
+    at(top, "config", "core.fsmonitor", "touch " + JSON.stringify(ran) + "; false")
+    at(top, "config", "filter.repo.clean", hostile)
+    at(path.join(top, "sub"), "config", "filter.sub.clean", hostile)
+    // A partial clone fetches a blob it lacks through the command its config names.
+    const partial = path.join(dir, "partial")
+    at(top, "config", "uploadpack.allowFilter", "true")
+    at(dir, "clone", "-q", "--filter=blob:none", "--no-checkout", "file://" + top, partial)
+    at(partial, "reset", "-q")
+    at(partial, "config", "remote.origin.uploadpack", "touch " + JSON.stringify(ran) + "; git-upload-pack")
+    const later = new Date(Date.now() + 60000)
+    for (const name of ["a.txt", "b.up", "sub/a.txt"]) fs.utimesSync(path.join(top, name), later, later)
+    const read = argv => spawnSync(argv[0], argv.slice(1), { encoding: "utf8", env })
+    const marks = F.readStatus(read(F.statusCommand(top, script)).stdout, "").marks
+    read(F.diffCommand(top, "a.txt", script))
+    read(F.diffCommand(partial, "a.txt", script))
+    assert.equal(fs.existsSync(ran), false, "a command from the repository's own config ran")
+    assert.equal(marks["b.up"], undefined, "the user's own filter no longer ran")
+  } finally { fs.rmSync(dir, { recursive: true, force: true }) }
+  console.log("ok: a repository's own fsmonitor, filters, fetch and hooks never run; the user's own filters do")
+}
+
 // Deleted rows arrive with git's status, when a selection may already rest on a live row; they must not move it.
 const live = [{ name: "b.txt", isDir: false, size: 2 }, { name: "src", isDir: true, size: 0 }]
 const late = { deleted: { "a.txt": false, old: true } }
@@ -77,6 +126,7 @@ function fakeGit(status) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-git-fake-"))
   fs.writeFileSync(path.join(dir, "status"), status)
   fs.writeFileSync(path.join(dir, "git"), '#!/bin/sh\ncase "$*" in *rev-parse*) printf "%s\\n\\n" "' + dir + '" ;;\n'
+    + '*--get-regexp*) exit 1 ;;\n'
     + '*) echo $$ > "' + dir + '/pid"; [ -s "' + dir + '/status" ] && exec cat "' + dir + '/status"; exec sleep 30 ;; esac\n', { mode: 0o755 })
   return { dir, env: { ...process.env, PATH: dir + ":" + process.env.PATH } }
 }
