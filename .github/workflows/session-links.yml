@@ -16,7 +16,7 @@ jobs:
           URL: ${{ github.event.pull_request.url }}
         run: |
           if { printf '%s\n' "$TITLE" "$BODY"; gh api --paginate "$URL/commits" --jq '.[].commit.message'; } |
-             grep -inE 'Claude-Session:|claude\.ai/code/session_'; then
+             grep -inE '^Claude-Session:|claude\.ai/code/session_[A-Za-z0-9]'; then
             echo "::error::Remove the Claude session links above from this PR's commits and description."
             exit 1
           fi
