@@ -5,8 +5,8 @@ What `install.sh` and `revert.sh` change, how updates are handled, and why `sudo
 ## Tested setup
 
 Only Omarchy 4.5.0rc3 and 4.5.0-3 with Quickshell 0.3.2.r7, on one NVIDIA GPU and one monitor,
-without fingerprint unlock. The installer refuses an Omarchy older than 4.5.0rc3 and does not
-check Quickshell.
+without fingerprint unlock; a second screen only as a virtual display, at a different scale. The
+installer refuses an Omarchy older than 4.5.0rc3 and does not check Quickshell.
 
 It takes over `SUPER+A` and `SUPER+W`, and `Ctrl+Space` while one of its animated themes is
 active.
