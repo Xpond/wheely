@@ -60,6 +60,8 @@ Item {
   // Freeze the focused screen on open; pointer focus can otherwise move it.
   property var openScreen: null
   function focusedScreen() { return Pinned.focusedScreen(Hyprland.focusedMonitor, Quickshell.screens) }
+  // An unplugged screen takes the window with it; the focused one stands in.
+  readonly property var liveScreen: Pinned.focusedScreen(openScreen, Quickshell.screens) || focusedScreen()
 
   // FolderListModel cannot combine directory filtering with our ranking.
   property var entries: []
@@ -857,8 +859,9 @@ Item {
 
   PanelWindow {
     id: surface
-    visible: root.opened
-    screen: root.openScreen
+    // Read with the screen: Quickshell hides a window whose screen is unplugged, and the move shows it again.
+    visible: root.opened && !!root.liveScreen
+    screen: root.liveScreen
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     WlrLayershell.namespace: "omarchy-files"
