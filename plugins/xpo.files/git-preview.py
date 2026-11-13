@@ -13,6 +13,21 @@ while not directory.is_dir() and directory != directory.parent:
 relative = os.path.relpath(folder, directory)
 git = ["git", "--no-optional-locks", "--literal-pathspecs", "-C", str(directory)]
 
+# Any folder listed is read, whoever wrote its .git, and git runs commands found there: an fsmonitor
+# hook and clean filters its config names, and its hooks (a diff can rewrite the index). None runs
+# here; filters from the user's own config still do (git-lfs). Set through the environment, which no
+# name in it can break out of.
+named = subprocess.run(git + ["config", "-z", "--show-scope", "--name-only", "--get-regexp",
+                              r"^filter\..*\.(clean|process)$"], capture_output=True).stdout.split(b"\0")
+config = [(b"core.fsmonitor", b"false"), (b"core.hooksPath", b"/dev/null")] + [
+    (key, b"") for scope, key in zip(named[::2], named[1::2]) if scope not in (b"system", b"global")]
+os.environb[b"GIT_CONFIG_COUNT"] = str(len(config)).encode()
+for i, (key, value) in enumerate(config):
+    os.environb[b"GIT_CONFIG_KEY_%d" % i] = key
+    os.environb[b"GIT_CONFIG_VALUE_%d" % i] = value
+# Nor does the fetch a partial clone makes for a blob it lacks, through a command its config names.
+os.environb[b"GIT_NO_LAZY_FETCH"] = b"1"
+
 if mode == "status":
     where = subprocess.run(git + ["rev-parse", "--show-toplevel", "--show-prefix"], capture_output=True)
     if where.returncode:
@@ -25,7 +40,8 @@ if mode == "status":
     path = listed.removesuffix(b"/") or b"."
     # Stopped, this script stops git too: the exit runs the kill below.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(1))
-    status = subprocess.Popen(git + ["-C", top, "status", "--porcelain", "-z", "--no-renames",
+    # A submodule's own work tree is never read: its config is its own, and could name a filter.
+    status = subprocess.Popen(git + ["-C", top, "status", "--porcelain", "-z", "--no-renames", "--ignore-submodules=dirty",
                                      "--untracked-files=normal", "--", path, path + b"/-"],
                               stdout=subprocess.PIPE)
     try:

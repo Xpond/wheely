@@ -114,6 +114,7 @@ Item {
           width: parent.width - glyph.width - trail.width - parent.spacing * 2
                  - (mark.visible ? mark.width + parent.spacing : 0)
           elide: Text.ElideRight
+          textFormat: Text.PlainText
           text: entry.modelData.name
           color: entry.active ? Commons.Color.menu.selectedText : Commons.Color.menu.text
           // A row git still tracks but the disk no longer has is struck through and faded.

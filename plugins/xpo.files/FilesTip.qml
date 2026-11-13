@@ -22,6 +22,7 @@ Rectangle {
     x: tip.pad; y: tip.pad
     width: Math.min(implicitWidth, tip.maxWidth - tip.pad * 2)
     wrapMode: Text.WrapAnywhere
+    textFormat: Text.PlainText
     color: Commons.Color.menu.text
     font.family: Style.font.menuFamily
   }

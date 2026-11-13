@@ -53,6 +53,7 @@ Item {
     Text {
       width: parent.width
       wrapMode: Text.WrapAnywhere
+      textFormat: Text.PlainText
       text: root.entry ? root.entry.name : ""
       color: Commons.Color.accent
       font.family: Style.font.menuFamily
@@ -80,6 +81,7 @@ Item {
           id: value
           width: root.width - root.labelWidth - Style.spacing.lg
           wrapMode: Text.WrapAnywhere
+          textFormat: Text.PlainText
           text: line.modelData[1]
           color: Commons.Color.menu.text
           opacity: 0.9
