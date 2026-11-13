@@ -139,7 +139,7 @@ print("ok: colorful/muted/static selections resume the same controller and anoth
       "pause it, waking or re-applying keeps a manual pause, and toggle pauses/resumes", flush=True)
 
 # Check the CLI's wallpaper paths without changing the desktop selection.
-installed = output / "config/omarchy/themes/tidal"
+installed, theme_folder = output / "data/wheely/themes/tidal", output / "config/omarchy/themes/tidal"
 installed.mkdir(parents=True, exist_ok=True)
 shutil.copy2(repo / "themes/tidal/tidal", installed / "tidal")
 bin_dir = output / "bin"
@@ -149,7 +149,7 @@ for name, script in {"quickshell": "exit 0", "omarchy": 'printf "%s\\n" "$@" > "
     command.write_text("#!/bin/sh\n" + script + "\n")
     command.chmod(0o755)
 cli_log = output / "cli.log"
-cli_env = dict(os.environ, XDG_CONFIG_HOME=str(output / "config"),
+cli_env = dict(os.environ, XDG_CONFIG_HOME=str(output / "config"), XDG_DATA_HOME=str(output / "data"),
                PATH=str(bin_dir) + os.pathsep + os.environ["PATH"], TIDAL_CLI_LOG=str(cli_log))
 help_text = subprocess.check_output([str(installed / "tidal"), "help"], env=cli_env, text=True)
 assert "animate [colorful|muted]" in help_text
@@ -164,16 +164,18 @@ print("ok: animate defaults to colorful, accepts muted, and rejects unknown pale
 # Install stages only what runs, so a file dropped from the theme leaves the installed copy too.
 source = output / "source"
 shutil.rmtree(source, ignore_errors=True)
-runtime = ["colors.toml", "shell.toml", "icons.theme", "preview.jpg", "preview.qml", "hooks/tidal-wallpaper",
-           "backgrounds/01-shoreline.jpg", "animated/shell.qml", "animated/tidal.frag.qsb", "animated/noise.frag.qsb"]
-for name in runtime + ["README.md", "animated/tidal.frag", "animated/noise.frag",
-                       "animated/noise.glsl", "animated/bake-bubbles.py"]:
+# What runs goes apart from the theme's folder, which holds only data and is another theme's to replace.
+data = ["colors.toml", "shell.toml", "icons.theme", "preview.jpg", "backgrounds/01-shoreline.jpg"]
+runtime = ["animated/shell.qml", "animated/tidal.frag.qsb", "animated/noise.frag.qsb"]
+for name in data + runtime + ["README.md", "preview.qml", "hooks/tidal-wallpaper", "animated/tidal.frag",
+                              "animated/noise.frag", "animated/noise.glsl", "animated/bake-bubbles.py"]:
     (source / name).parent.mkdir(parents=True, exist_ok=True)
     (source / name).write_text(name)
 shutil.copy2(repo / "themes/tidal/tidal", source / "tidal")
-(installed / "backgrounds").mkdir(exist_ok=True)
-(installed / "backgrounds/stale.jpg").write_text("removed from the theme")
+(theme_folder / "backgrounds").mkdir(parents=True, exist_ok=True)
+(theme_folder / "backgrounds/stale.jpg").write_text("removed from the theme")
 subprocess.run([str(source / "tidal"), "install"], env=cli_env, check=True, capture_output=True)
-assert sorted(str(p.relative_to(installed)) for p in installed.rglob("*") if p.is_file()) == sorted(runtime + ["tidal"])
+for folder, files in ((theme_folder, data), (installed, runtime + ["tidal"])):
+    assert sorted(str(p.relative_to(folder)) for p in folder.rglob("*") if p.is_file()) == sorted(files), folder
 assert not list((output / "config/omarchy").glob(".tidal-install-*"))
 print("ok: install replaces the theme with only its runtime files", flush=True)

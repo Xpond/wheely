@@ -50,7 +50,7 @@ Item {
                        1.04 + 0.01 * Math.sin(time / 11 + 2), 0.004 * Math.sin(time / 13 + 3))
   }
 
-  function play() { leaving.stop(); grown = 0; spreading = true }
+  function play() { leaving.stop(); opacity = 1; grown = 0; spreading = true }
   function hide() { leaving.stop(); spreading = false; grown = 0 }
   function leave() { spreading = false; leaving.start() }
 

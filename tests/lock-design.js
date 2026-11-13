@@ -20,11 +20,16 @@ try {
   assert.equal(design("current").stdout, "wallpaper\n", "with no choice yet the lock screen shows wallpaper")
   assert.equal(design("set", "meadow").status, 0)
   assert.deepEqual([fs.readFileSync(choice, "utf8"), design("current").stdout], ["meadow\n", "meadow\n"])
-  for (const args of [["set", "missing"], []]) {
+  fs.mkdirSync(path.join(home, "elsewhere"))
+  fs.writeFileSync(path.join(home, "elsewhere/Scene.qml"), "")
+  for (const args of [["set", "missing"], ["set", "../../../../elsewhere"], []]) {
     assert.equal(design(...args).status, 1, args.join(" "))
     assert.equal(fs.readFileSync(choice, "utf8"), "meadow\n", "a refused choice replaced the design")
   }
 } finally {
   fs.rmSync(home, { recursive: true, force: true })
 }
-console.log("ok: designs are listed and chosen by name, wallpaper until one is, and a bad name changes nothing")
+const view = fs.readFileSync(path.join(repo, "patches/shell/plugins/lock/LockView.qml"), "utf8")
+const named = text => new Function("chosen", "return " + view.match(/property string design: (.+)/)[1])({ text: () => text })
+assert.deepEqual(["meadow\n", "", "../../../../elsewhere\n", "/tmp/x"].map(named), ["meadow", "wallpaper", "wallpaper", "wallpaper"])
+console.log("ok: designs are listed and chosen by name, wallpaper until one is, and a bad name or a path changes nothing")

@@ -136,6 +136,15 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     assert (rebased / "orig" / relative).read_bytes() == update
     assert (rebased / "shell" / relative).read_bytes() == fixture.installed(relative)
     assert "already up to date" in fixture.run().stdout
+    # A copy failing over a rebased install leaves both it and the bytes being written ours.
+    patch = fixture.repo / "patches/shell" / relative
+    current, merged = patch.read_bytes(), fixture.installed(relative)
+    patch.write_bytes(b"// newer patch\n" + current)
+    fixture.git("commit", "-qam", "newer patch")
+    assert fixture.run(failure="partial").returncode == 1 and fixture.installed(relative) == merged
+    assert fixture.run().returncode == 0 and fixture.installed(relative).startswith(b"// newer patch\n")
+    patch.write_bytes(current)
+    fixture.git("commit", "-qam", "current patch")
     shutil.rmtree(fixture.package / "cache")
     assert fixture.run("revert.sh").returncode == 0 and fixture.installed(relative) == update
     assert not rebased.exists()
@@ -198,6 +207,10 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
     leftovers = lambda: list(fixture.shell.rglob("*.wheely-new"))
     assert fixture.run(failure="partial").returncode == 1 and fixture.installed(relative) == fixture.stock[relative]
     assert not leftovers()
+    # The failed copy claims nothing: an edit made since is still someone else's.
+    (fixture.shell / relative).write_bytes(edited)
+    assert fixture.run().returncode == 1 and fixture.installed(relative) == edited
+    (fixture.shell / relative).write_bytes(fixture.stock[relative])
     assert fixture.run("revert.sh").returncode == 0 and fixture.all_stock()
     assert fixture.run().returncode == 0 and fixture.installed(relative) == fixture.patched(relative)
     assert fixture.run("revert.sh", "partial").returncode == 1 and fixture.installed(relative) == fixture.patched(relative)

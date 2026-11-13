@@ -21,7 +21,9 @@ omarchy theme set wheelie
 
 The installer prepares the complete theme before stopping the running one, so a failed
 copy leaves it untouched; the scene stops only for the directory swap. Rerun the
-installer if a later step fails. The baked scene in `scene/` goes in `animated/`.
+installer if a later step fails. What runs goes apart from the theme, in
+`~/.local/share/wheely/themes/wheelie`: this command, and the baked scene in `scene/` as
+`animated/`. The themes folder is any theme's to replace, so nothing in it is ever run.
 A native still, `00-wheelie-animated.jpg`, is the theme's first background; four static
 scenes follow it. Theme-change and post-boot hooks start the wallpaper controller,
 `scene/wallpaper.qml`. While that still is selected, the controller runs
@@ -35,9 +37,9 @@ display's scene within one second. Waking it preserves the wheel angle and any m
 pause. The controller checks monitor state in-process only while animation is selected.
 
 ```sh
-~/.config/omarchy/themes/wheelie/wheelie pause
-~/.config/omarchy/themes/wheelie/wheelie resume
-~/.config/omarchy/themes/wheelie/wheelie toggle
+~/.local/share/wheely/themes/wheelie/wheelie pause
+~/.local/share/wheely/themes/wheelie/wheelie resume
+~/.local/share/wheely/themes/wheelie/wheelie toggle
 ```
 
 Wheely binds Ctrl+Space to `toggle` while Wheelie is the active theme. For an app that

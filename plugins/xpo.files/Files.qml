@@ -310,8 +310,10 @@ Item {
     root.dirEntries = root.childEntries()
     root.imageDims = ""
     measurer.cancel()
+    // As the format its name gives: left to the content, a .png holding PostScript runs Ghostscript.
     if (root.media(root.settledSel) === "image")
-      measurer.start(["identify", "-ping", "-format", "%w×%h\n", root.settledSel.path])
+      measurer.start(["identify", "-ping", "-format", "%w×%h\n",
+                      path.slice(path.lastIndexOf(".") + 1).toLowerCase() + ":" + path])
   }
 
   readonly property string metaLine:
