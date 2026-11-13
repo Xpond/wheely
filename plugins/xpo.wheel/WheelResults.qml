@@ -191,7 +191,6 @@ Item {
           Text {
             id: valueText
             anchors.centerIn: parent
-            textFormat: Text.PlainText
             text: resultCard.modelData.trail
             color: resultCard.active ? Commons.Color.accent : Commons.Color.menu.text
             font.family: Style.font.menuFamily
