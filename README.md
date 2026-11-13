@@ -6,9 +6,9 @@ themes, fonts and files. It works alongside Omarchy's own menu and Walker.
 
 https://github.com/user-attachments/assets/a4d568f9-beee-4808-9bde-b6b9480ac79a
 
-> **Early release.** Tested only on Omarchy 4.5.0rc3 with Quickshell 0.3.2.r7, one NVIDIA
-> GPU and one monitor, without fingerprint unlock. It patches Omarchy's shell files with
-> `sudo`, so `omarchy plugin add` cannot install it. It takes over `SUPER+A` and `SUPER+W`,
+> **Early release.** Tested only on Omarchy 4.5.0rc3 and 4.5.0-3 with Quickshell 0.3.2.r7,
+> one NVIDIA GPU and one monitor, without fingerprint unlock. It patches Omarchy's shell files
+> with `sudo`, so `omarchy plugin add` cannot install it. It takes over `SUPER+A` and `SUPER+W`,
 > and `Ctrl+Space` while Tidal or Wheelie is the active theme. The lock screen is a work in
 > progress.
 
