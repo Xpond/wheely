@@ -152,13 +152,12 @@ for f in "${ready[@]}"; do
   ours=${from[$f]}
   written="$STATE/installed/$f"
 
-  # Record the bytes before writing them, so an interrupted copy is still ours.
-  if ! { mkdir -p "$(dirname "$written")" && cp "$ours" "$written.new" && mv "$written.new" "$written"; }; then
-    rm -f "$written.new"
+  # Record the bytes beside the last install's until they land, so a stopped run leaves both ours.
+  if ! { mkdir -p "$(dirname "$written")" && cp "$ours" "$written.new"; }; then
     failed+=("$f"); continue
   fi
   [[ $f == plugins/lock/* ]] && lock_written+=("$f")
-  if replace "$ours" "$installed" && cmp -s "$ours" "$installed"; then
+  if replace "$ours" "$installed" && cmp -s "$ours" "$installed" && mv "$written.new" "$written"; then
     applied+=("$f")
   else
     failed+=("$f")

@@ -74,7 +74,7 @@ for f in "${FILES[@]}"; do
     fi
     echo "restored $f"
   fi
-  rm -f "$written" "$STATE/rebased/orig/$f" "$STATE/rebased/shell/$f"
+  rm -f "$written" "$written.new" "$STATE/rebased/orig/$f" "$STATE/rebased/shell/$f"
 done
 find "$STATE" -depth -type d -empty -delete 2>/dev/null || true
 
