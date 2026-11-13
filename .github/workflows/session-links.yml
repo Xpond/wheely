@@ -1,4 +1,4 @@
-# Fail a PR whose title, description or commits carry a Claude session link.
+# Fail a PR whose title, description or commits carry a Claude session link or co-author line.
 name: session-links
 on:
   pull_request:
@@ -16,7 +16,7 @@ jobs:
           URL: ${{ github.event.pull_request.url }}
         run: |
           if { printf '%s\n' "$TITLE" "$BODY"; gh api --paginate "$URL/commits" --jq '.[].commit.message'; } |
-             grep -inE '^Claude-Session:|claude\.ai/code/session_[A-Za-z0-9]'; then
-            echo "::error::Remove the Claude session links above from this PR's commits and description."
+             grep -inE '^Claude-Session:|claude\.ai/code/session_[A-Za-z0-9]|^Co-Authored-By:.*(Claude|anthropic\.com)'; then
+            echo "::error::Remove the Claude session links or co-author lines above from this PR's commits and description."
             exit 1
           fi
