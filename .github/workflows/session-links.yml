@@ -1,0 +1,22 @@
+# Fail a PR whose title, description or commits carry a Claude session link.
+name: session-links
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  pull-requests: read
+jobs:
+  session-links:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          URL: ${{ github.event.pull_request.url }}
+        run: |
+          if { printf '%s\n' "$TITLE" "$BODY"; gh api --paginate "$URL/commits" --jq '.[].commit.message'; } |
+             grep -inE '^Claude-Session:|claude\.ai/code/session_[A-Za-z0-9]'; then
+            echo "::error::Remove the Claude session links above from this PR's commits and description."
+            exit 1
+          fi
