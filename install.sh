@@ -1,6 +1,8 @@
 #!/bin/bash
 # Install plugins and rebase the shell patches onto upstream changes.
 set -uo pipefail
+# As root this would leave root's files in the user's config; it asks for sudo where it needs it.
+(( EUID )) || { echo "Run as your own user, not root" >&2; exit 1; }
 
 SHELL_DIR=/usr/share/omarchy/shell
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -150,14 +152,12 @@ for f in "${ready[@]}"; do
   ours=${from[$f]}
   written="$STATE/installed/$f"
 
-  # Record the bytes, then mark the copy pending, so an interrupted copy is still ours.
-  if ! { mkdir -p "$(dirname "$written")" && cp "$ours" "$written.new" &&
-         mv "$written.new" "$written" && touch "$written.pending"; }; then
-    rm -f "$written.new"
+  # Record the bytes beside the last install's until they land, so a stopped run leaves both ours.
+  if ! { mkdir -p "$(dirname "$written")" && cp "$ours" "$written.new"; }; then
     failed+=("$f"); continue
   fi
   [[ $f == plugins/lock/* ]] && lock_written+=("$f")
-  if replace "$ours" "$installed" && cmp -s "$ours" "$installed" && rm -f "$written.pending"; then
+  if replace "$ours" "$installed" && cmp -s "$ours" "$installed" && mv "$written.new" "$written"; then
     applied+=("$f")
   else
     failed+=("$f")
@@ -171,7 +171,7 @@ if [[ " ${failed[*]}" == *" plugins/lock/"* ]]; then
     installed="$SHELL_DIR/$f"
     written="$STATE/installed/$f"
     if ! { { cmp -s "$saved" "$installed" || replace "$saved" "$installed"; } &&
-           cmp -s "$saved" "$installed" && cp "$saved" "$written" && rm -f "$written.pending"; }; then
+           cmp -s "$saved" "$installed" && cp "$saved" "$written"; }; then
       alert "Could not restore the lock screen; shell not restarted. Backups: $lock_backup"
       exit 1
     fi

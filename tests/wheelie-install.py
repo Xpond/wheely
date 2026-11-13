@@ -58,15 +58,17 @@ if name == "mv":
     for failure in ("copy", "interrupt", "swap", "none"):
         config = root / failure
         destination = config / "omarchy/themes/wheelie"
-        (destination / "animated").mkdir(parents=True)
-        (destination / "backgrounds").mkdir()
-        for name in ("animated/wallpaper.qml", "animated/obsolete", "backgrounds/old.jpg"):
-            (destination / name).write_text("old " + name)
+        code = root / (failure + "-data") / "wheely/themes/wheelie"
+        (code / "animated").mkdir(parents=True)
+        (destination / "backgrounds").mkdir(parents=True)
+        for name in ("animated/wallpaper.qml", "animated/obsolete"):
+            (code / name).write_text("old " + name)
+        (destination / "backgrounds/old.jpg").write_text("old backgrounds/old.jpg")
         os.utime(destination, (0, 0))
-        original = snapshot(destination)
+        original = snapshot(destination), snapshot(code)
         log = root / f"{failure}.log"
         env = os.environ | {
-            "XDG_CONFIG_HOME": str(config), "WHEELIE_FAIL": failure, "WHEELIE_LOG": str(log),
+            "XDG_CONFIG_HOME": str(config), "XDG_DATA_HOME": str(root / (failure + "-data")), "WHEELIE_FAIL": failure, "WHEELIE_LOG": str(log),
             "PATH": str(commands) + os.pathsep + os.environ["PATH"],
         }
         result = subprocess.run([str(source / "wheelie"), "install"], env=env,
@@ -74,14 +76,16 @@ if name == "mv":
         calls = log.read_text()
         if failure == "none":
             assert result.returncode == 0, result.stderr
-            assert (destination / "animated/wallpaper.qml").read_text() == "new scene/wallpaper.qml"
+            assert (code / "animated/wallpaper.qml").read_text() == "new scene/wallpaper.qml"
+            # Nothing that runs is in the theme's folder, which another theme may replace.
+            assert sorted(p.name for p in destination.iterdir()) == ["backgrounds", "colors.toml", "icons.theme", "preview.jpg"]
             poster = "backgrounds/00-wheelie-animated.jpg"
             assert (destination / poster).read_text() == "new " + poster
             for name in ("ambient-dust.vert.qsb", "ambient-dust.frag.qsb"):
-                assert (destination / "animated" / name).is_file()
-            for name in ("animated/obsolete", "animated/ambient-dust.vert", "animated/ambient-dust.frag",
-                         "backgrounds/old.jpg"):
-                assert not (destination / name).exists(), name
+                assert (code / "animated" / name).is_file()
+            for stale in (code / "animated/obsolete", code / "animated/ambient-dust.vert",
+                          code / "animated/ambient-dust.frag", destination / "backgrounds/old.jpg"):
+                assert not stale.exists(), stale
             # Omarchy's theme picker rebuilds a theme's preview only when its folder's time changes.
             assert destination.stat().st_mtime > 0
             assert "--daemonize" in calls and "post-boot" in calls and "theme-set" in calls
@@ -89,7 +93,7 @@ if name == "mv":
             # A failed copy leaves the installed theme and its running scene untouched; a failed swap
             # puts the theme back.
             assert result.returncode != 0, failure
-            assert snapshot(destination) == original, (failure, result.stderr, calls)
+            assert (snapshot(destination), snapshot(code)) == original, (failure, result.stderr, calls)
             assert ("quickshell kill" in calls) == (failure == "swap"), (failure, calls)
         assert not list(destination.parent.parent.glob(".wheelie-install-*")), failure
         print(f"ok: Wheelie install {failure}")
@@ -97,15 +101,16 @@ if name == "mv":
     for failure in ("copy", "none"):
         config = root / f"fresh-{failure}"
         destination = config / "omarchy/themes/wheelie"
-        env.update(XDG_CONFIG_HOME=str(config), WHEELIE_FAIL=failure)
+        env.update(XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(config / "data"), WHEELIE_FAIL=failure)
         result = subprocess.run([str(source / "wheelie"), "install"], env=env,
                                 capture_output=True, text=True, timeout=20)
         assert (result.returncode == 0) == (failure == "none"), result.stderr
-        assert destination.exists() == (failure == "none")
+        assert destination.exists() == (config / "data/wheely/themes/wheelie").exists() == (failure == "none")
         assert not list(destination.parent.parent.glob(".wheelie-install-*"))
         print(f"ok: first Wheelie install {failure}")
 
-    # Omarchy's theme removal deletes only the folder; each animated theme's hook then removes itself.
+    # Omarchy's theme removal deletes only the folder; each animated theme's hook then removes itself
+    # and what it runs. Until then it runs that, never the folder's own file of the same name.
     for theme in ("wheelie", "tidal"):
         home = root / ("home-" + theme)
         hook = home / ".config/omarchy/hooks/theme-set.d" / (theme + "-wallpaper")
@@ -113,12 +118,19 @@ if name == "mv":
         shutil.copy2(repo.parent / theme / "hooks" / hook.name, hook)
         (home / ".local/state/omarchy/current").mkdir(parents=True)
         (home / ".local/state/omarchy/current/theme.name").write_text("other\n")
-        folder = home / ".config/omarchy/themes" / theme
-        folder.mkdir(parents=True)
-        hooked = os.environ | {"HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")}
+        folder, code = home / ".config/omarchy/themes" / theme, home / "data/wheely/themes" / theme
+        for where, who in ((folder, "theirs"), (code, "ours")):
+            where.mkdir(parents=True)
+            (where / theme).write_text(f'#!/bin/sh\necho {who} >> "$HOME/ran"\n')
+            (where / theme).chmod(0o755)
+        hooked = os.environ | {"HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
+                               "XDG_DATA_HOME": str(home / "data")}
         subprocess.run(["bash", str(hook)], env=hooked, check=True)
-        assert hook.exists(), theme + "'s hook left with its theme still installed"
-        folder.rmdir()
+        assert hook.exists() and not (home / "ran").exists(), theme + "'s hook ran or left under another theme"
+        (home / ".local/state/omarchy/current/theme.name").write_text(theme + "\n")
         subprocess.run(["bash", str(hook)], env=hooked, check=True)
-        assert not hook.exists(), theme + "'s hook outlived its theme"
+        assert (home / "ran").read_text() == "ours\n", theme + "'s hook ran a file from the theme's folder"
+        shutil.rmtree(folder)
+        subprocess.run(["bash", str(hook)], env=hooked, check=True)
+        assert not hook.exists() and not code.exists(), theme + "'s hook or scene outlived its theme"
         print(f"ok: {theme}'s hook leaves with its theme")

@@ -3,6 +3,8 @@ set -euo pipefail
 
 theme=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 destination="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/wheelie"
+# What runs lives apart from the theme: the themes folder is any theme's to replace, and holds only data.
+code="${XDG_DATA_HOME:-$HOME/.local/share}/wheely/themes/wheelie"
 
 case "${1:-help}" in
   install)
@@ -13,23 +15,31 @@ case "${1:-help}" in
     trap 'rm -rf "$stage"' EXIT
     new="$stage/wheelie"
     mkdir "$new"
-    cp -a "$theme"/{colors.toml,icons.theme,preview.jpg,wheelie,hooks,backgrounds} "$new/"
-    cp -a "$theme/scene" "$new/animated"
+    cp -a "$theme"/{colors.toml,icons.theme,preview.jpg,backgrounds} "$new/"
+    mkdir "$stage/code"
+    cp -a "$theme/wheelie" "$stage/code/"
+    cp -a "$theme/scene" "$stage/code/animated"
     # The wallpaper loads the compiled shaders, not their sources.
-    rm -f "$new"/animated/*.{frag,vert,glsl}
+    rm -f "$stage"/code/animated/*.{frag,vert,glsl}
     # Stop the scene only for the swap; the old copy leaves with the stage. kill returns
     # before the scene exits, and until then --no-duplicate refuses to start the new one.
-    quickshell kill -p "$destination/animated/wallpaper.qml" >/dev/null 2>&1 || true
+    # It may run from inside the theme, where earlier installs put it.
+    scenes=("$code/animated/wallpaper.qml" "$destination/animated/wallpaper.qml")
+    for scene in "${scenes[@]}"; do quickshell kill -p "$scene" >/dev/null 2>&1 || true; done
     for ((attempt = 0; attempt < 100; attempt++)); do
-      [[ $(quickshell list -j -p "$destination/animated/wallpaper.qml") == *'"pid"'* ]] || break
+      [[ $(for scene in "${scenes[@]}"; do quickshell list -j -p "$scene"; done) == *'"pid"'* ]] || break
       sleep 0.05
     done
     if (( attempt == 100 )); then
       printf 'Wheelie did not stop; installation cancelled.\n' >&2
       exit 1
     fi
+    mkdir -p "$(dirname -- "$code")"
+    if [[ -e "$code" ]]; then mv -T "$code" "$stage/previous-code"; fi
     if [[ -e "$destination" ]]; then mv -T "$destination" "$stage/previous"; fi
-    if ! mv -T "$new" "$destination"; then
+    if ! { mv -T "$stage/code" "$code" && mv -T "$new" "$destination"; }; then
+      rm -rf "$code"
+      if [[ -e "$stage/previous-code" ]]; then mv -T "$stage/previous-code" "$code" || true; fi
       if [[ -e "$stage/previous" || -L "$stage/previous" ]]; then
         mv -T "$stage/previous" "$destination" || {
           trap - EXIT
@@ -38,18 +48,18 @@ case "${1:-help}" in
       fi
       exit 1
     fi
-    omarchy hook install theme-set "$destination/hooks/wheelie-wallpaper"
-    omarchy hook install post-boot "$destination/hooks/wheelie-wallpaper"
-    "$destination/wheelie" watch
+    omarchy hook install theme-set "$theme/hooks/wheelie-wallpaper"
+    omarchy hook install post-boot "$theme/hooks/wheelie-wallpaper"
+    "$code/wheelie" watch
     printf 'Wheelie installed. Apply it with: omarchy theme set wheelie\n'
     ;;
   watch)
     # Without transparent huge pages: they back mostly empty memory in this long-lived process.
     exec python3 -Ic 'import ctypes, os, sys; ctypes.CDLL(None).prctl(41, 1, 0, 0, 0); os.execvp(sys.argv[1], sys.argv[1:])' \
-      quickshell --no-duplicate --daemonize -p "$destination/animated/wallpaper.qml"
+      quickshell --no-duplicate --daemonize -p "$code/animated/wallpaper.qml"
     ;;
   pause|resume|toggle)
-    exec quickshell ipc -p "$destination/animated/wallpaper.qml" call wheelie "$1"
+    exec quickshell ipc -p "$code/animated/wallpaper.qml" call wheelie "$1"
     ;;
   *)
     printf 'Usage: %s {install|watch|pause|resume|toggle}\n' "$0"

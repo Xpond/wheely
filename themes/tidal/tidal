@@ -3,6 +3,8 @@ set -euo pipefail
 
 theme=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 destination="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/tidal"
+# What runs lives apart from the theme: the themes folder is any theme's to replace, and holds only data.
+code="${XDG_DATA_HOME:-$HOME/.local/share}/wheely/themes/tidal"
 
 case "${1:-help}" in
   install)
@@ -13,21 +15,29 @@ case "${1:-help}" in
     trap 'rm -rf "$stage"' EXIT
     new="$stage/tidal"
     mkdir "$new"
-    cp -a "$theme"/{colors.toml,shell.toml,icons.theme,preview.jpg,preview.qml,tidal,hooks,backgrounds,animated} "$new/"
-    rm -f "$new"/animated/*.{frag,glsl} "$new"/animated/bake-bubbles.py
+    cp -a "$theme"/{colors.toml,shell.toml,icons.theme,preview.jpg,backgrounds} "$new/"
+    mkdir "$stage/code"
+    cp -a "$theme"/{tidal,animated} "$stage/code/"
+    rm -f "$stage"/code/animated/*.{frag,glsl} "$stage"/code/animated/bake-bubbles.py
     # Stop the controller only for the swap; kill returns before it exits, and until then
     # --no-duplicate refuses to start the new one.
-    quickshell kill -p "$destination/animated" >/dev/null 2>&1 || true
+    # It may run from inside the theme, where earlier installs put it.
+    scenes=("$code/animated" "$destination/animated")
+    for scene in "${scenes[@]}"; do quickshell kill -p "$scene" >/dev/null 2>&1 || true; done
     for ((attempt = 0; attempt < 100; attempt++)); do
-      [[ $(quickshell list -j -p "$destination/animated") == *'"pid"'* ]] || break
+      [[ $(for scene in "${scenes[@]}"; do quickshell list -j -p "$scene"; done) == *'"pid"'* ]] || break
       sleep 0.05
     done
     if (( attempt == 100 )); then
       printf 'Tidal did not stop; installation cancelled.\n' >&2
       exit 1
     fi
+    mkdir -p "$(dirname -- "$code")"
+    if [[ -e "$code" ]]; then mv -T "$code" "$stage/previous-code"; fi
     if [[ -e "$destination" ]]; then mv -T "$destination" "$stage/previous"; fi
-    if ! mv -T "$new" "$destination"; then
+    if ! { mv -T "$stage/code" "$code" && mv -T "$new" "$destination"; }; then
+      rm -rf "$code"
+      if [[ -e "$stage/previous-code" ]]; then mv -T "$stage/previous-code" "$code" || true; fi
       if [[ -e "$stage/previous" || -L "$stage/previous" ]]; then
         mv -T "$stage/previous" "$destination" || {
           trap - EXIT
@@ -36,9 +46,9 @@ case "${1:-help}" in
       fi
       exit 1
     fi
-    omarchy hook install theme-set "$destination/hooks/tidal-wallpaper"
-    omarchy hook install post-boot "$destination/hooks/tidal-wallpaper"
-    "$destination/tidal" watch
+    omarchy hook install theme-set "$theme/hooks/tidal-wallpaper"
+    omarchy hook install post-boot "$theme/hooks/tidal-wallpaper"
+    "$code/tidal" watch
     printf 'Tidal installed. Apply it with: omarchy theme set tidal\n'
     ;;
   animate)
@@ -47,16 +57,16 @@ case "${1:-help}" in
       muted) wallpaper=00-muted-coast-animated.jpg ;;
       *) printf 'Usage: %s animate [colorful|muted]\n' "$0" >&2; exit 1 ;;
     esac
-    "$destination/tidal" watch
+    "$code/tidal" watch
     exec omarchy theme bg set "$HOME/.local/state/omarchy/current/theme/backgrounds/$wallpaper"
     ;;
   watch)
     # Without transparent huge pages: they back mostly empty memory in this long-lived process.
     exec python3 -Ic 'import ctypes, os, sys; ctypes.CDLL(None).prctl(41, 1, 0, 0, 0); os.execvp(sys.argv[1], sys.argv[1:])' \
-      quickshell --no-duplicate --daemonize -p "$destination/animated"
+      quickshell --no-duplicate --daemonize -p "$code/animated"
     ;;
   stop|pause|resume|toggle)
-    exec quickshell ipc -p "$destination/animated" call tidal "$1"
+    exec quickshell ipc -p "$code/animated" call tidal "$1"
     ;;
   preview)
     exec quickshell --no-duplicate -p "$theme/preview.qml"
