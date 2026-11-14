@@ -47,7 +47,7 @@ rest. `Ctrl+D` shows a changed file's diff instead of its contents.
 ## Moving, renaming and making files
 
 - `Ctrl+X` or `Ctrl+C` takes the selection; go to another folder and `Ctrl+V` puts it
-  there. A move releases what it held, a copy can be pasted again. A paste skips names
+  there, and lets go of it. A paste skips names
   already taken and reports them; a move that only partly succeeds still releases what it
   held, so select the rest to retry.
 - `F2` renames in place. `Ctrl+Shift+N` makes a new file or folder: a name with a dot,

@@ -111,7 +111,7 @@ Item {
     var h = root.held
     if (!h) return
     root.run(root.pasteCommand(h.move, into || root.panel.listedDir.replace(/\/+$/, ""), h.items.map(i => i.path)),
-             { name: h.items[0].name, land: !into, spend: h.move, reads: h.items.map(i => i.path),
+             { name: h.items[0].name, land: !into, spend: h, reads: h.items.map(i => i.path),
                doing: (h.move ? "moving " : "copying ") + h.name,
                occupied: h.items.length > 1 ? "all " + h.items.length + " names are already here" : "a " + h.name + " is already here",
                taken: "some names were already here; the rest " + (h.move ? "moved" : "copied"),
@@ -143,12 +143,13 @@ Item {
         root.note(exitCode === 17 ? o.occupied || "a " + o.name + " is already here"
                   : exitCode === 18 && o.taken ? o.taken : exitCode === 19 && o.partial ? o.partial : o.fail)
         // Some of many went, so the hold no longer names what is there to move.
-        if ((exitCode === 18 || exitCode === 19) && o.spend) root.held = null
+        if ((exitCode === 18 || exitCode === 19) && o.spend && o.spend === root.held && o.spend.move) root.held = null
         return
       }
       if (o.land) root.panel.pending = o.name
       root.note(o.done)
-      if (o.spend) root.held = null
+      // A paste spends its hold, unless another was taken while it ran.
+      if (o.spend && o.spend === root.held) root.held = null
       // A check that passed hands over to the job it checked for, which reports on its own.
       if (o.then) Quickshell.execDetached(o.then)
     }
