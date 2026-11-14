@@ -61,6 +61,16 @@ try {
   assert.equal(root.status, 17)
   assert.ok(root.held)
   assert.equal(root.message, "all 2 names are already here")
+  // A copy that lands lets go too, so the legend stops offering it; a hold taken mid-paste stays.
+  fs.writeFileSync(at("whole.txt"), "copy me")
+  root.held = hold(["whole.txt"], false)
+  root.paste()
+  assert.equal(root.status, 0)
+  assert.equal(root.held, null, "a pasted copy stayed held")
+  const later = hold(["later.txt"], false)
+  root.op = { spend: hold(["whole.txt"], false) }; root.held = later
+  exited(root, {}, { cancel() {} }, 0)
+  assert.equal(root.held, later, "a paste dropped a hold taken while it ran")
   console.log("ok: partial moves clear stale holds, total failures retain them, and collisions report the whole batch")
 
   // Real extraction, with only its final rename forced to fail. Both archive layouts clean up.
