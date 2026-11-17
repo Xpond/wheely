@@ -213,6 +213,9 @@ Item {
   } }
 ''')
 
+    (base / "shell/plugins/panels/stub").mkdir(parents=True)
+    (base / "shell/plugins/panels/stub/Icon.qml").write_text(
+        "import QtQuick\nItem { property real iconSize; property color color; width: iconSize; height: iconSize }\n")
     # Incubate results before attaching their window, as the plugin loader does. Appearing under
     # a stationary pointer must not select; real movement and clicks still select and run rows.
     run("results-pointer", '''
@@ -230,7 +233,7 @@ Item {
   property string emptyText: ""
   property string editing: ""
   property string editNote: ""
-  property string omarchyPath: ""
+  property string omarchyPath: ''' + json.dumps(str(base)) + '''
   property real backdrop: 0
   property color selectedFill: "blue"
   property color surfaceFill: "black"
@@ -247,11 +250,12 @@ Item {
     sourceComponent: Component { WheelResults { wheel: root } }
     onLoaded: item.parent = stage
   }
-  function cards() {
-    var out = [], walk = item => item.children.forEach(c => { if (c.modelData) out.push(c); walk(c) })
-    walk(stack.item)
+  function find(item, wanted) {
+    var out = []
+    item.children.forEach(c => { if (wanted(c)) out.push(c); out.push(...root.find(c, wanted)) })
     return out
   }
+  function cards() { return root.find(stack.item, c => !!c.modelData) }
   function center(row) {
     var card = root.cards()[row]
     return card.mapToItem(stage, card.width / 2, card.height / 2)
@@ -278,6 +282,13 @@ Item {
     if (after.map(c => c.visible).join() !== "true,true,true,false,false,false,false,false") {
       console.error("FAIL shown", after.map(c => c.visible)); Qt.exit(1); return
     }
+    // A card that drew a panel's own mark, then a row with a glyph, lines its label up with the rest.
+    root.results = [{ label: "Mark", icon: "", iconFile: "stub/Icon.qml", trail: "Panel" }, { label: "Plain", icon: "x", trail: "App" }]
+  } }
+  Timer { interval: 600; running: true; onTriggered: root.results = [{ label: "Help", icon: "?", trail: "Manual" }, { label: "Plain", icon: "x", trail: "App" }] }
+  Timer { interval: 800; running: true; onTriggered: {
+    var x = root.cards().slice(0, 2).map(c => root.find(c, k => k.visible && k.text === c.modelData.label)[0].mapToItem(c, 0, 0).x)
+    if (x[0] !== x[1]) { console.error("FAIL a reused card's label sat at", x[0], "not", x[1]); Qt.exit(1); return }
     console.log("PASS"); Qt.quit()
   } }
 ''')
