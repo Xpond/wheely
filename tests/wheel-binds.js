@@ -30,6 +30,11 @@ assert.deepEqual([binds[0].dispatch, binds[0].action, binds[0].kind],
   ['hl.dsp.window.float({ action = "toggle" })', undefined, M.KIND.bind])
 assert.equal(binds[9].action, "printf '%s\t%s' a b", "a tab inside the command was cut")
 assert.deepEqual(M.bindRows(""), [])
+// Keys read as words: modifiers recased, media keysyms spelled out.
+const pressed = ["SUPER SHIFT + code:10", "ALT + XF86AudioLowerVolume", "XF86MonBrightnessUp", "XF86KbdLightOnOff",
+  "XF86PowerOff"]
+assert.deepEqual(M.bindRows(pressed.map(k => record(k, "a", "exec", "a")).join("\n")).map(b => b.keys),
+  ["Super Shift code:10", "Alt Lower Volume", "Screen Brightness Up", "Keyboard Light On Off", "Power Off"])
 
 const items = {
   system: { label: "System" },
@@ -50,13 +55,19 @@ const find = label => index.filter(r => r.label === label)
 const top = query => M.search(index, query, 40, {})[0].label
 
 // A binding that runs a row's own command, toggles its panel or opens Omarchy's menu at it by id
-// or alias joins that row unseen: nothing on the row changes, but its description finds it.
+// or alias joins that row: its description finds it, and its keys follow the row's trail.
 assert.equal(top("lock computer"), "Lock")
 assert.equal(top("audio controls"), "Audio")
 assert.equal(top("power menu"), "System")
 assert.equal(top("theme menu"), "Theme")
 assert.equal(top("picker"), "Color")
-assert.ok(index.every((r, i) => r.trail === (rows[i] ? rows[i].trail : "")), "a row shows a binding's keys")
+const trail = label => find(label)[0].trail
+assert.equal(trail("Lock"), "System · Super Ctrl L")
+assert.equal(trail("Audio"), "Panel · Super Ctrl A")
+assert.equal(trail("Theme"), "Style · Super Shift Ctrl Space")
+assert.equal(trail("System"), "Super Escape", "a second binding's keys replaced the first's")
+assert.equal(trail("Next track"), "Next", "a binding row lost its keys")
+assert.equal(trail("Toggle window floating/tiling"), "Super T")
 assert.equal(JSON.stringify(rows), before, "the fold changed the rows it was given")
 
 // The rest are rows of their own, one per command.
