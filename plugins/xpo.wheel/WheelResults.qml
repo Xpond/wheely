@@ -156,11 +156,15 @@ Item {
             readonly property bool scrolls: resultCard.active && overflow > 1
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(trailText.implicitWidth,
-                            Math.max(resultCard.modelData.keys ? 0 : resultRow.textBudget * 0.4,
+                            Math.max(resultCard.modelData.keys && !resultCard.modelData.manual
+                                       ? 0 : resultRow.textBudget * 0.4,
                                      resultRow.textBudget - labelText.implicitWidth))
             height: trailText.height
             clip: scrolls
-            onScrollsChanged: if (!scrolls) trailText.x = 0
+            // A reused card's new trail starts over: a running loop keeps the distance it began with.
+            function rewind() { scroll.stop(); trailText.x = 0; if (scrolls) scroll.start() }
+            onScrollsChanged: rewind()
+            onOverflowChanged: rewind()
 
             Text {
               id: trailText
@@ -175,7 +179,7 @@ Item {
               font.pixelSize: Style.font.caption
             }
             SequentialAnimation {
-              running: trailBox.scrolls
+              id: scroll
               loops: Animation.Infinite
               PauseAnimation { duration: 800 }
               NumberAnimation { target: trailText; property: "x"; to: -trailBox.overflow
