@@ -24,6 +24,7 @@ few seconds for a surprise.
 
 Start typing to search the Omarchy menu, apps, open windows, keybindings, themes,
 fonts, settings and the manual. Rows you pick often rise to the top.
+A row with a keybinding shows its keys last; on the selected row, keys that do not fit scroll.
 
 | type | finds |
 |---|---|

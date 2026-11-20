@@ -139,7 +139,7 @@ Item {
             id: labelText
             anchors.verticalCenter: parent.verticalCenter
             visible: !resultCard.modelData.copy
-            width: Math.min(implicitWidth, resultRow.textBudget - trailText.width)
+            width: Math.min(implicitWidth, resultRow.textBudget - trailBox.width)
             elide: Text.ElideRight
             // Titles and names are anyone's: plain, so a page's title cannot make the shell fetch an <img>.
             textFormat: Text.PlainText
@@ -148,20 +148,46 @@ Item {
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.body
           }
-          Text {
-            id: trailText
+          // The selected row's trail, when cut short, slides to its end and back; the rest elide.
+          // Keys take only what the label leaves.
+          Item {
+            id: trailBox
+            readonly property real overflow: Math.max(0, trailText.implicitWidth - width)
+            readonly property bool scrolls: resultCard.active && overflow > 1
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(implicitWidth,
-                            Math.max(resultRow.textBudget * 0.4,
+            width: Math.min(trailText.implicitWidth,
+                            Math.max(resultCard.modelData.keys && !resultCard.modelData.manual
+                                       ? 0 : resultRow.textBudget * 0.4,
                                      resultRow.textBudget - labelText.implicitWidth))
-            textFormat: Text.PlainText
-            text: resultCard.modelData.setting ? "" : resultCard.modelData.trail
-            color: Commons.Color.menu.text
-            opacity: 0.45
-            // Preserve the filename end of paths and the root of breadcrumbs.
-            elide: resultCard.modelData.path ? Text.ElideLeft : Text.ElideRight
-            font.family: Style.font.menuFamily
-            font.pixelSize: Style.font.caption
+            height: trailText.height
+            clip: scrolls
+            // A reused card's new trail starts over: a running loop keeps the distance it began with.
+            function rewind() { scroll.stop(); trailText.x = 0; if (scrolls) scroll.start() }
+            onScrollsChanged: rewind()
+            onOverflowChanged: rewind()
+
+            Text {
+              id: trailText
+              width: trailBox.scrolls ? implicitWidth : trailBox.width
+              textFormat: Text.PlainText
+              text: resultCard.modelData.setting ? "" : resultCard.modelData.trail
+              color: Commons.Color.menu.text
+              opacity: 0.45
+              // Preserve the filename end of paths and the root of breadcrumbs.
+              elide: resultCard.modelData.path ? Text.ElideLeft : Text.ElideRight
+              font.family: Style.font.menuFamily
+              font.pixelSize: Style.font.caption
+            }
+            SequentialAnimation {
+              id: scroll
+              loops: Animation.Infinite
+              PauseAnimation { duration: 800 }
+              NumberAnimation { target: trailText; property: "x"; to: -trailBox.overflow
+                                duration: trailBox.overflow * 25; easing.type: Easing.InOutSine }
+              PauseAnimation { duration: 1200 }
+              NumberAnimation { target: trailText; property: "x"; to: 0
+                                duration: trailBox.overflow * 25; easing.type: Easing.InOutSine }
+            }
           }
           Text {
             id: chevron

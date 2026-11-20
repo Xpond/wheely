@@ -454,8 +454,9 @@ function liveRows(sources) {
 // The wheel's own bindings (open, commit, close) mean nothing from inside it.
 var WHEEL_BIND = /xpo\.wheel|omarchy-wheel-close/
 
-// Omarchy's keybinding records, `KEYS → Description<TAB>kind<TAB>arg`, as rows. Exec and Lua binds
-// run from a row; a sendshortcut needs its web app focused, and a mouse bind needs the mouse.
+// Omarchy's keybinding records, `KEYS → Description<TAB>kind<TAB>arg`, as rows that wear their keys,
+// `SUPER CTRL + L` as `Super Ctrl L`. Exec and Lua binds run from a row; a sendshortcut needs its web
+// app focused, and a mouse bind needs the mouse.
 function bindRows(raw) {
   var out = []
   var ls = lines(raw)
@@ -465,7 +466,15 @@ function bindRows(raw) {
     if (at < 0 || /mouse/i.test(f[0].slice(0, at)) || !f[2] || (f[1] !== "exec" && f[1] !== "lua")
         || WHEEL_BIND.test(f.slice(2).join("\t"))) continue
     var label = f[0].slice(at + 1).trim()
-    var row = { icon: "", label: label, trail: "", kind: KIND.bind,
+    var keys = f[0].slice(0, at).trim().split(/\s+/).filter(function(k) { return k !== "+" })
+      .map(function(k) {
+        // Media keys are X keysyms: XF86AudioRaiseVolume reads Raise Volume, XF86MonBrightnessUp Screen Brightness Up.
+        if (/^XF86./.test(k))
+          return k.slice(4).replace(/^Audio/, "").replace(/^Mon/, "Screen").replace(/^Kbd/, "Keyboard")
+            .replace(/([a-z])([A-Z])/g, "$1 $2")
+        return k.length > 1 && k === k.toUpperCase() ? k[0] + k.slice(1).toLowerCase() : k
+      }).join(" ")
+    var row = { icon: "", label: label, trail: keys, keys: keys, kind: KIND.bind,
                 keywords: label.toLowerCase() }
     row[f[1] === "lua" ? "dispatch" : "action"] = f.slice(2).join("\t")
     out.push(row)
@@ -484,7 +493,8 @@ function bindTargets(row, items) {
 }
 
 // One action is one row: a binding that runs what a row runs lends that row its description as
-// search words, and the rest join as rows of their own. Rows outlive an open, so a lent row is a copy.
+// search words, and its keys after the trail unless an earlier binding did; the rest join as rows of
+// their own. Rows outlive an open, so a lent row is a copy.
 function withBindings(rows, binds, items) {
   var out = rows.slice()
   var at = {}
@@ -497,7 +507,9 @@ function withBindings(rows, binds, items) {
     var command = bind.action || bind.dispatch
     var j = at[command]
     if (j === undefined) { at[command] = out.length; out.push(bind); continue }
-    out[j] = merge(out[j], { keywords: out[j].keywords + " " + bind.keywords, _search: null })
+    var row = merge(out[j], { keywords: out[j].keywords + " " + bind.keywords, _search: null })
+    if (!row.keys) { row.keys = bind.keys; row.trail = row.trail ? row.trail + " · " + bind.keys : bind.keys }
+    out[j] = row
   }
   return out
 }
