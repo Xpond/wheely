@@ -4,6 +4,7 @@ layout(location = 0) out vec4 fragColor;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
+    float light; // 1 for the daylight variant.
     float turn;
     float tireRadius;
     float exposure;
@@ -28,5 +29,5 @@ void main() {
     vec3 gain = vec3(0.93, 0.96, 1.0) + key * vec3(0.54, 0.32, 0.10)
                 - shade * vec3(0.25, 0.24, 0.22);
     tex.rgb = min(tex.rgb * gain * exposure, vec3(tex.a));
-    fragColor = sceneLight(tex, rect.xy + qt_TexCoord0 * rect.zw) * qt_Opacity;
+    fragColor = sceneLight(tex, rect.xy + qt_TexCoord0 * rect.zw, light) * qt_Opacity;
 }

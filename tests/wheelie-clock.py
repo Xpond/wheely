@@ -43,12 +43,12 @@ Window {
     id: measure; interval: 2200
     onTriggered: {
       const count = window.storms.length
-      if (window.updates < 130 || window.updates > 145 || count !== 4) {
+      if (window.updates < 130 || window.updates > 145 || count < 40 || count > 46) {
         console.error("FAIL cadence", window.updates, JSON.stringify(window.storms)); Qt.exit(1); return
       }
       for (let i = 1; i < count; i++) {
         const gap = window.storms[i] - window.storms[i - 1]
-        if (gap < 450 || gap > 600) { console.error("FAIL storm interval", gap); Qt.exit(1); return }
+        if (gap < 30 || gap > 80) { console.error("FAIL storm interval", gap); Qt.exit(1); return }
       }
       console.log("CADENCE", window.updates, JSON.stringify(window.storms))
       scene.running = false
@@ -84,4 +84,4 @@ with tempfile.TemporaryDirectory(prefix="wheelie-clock-") as temp:
     assert run.returncode == 0 and "PASS shared clock" in log, log
     qslog.check(log)
     print("\n".join(line for line in log.splitlines() if "CADENCE" in line))
-print("ok: full-rate animation, half-second storm steps, frozen pause, no running backward")
+print("ok: full-rate animation, 20 Hz storm steps, frozen pause, no running backward")

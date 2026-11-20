@@ -22,6 +22,7 @@ layout(std140, binding = 0) uniform buf {
     vec4 shape;
     vec4 tint;
     vec4 force; // Acceleration, drag, and the row a falling grain lands on; 0 for none.
+    float light; // 1 for the daylight variant.
 };
 
 // A full-period generator with intermediates that remain exact in 32-bit floats.

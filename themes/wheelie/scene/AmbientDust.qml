@@ -10,6 +10,7 @@ Item {
   property int epoch: Math.floor(seconds / 2376)
   property var rear: null // The rear wheel, which kicks up the spray; its radius sets the spray's size.
   property color sand: "transparent"
+  property real light: 0 // 1 grades the daylight variant.
   property int seed: Math.floor(Math.random() * 8388591) + 1
 
   // Match ImageParticle's 8-bit premultiplied colors.
@@ -74,6 +75,7 @@ Item {
       property vector4d shape: modelData.shape
       property vector4d tint: modelData.tint
       property vector4d force: modelData.force || Qt.vector4d(0, 0, 0, 0)
+      property real light: root.light
       property var source: modelData.wisp ? wisp : grain
       // Two columns form each quad; one connector column collapses the triangles between slots.
       mesh: Qt.size(3 * count - 2, 1)
