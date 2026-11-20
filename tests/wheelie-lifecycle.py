@@ -24,7 +24,7 @@ env = os.environ | {"QT_QPA_PLATFORM": "offscreen", "QT_QPA_PLATFORMTHEME": "gen
 def stage(theme):
     """Omarchy's copy of the current theme, which the background link points into."""
     (theme / "backgrounds").mkdir(parents=True)
-    for name in ("00-wheelie-animated.jpg", "static.png"):
+    for name in ("00-wheelie-animated.jpg", "00-wheelie-light-animated.jpg", "static.png"):
         (theme / "backgrounds" / name).touch()
 
 
@@ -56,7 +56,8 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
       return JSON.stringify({animated: root.animated, loaded: !!root.testScene, scenes: root.scenes,
         running: root.testScene ? root.testScene.running : false,
         ready: root.testScene ? !!root.testScene.layout.cutout : false,
-        turn: root.testScene ? root.testScene.wheelTurn : 0, frames: root.frames})
+        turn: root.testScene ? root.testScene.wheelTurn : 0, frames: root.frames,
+        light: root.testScene ? root.testScene.light : -1})
     }
     function pause(): void''')
     qml = qslog.patch(qml, 'onTriggered: Hyprland.refreshMonitors()', 'onTriggered: {}')
@@ -66,7 +67,7 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
     qml = qslog.patch(qml, 'monitorState: monitor ? monitor.lastIpcObject : ({})', 'monitorState: root.activity')
     qml, removed = re.subn(r'^      (anchors \{|exclusionMode:|mask:|WlrLayershell\.).*\n', '', qml, flags=re.M)
     assert removed == 6, removed
-    qml = qslog.patch(qml, 'Surface { anchors.fill:', '''Connections {
+    qml = qslog.patch(qml, 'Surface {\n        anchors.fill:', '''Connections {
         target: wallpaper
         function onFrameSwapped() { root.frames++ }
       }
@@ -128,8 +129,10 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
             for _ in range(2):
                 select("static.png")
                 wait_for(lambda s: not s["animated"] and not s["loaded"])
+                select("00-wheelie-light-animated.jpg")
+                wait_for(lambda s: s["running"] and s["light"] == 1)
                 select("00-wheelie-animated.jpg")
-                wait_for(lambda s: s["running"])
+                wait_for(lambda s: s["running"] and s["light"] == 0)
             # Setting the theme again replaces the folder the link points into, and empties
             # theme.name before writing it. Neither may restart the scene or lift a pause.
             ipc("pause")

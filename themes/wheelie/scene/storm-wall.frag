@@ -10,8 +10,12 @@ layout(std140, binding = 0) uniform buf {
     float textureAspect;
     float extent;
     float kept; // The share of the plate's rows, from the top, that storm.png holds.
+    float light; // 1 for the daylight variant.
 };
 layout(binding = 1) uniform sampler2D storm;
+
+#extension GL_GOOGLE_include_directive : enable
+#include "scene-light.glsl"
 
 float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -43,5 +47,6 @@ void main() {
     st += vec2(0.012 * (noise(p + drift) - 0.5),
                0.018 * (noise(p + drift + vec2(5.2, 1.7)) - 0.5));
     st = clamp(st, vec2(0.0), vec2(1.0));
-    fragColor = texture(storm, vec2(st.x, st.y / kept)) * qt_Opacity;
+    vec4 dust = texture(storm, vec2(st.x, st.y / kept));
+    fragColor = (light > 0.5 ? daylightSand(dust, vec2(0.0), true) : dust) * qt_Opacity;
 }

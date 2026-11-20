@@ -24,14 +24,14 @@ copy leaves it untouched; the scene stops only for the directory swap. Rerun the
 installer if a later step fails. What runs goes apart from the theme, in
 `~/.local/share/wheely/themes/wheelie`: this command, and the baked scene in `scene/` as
 `animated/`. The themes folder is any theme's to replace, so nothing in it is ever run.
-A native still, `00-wheelie-animated.jpg`, is the theme's first background; four static
-scenes follow it. Theme-change and post-boot hooks start the wallpaper controller,
-`scene/wallpaper.qml`. While that still is selected, the controller runs
+Two native stills come first among the theme's backgrounds, and four static scenes follow:
+`00-wheelie-animated.jpg` and `00-wheelie-light-animated.jpg`, the same scene recoloured to daylight.
+Theme-change and post-boot hooks start the wallpaper controller, `scene/wallpaper.qml`. While either still is selected, the controller runs
 the live scene on every display. The scene is cropped to fill each screen and sits above
 the shell's static background and below windows. It takes no input or focus. Choosing
 another background unloads it; choosing another theme also ends the controller, until
 the theme-set hook starts it again. Re-applying Wheelie moves Omarchy on to the next
-background, as for any theme; select the poster again to resume the scene.
+background, as for any theme; select a poster again to resume the scene.
 Display-off, session-lock, and compositor-confirmed fullscreen coverage pause that
 display's scene within one second. Waking it preserves the wheel angle and any manual
 pause. The controller checks monitor state in-process only while animation is selected.
@@ -66,8 +66,8 @@ at the corners. Every static background ships resized to 4K (at least 3840 × 21
 The rider's front and rear wheels turn under stationary covers, lit from the upper left,
 with a drive chain timed to the rear wheel and a contact shadow beneath. Three sky
 prints, deep blue, rose-magenta and amber, stand in for the sky as full-width strips
-bordered in white. A dense sand bank grows behind the distant dunes over four minutes,
-then keeps billowing on a seamless ten-minute loop. Fine sand, nearer flecks and low
+bordered in white. A dense sand bank grows behind the distant dunes over 24 seconds,
+then keeps billowing on a seamless one-minute loop. Fine sand, nearer flecks and low
 wisps drift through it all, faster up close, with grains and puffs lifting beside the
 rear tire. The dunes lie in the storm's shade, and a vignette deepens the bottom edge
 behind the bar. Pausing holds every particle in place.
@@ -82,10 +82,11 @@ behind the bar. Pausing holds every particle in place.
   `storm.png`, which holds only the dust and is 6336 pixels wide, so it never enlarges
   over the native scene.
 - `Surface.qml` runs one 16 ms clock, about 62.5 animation updates a second. Storm changes
-  join that tick every half-second to reduce redundant presentations. A Qt animation or
-  `ParticleSystem` would redraw at the display's own rate, so the scene uses neither.
+  join every third or fourth tick, 20 times a second, to reduce redundant presentations.
+  A Qt animation or `ParticleSystem` would redraw at the display's own rate, so the scene
+  uses neither.
 - The still scene, storm included, is cached in a native-resolution texture that changes
-  twice a second. Wheels, chain, covers, shadow and dust draw over it and grade themselves
+  20 times a second. Wheels, chain, covers, shadow and dust draw over it and grade themselves
   with `scene-light.glsl`: a layer over moving parts would present every update twice.
 - `AmbientDust.qml` sets each dust layer's rate, tint, sizes, lifetimes and velocities,
   and the rear wheel's spray, which is two more layers with gravity, drag and a landing row;
@@ -97,6 +98,11 @@ behind the bar. Pausing holds every particle in place.
   across the wrap.
 - The storm shade is baked; `scene-light.glsl` darkens the foreground toward the bottom
   edge and its corners in linear light, keeping 25% of the light behind the bar.
+- The daylight variant recolours the same images as they are drawn. `daylight.frag` turns the
+  sky prints' hues to sky blue, coral, and lemon gold, lightening them with a gamma so black
+  and white hold. `daylightSand` in `scene-light.glsl` turns the storm pale cream, and the
+  dunes, dust, and grey ground the theme's peach; it skips saturated paint, whites, and dark
+  rubber, so the bike keeps its colours. The grade then lights it as it lights the original.
 
 ## Editing
 
