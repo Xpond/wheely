@@ -21,6 +21,7 @@ layout(std140, binding = 0) uniform buf {
     vec4 shape;
     vec4 tint;
     vec4 force;
+    float light; // 1 for the daylight variant.
 };
 layout(binding = 1) uniform sampler2D source;
 
@@ -28,5 +29,7 @@ layout(binding = 1) uniform sampler2D source;
 #include "scene-light.glsl"
 
 void main() {
-    fragColor = sceneLight(texture(source, uv) * tint, place) * (fade * qt_Opacity);
+    vec4 color = texture(source, uv) * tint;
+    if (light > 0.5) color = daylightSand(color, place, false);
+    fragColor = sceneLight(color, place, light) * (fade * qt_Opacity);
 }

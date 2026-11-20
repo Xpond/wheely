@@ -44,10 +44,11 @@ directories. Additional checks and their dependencies are documented with the fe
   installing only the runtime files;
   `python3 tests/tidal-geometry.py` checks cached geometry after resizing and at fractional scale.
 - [Wheelie theme](../themes/wheelie/README.md):
-  `python3 tests/wheelie-clock.py` checks animation cadence, half-second storm steps,
+  `python3 tests/wheelie-clock.py` checks animation cadence, 20 Hz storm steps,
   no frames while paused, and that a backward system clock cannot rewind the scene.
   `python3 tests/wheelie-lifecycle.py` checks pause/resume/toggle, lock/DPMS/fullscreen
-  gating, static-background round trips, re-applying the theme, and exiting for another theme.
+  gating, static-background round trips, switching between the original and daylight posters,
+  re-applying the theme, and exiting for another theme.
   `python3 tests/wheelie-dust.py` checks visible GPU dust, paused pixels, continuous
   resume, clock rollover with the spray, and the spray's order under the ambient dust;
   `QSG_RHI_BACKEND=vulkan` uses a temporary Wayland background window because Qt's

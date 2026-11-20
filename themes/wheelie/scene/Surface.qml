@@ -7,10 +7,11 @@ import Quickshell.Io
 Item {
   id: root
   property bool running: true
+  property real light: 0 // 1 grades the daylight variant.
   property int revolution: 1200
   property real seconds
-  // The storm steps twice a second on a clock tick, so regrading it adds no presentation.
-  readonly property real stormSeconds: Math.floor(seconds * 2) / 2
+  // The storm steps 20 times a second on a clock tick, so regrading it adds no presentation.
+  readonly property real stormSeconds: Math.floor(seconds * 20) / 20
   property double previous: Date.now()
   readonly property real wheelTurn: (seconds * 1000 / revolution) % 1
   property var layout: ({ size: [1, 1], wheels: {} })
@@ -55,6 +56,8 @@ Item {
                                                    scene.width * scene.scale / view.width,
                                                    scene.height * scene.scale / view.height)
           property vector4d crop: Qt.vector4d(0, 0, 1, 1)
+          property real light: root.light
+          property real sandFrom: 2 // Its parts recolour themselves.
           fragmentShader: Qt.resolvedUrl("scene-light.frag.qsb")
         }
 
@@ -72,15 +75,23 @@ Item {
           // A rectangle as shares of the scene, which is how a moving part finds its lighting.
           function rect(x, y, w, h) { return Qt.vector4d(x / width, y / height, w / width, h / height) }
 
-          Image {
-            source: "base.jpg"; smooth: true; cache: false
+          // In daylight, these two recolour their sky prints and sand before the grade.
+          ShaderEffect {
             width: parent.width; height: parent.height
-            sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
+            property real light: root.light
+            property vector4d rect: Qt.vector4d(0, 0, 1, 1)
+            property vector3d rows: Qt.vector3d(root.layout.prints[1] / height, root.layout.prints[2] / height,
+                                                root.layout.horizon / height)
+            property var source: Image {
+              source: "base.jpg"; smooth: true; cache: false; visible: false
+              sourceSize: Qt.size(Math.ceil(scene.width * scene.decode), Math.ceil(scene.height * scene.decode))
+            }
+            fragmentShader: Qt.resolvedUrl("daylight.frag.qsb")
           }
           // Sized by bindings, not anchors: anchors apply only after the storm image starts loading.
           HorizonStorm {
             width: parent.width; height: parent.height; horizon: root.layout.horizon || 0
-            decode: scene.decode; seconds: root.stormSeconds
+            decode: scene.decode; seconds: root.stormSeconds; light: root.light
           }
           // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
           Item {
@@ -97,11 +108,17 @@ Item {
             }
           }
           // Everything but the sky, redrawn over the storm.
-          Image {
-            source: "cutout.png"; cache: false
+          ShaderEffect {
             x: root.layout.cutout[0]; y: root.layout.cutout[1]
             width: root.layout.cutout[2]; height: root.layout.cutout[3]
-            sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
+            property real light: root.light
+            property vector4d rect: scene.rect(x, y, width, height)
+            property vector3d rows: Qt.vector3d(0, 0, 0)
+            property var source: Image {
+              source: "cutout.png"; smooth: true; cache: false; visible: false
+              sourceSize: Qt.size(Math.ceil(root.layout.cutout[2] * scene.decode), Math.ceil(root.layout.cutout[3] * scene.decode))
+            }
+            fragmentShader: Qt.resolvedUrl("daylight.frag.qsb")
           }
         }
       }
@@ -124,6 +141,7 @@ Item {
               property real turn: root.wheelTurn
               property real tireRadius: axle.wheel.radius / axle.wheel.size
               property real exposure: axle.modelData === "rear" ? 0.92 : 1.0
+              property real light: root.light
               property vector4d rect: scene.rect(axle.x, axle.y, width, height)
               property var source: Image {
                 source: axle.modelData + ".png"; cache: false
@@ -147,6 +165,7 @@ Item {
                 crop: Qt.vector4d(frame % chain.columns / chain.columns, Math.floor(frame / chain.columns) / rows,
                                   1 / chain.columns, 1 / rows)
                 rect: scene.rect(chain.box[0], chain.box[1], width, height)
+                light: root.light
               }
             }
             LitImage {
@@ -155,6 +174,9 @@ Item {
               width: axle.wheel.box[2]; height: axle.wheel.box[2]
               decoded: Qt.size(axle.decoded, axle.decoded)
               rect: scene.rect(axle.wheel.box[0], axle.wheel.box[1], width, height)
+              light: root.light
+              // The rear cover's ground strip, below its swingarm.
+              sandFrom: axle.wheel.contactY ? (axle.wheel.contactY - axle.wheel.radius / 4) / scene.height : 2
             }
           }
         }
@@ -168,6 +190,7 @@ Item {
           width: source.implicitWidth; height: source.implicitHeight
           visible: !!rear
           rect: scene.rect(x, y, width, height)
+          light: root.light
         }
 
         AmbientDust {
@@ -175,6 +198,7 @@ Item {
           seconds: root.seconds
           rear: root.layout.wheels.rear
           sand: Qt.lighter(root.layout.dust, 1.08)
+          light: root.light
         }
       }
     }

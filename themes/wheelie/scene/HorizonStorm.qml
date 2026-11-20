@@ -5,17 +5,19 @@ Item {
   property real seconds
   property real horizon: 0 // Scene row where the storm ends, just inside the redrawn dunes.
   property real decode: 1 // The share of native resolution to decode, as in Surface.qml.
+  property real light: 0 // 1 turns the storm daylight cream.
 
   ShaderEffect {
     width: parent.width; height: root.horizon
     property real extent: height / Math.max(1, root.height)
-    // Approach once over four minutes, then keep rolling at the distant dunes.
-    property real approach: Math.sin(Math.min(1, root.seconds / 240) * Math.PI / 2)
-    // Circular noise coordinates keep the ten-minute billowing loop seamless.
-    property real phase: (root.seconds % 600) / 600 * Math.PI * 2
+    // Approach once over 24 seconds, then keep rolling at the distant dunes.
+    property real approach: Math.sin(Math.min(1, root.seconds / 24) * Math.PI / 2)
+    // Circular noise coordinates keep the one-minute billowing loop seamless.
+    property real phase: (root.seconds % 60) / 60 * Math.PI * 2
     property real sceneAspect: root.width / Math.max(1, root.height)
     // storm.png keeps only the plate's top 1960 of 2688 rows, all the storm ever samples.
     property real kept: 1960 / 2688
+    property real light: root.light
     property real textureAspect: stormImage.implicitWidth / Math.max(1, stormImage.implicitHeight) * kept
     property var storm: Image {
       id: stormImage

@@ -9,7 +9,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 
-// The desktop wallpaper: the live scene on every display while Wheelie's animated poster is selected.
+// The desktop wallpaper: the live scene on every display while one of Wheelie's animated posters is selected.
 Scope {
   id: root
   property bool paused: false
@@ -17,7 +17,8 @@ Scope {
   property string background: ""
   property bool wheelieTheme: false
   // By name, any extension: a copy staged before the poster became a JPEG still animates.
-  readonly property bool animated: wheelieTheme && /\/00-wheelie-animated\.\w+$/.test(background)
+  readonly property bool light: /\/00-wheelie-light-animated\.\w+$/.test(background)
+  readonly property bool animated: wheelieTheme && (light || /\/00-wheelie-animated\.\w+$/.test(background))
 
   // Watch the directory: watching the image misses replacement of its symlink.
   FileView {
@@ -97,7 +98,10 @@ Scope {
       WlrLayershell.layer: WlrLayer.Bottom
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-      Surface { anchors.fill: parent; dpr: wallpaper.devicePixelRatio; running: !root.paused && !wallpaper.suspended }
+      Surface {
+        anchors.fill: parent; dpr: wallpaper.devicePixelRatio; light: root.light ? 1 : 0
+        running: !root.paused && !wallpaper.suspended
+      }
     }
   }
 }
