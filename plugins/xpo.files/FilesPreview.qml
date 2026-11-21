@@ -165,9 +165,13 @@ Item {
     scroller.contentY = root.pendingAt * Math.max(0, scroller.contentHeight - scroller.height)
     scroller.contentX = 0
     root.pendingAt = -1
-    if (root.panel.editing)
-      // On the first row wholly in view, not one the top edge cuts.
-      editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - root.panel.dirTopPad + root.editLayout.row - 1))
+    if (!root.panel.editing) return
+    // On the first row wholly in view, not one the top edge cuts.
+    editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - root.panel.dirTopPad + root.editLayout.row - 1))
+    // Qt draws a TextEdit's cursor only where it last saw the view, and an edit laid out as its preview
+    // moves nothing: move the view a pixel and back for the editor to see where it is.
+    scroller.contentY += 1
+    scroller.contentY -= 1
   }
 
   function focusEditor() { editor.forceActiveFocus() }
