@@ -739,7 +739,7 @@ var SKIPPED = [".cache", ".git", "node_modules", ".ssh", ".gnupg", ".password-st
 // The scan `/` has always run over home, and a second over the folders added outside it. fd anchors
 // a path only to the first folder it is given, so a skip with a slash goes to home's scan alone.
 function scanCommand(roots, skipped, home) {
-  var command = ["fd", "--hidden", "--print0", "--max-depth", "6"]
+  var command = ["fd", "--hidden", "--no-ignore-vcs", "--print0", "--max-depth", "6"]
   for (var i = 0; i < skipped.length; i++) {
     // fd reads a skip as a glob, so a name holding brackets, braces or stars is escaped to mean itself.
     var skip = String(skipped[i]).replace(/[[\]{}*?!\\]/g, "\\$&")

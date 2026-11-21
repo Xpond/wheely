@@ -70,6 +70,7 @@ Item {
   function resetScroll() { scroller.contentY = 0; scroller.contentX = 0 }
 
   function toggleVideo() { const player = video.item as FilesVideo; if (player) player.toggle() }
+  function toggleMute() { const player = video.item as FilesVideo; if (player) player.muted = !player.muted }
 
   function scrollTo(fraction) {
     // The end of a partly laid out file waits for the rest.

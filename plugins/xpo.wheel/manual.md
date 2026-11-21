@@ -54,6 +54,7 @@ a window, and Esc goes back. Backspace also goes back when the filter is empty.
 | `Backspace` | delete, then up a folder |
 | Shift + move keys | scroll the preview |
 | `Space` | play or pause a video |
+| `Alt+M` | mute or unmute a video |
 | `Ctrl+X` `Ctrl+C` | take to move, or to copy |
 | `Ctrl+V` | put it here |
 | `F2` | rename |
