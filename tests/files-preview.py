@@ -244,7 +244,8 @@ Scope {
       e => e.insert(2, "word ".repeat(50)),
       e => e.insert(e.text.length, "\\n"),
       e => e.remove(2, 252),
-      e => { e.text = "a\\nb\\n" + "z ".repeat(200) }]
+      e => { e.text = "a\\nb\\n" + "z ".repeat(200) },
+      e => e.remove(e.text.indexOf("\\n", 2), e.text.length)]
     onTriggered: {
       if (step > 0) {
         var counted = JSON.stringify(view.editRows)
@@ -255,7 +256,7 @@ Scope {
       stop(); picks()
   } }
   function picks() {
-      var wraps = edits.wraps && !edits.mismatches.length && view.editRows.some(r => r > 1)
+      var wraps = edits.wraps && !edits.mismatches.length
       panel.editing = false; panel.showsCode = true; panel.previewText = "one two three\\nfour five"
       var word = drag(at(4, 0), at(7, 0), false)
       view.pickAt(at(4, 0).x, at(4, 0).y, false)

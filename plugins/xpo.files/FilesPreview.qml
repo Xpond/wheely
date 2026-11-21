@@ -20,7 +20,7 @@ Item {
   readonly property int videoStatus: video.status
   property alias editorText: editor.text
   readonly property string lineNumbers:
-    root.panel.editing ? FilesIndex.numbers(editor.text, root.editRows)
+    root.panel.editing ? FilesIndex.wrappedNumbers(root.editRows)
     : root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
     : root.panel.showsMarkdown ? "" : FilesIndex.numbers(root.panel.previewText)
 
@@ -175,6 +175,7 @@ Item {
   // Rows each line of the editor wraps to, from where the next line starts, for countedLines.
   // Counted after each relayout rather than bound: the numbers set the gutter's width, and so the editor's.
   // Wrapping one line moves no other's, so an edit measures only the lines it changed; a new width, all.
+  // The rows change only when lines come, go or wrap otherwise, and so the numbers too.
   property var editRows: []
   property var countedLines: []
   function countRows() {
@@ -182,14 +183,17 @@ Item {
     var lines = editor.text.split("\n"), old = root.countedLines, a = 0, b = 0, at = 0
     while (a < lines.length && a < old.length && lines[a] === old[a]) at += lines[a++].length + 1
     while (b < lines.length - a && b < old.length - a && lines[lines.length - 1 - b] === old[old.length - 1 - b]) b++
-    var row = editor.contentHeight / editor.lineCount, top = editor.positionToRectangle(at).y, rows = []
+    // Past the last line when every line matched, as when lines went from the end.
+    var row = editor.contentHeight / editor.lineCount, top = a < lines.length ? editor.positionToRectangle(at).y : 0, rows = []
     for (var i = a; i < lines.length - b; i++) {
       at += lines[i].length + 1
       var next = i + 1 < lines.length ? editor.positionToRectangle(at).y : editor.contentHeight
-      rows.push(Math.round((next - top) / row))
+      rows.push(Math.max(1, Math.round((next - top) / row)))
       top = next
     }
-    root.editRows = root.editRows.slice(0, a).concat(rows, root.editRows.slice(root.editRows.length - b))
+    var was = root.editRows.slice(a, root.editRows.length - b)
+    if (rows.length !== was.length || rows.some((r, i) => r !== was[i]))
+      root.editRows = root.editRows.slice(0, a).concat(rows, root.editRows.slice(root.editRows.length - b))
     root.countedLines = lines
   }
 
