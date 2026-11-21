@@ -38,7 +38,9 @@ for (const count of [0, 1, 2, 499, 500, 501, 1000, 100000])
       }
     }
 // The gutter numbers every line the preview shows, blank ones included, and nothing for no text.
-assert.deepEqual(["", "a", "a\n\nb"].map(F.numbers), ["", "1", "1\n2\n3"])
+assert.deepEqual(["", "a", "a\n\nb"].map(t => F.numbers(t)), ["", "1", "1\n2\n3"])
+// A wrapped line keeps its number on its first row, blank rows after.
+assert.equal(F.numbers("a\nlong\nb", [1, 3, 1]), "1\n2\n\n\n3")
 console.log("ok: all file sort orders, stable ties, Unicode and bounded preview parity")
 
 // Pin the mapped fields independently of preview equivalence.

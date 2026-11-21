@@ -22,6 +22,7 @@ def check(files, run, block, line):
   property string dir: "/home/big"
   function enter(next) { root.dir = next }
   QtObject { id: ops; property string doomed: "" }
+  QtObject { id: preview; function focusEditor() {} }
   function readChanges() {}
   QtObject { id: gitStatus; function cancel() {} }
   QtObject { id: statusSoon; function stop() {} }

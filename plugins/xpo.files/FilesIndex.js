@@ -543,11 +543,12 @@ function stamp(when) {
        + String(d.getFullYear()).slice(2)
 }
 
-function numbers(text) {
+// rows, when given, is how many rows each line wraps to; its number sits on the first.
+function numbers(text, rows) {
   var t = String(text || "")
   if (!t.length) return ""
   var n = t.split("\n").length
   var out = []
-  for (var i = 1; i <= n; i++) out.push(i)
+  for (var i = 1; i <= n; i++) out.push(rows ? i + "\n".repeat(Math.max(1, rows[i - 1] || 1) - 1) : i)
   return out.join("\n")
 }

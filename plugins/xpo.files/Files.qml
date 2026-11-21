@@ -159,6 +159,9 @@ Item {
   readonly property string previewText: FilesIndex.head(root.shownText, root.shownLines)
   readonly property bool previewCut: root.previewText !== root.shownText
   function showAll() { root.shownLines = root.shownText.split("\n").length }
+  // Text picked in the preview, for Ctrl+C; other text lets go of it.
+  readonly property bool textHeld: !!preview.picked
+  onShownTextChanged: preview.letGo()
   onPreviewPathChanged: {
     root.fullText = ""; root.utf8 = false; root.rewrites = false; root.previewHtml = ""; root.saving = root.checking = null
     root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
@@ -402,6 +405,7 @@ Item {
   // back to the overlay the same way.
   function popOut() {
     if (!root.shown) return
+    if (root.editing) Qt.callLater(preview.focusEditor)
     if (root.opened) {
       root.windowed = true
       root.opened = false

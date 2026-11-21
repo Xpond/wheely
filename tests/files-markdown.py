@@ -22,7 +22,8 @@ with tempfile.TemporaryDirectory(prefix="wheely-markdown-") as temporary:
     shutil.copyfile(plugin / "FilesIndex.js", base / "FilesIndex.js")
     shutil.copyfile(plugin / "FilesTip.qml", base / "FilesTip.qml")
     (base / "FilesPreview.qml").write_text(qslog.patch(source.read_text(), "  id: root\n",
-        "  id: root\n  readonly property alias testScroller: scroller\n", exactly=True))
+        "  id: root\n  readonly property alias testScroller: scroller\n  readonly property alias testMd: markdownView\n",
+        exactly=True))
     # The preview references this type even when no video is loaded; video playback is not this test.
     (base / "FilesVideo.qml").write_text("import QtQuick\nItem {\n"
         "  signal fullsize(string path, real position)\n  function toggle() {}\n}\n")
@@ -159,3 +160,43 @@ Scope {
         actual = struct.unpack(">II", (base / (name + ".png")).read_bytes()[16:24])
         assert actual == (int(width), int(height)), (name, actual, width, height)
     print("ok: native Markdown scrolls, grows, resizes and switches modes with viewport-sized layers")
+
+    # Qt's own selection smeared tables and dropped text once it changed while scrolled: a span marked
+    # and let go must leave the page as it was, and must show while marked.
+    head = (base / "shell.qml").read_text()
+    head = head[:head.index("  Window {")].replace(json.dumps(documents), json.dumps([(repo / "docs/files.md").read_text()]))
+    (base / "select.qml").write_text(head + '''  Window {
+    width: 820; height: 760; visible: true; color: "#181828"
+    FilesPreview { id: preview; anchors.fill: parent; anchors.margins: 20; panel: panel }
+  }
+  function shot(name) { preview.testScroller.grabToImage(r => { r.saveToFile("''' + str(base) + '''/" + name + ".png"); root.captures++ }) }
+  Timer {
+    interval: 50; running: true; repeat: true
+    onTriggered: {
+      var md = preview.testMd, view = preview.testScroller
+      root.tick++
+      if (root.tick === 5) { panel.showAll(); view.contentY = 700 }
+      if (root.tick === 18) root.shot("unselected")
+      if (root.tick > 18 && root.tick < 40) {
+        view.contentY = 700 + (root.tick % 3) * 40
+        preview.from = md.positionAt(0, 700 + root.tick * 5); preview.to = md.positionAt(400, 900 + root.tick * 7)
+      }
+      if (root.tick === 40) { view.contentY = 700; preview.from = md.positionAt(0, 760); preview.to = md.positionAt(400, 830) }
+      if (root.tick === 45) root.shot("selected")
+      if (root.tick === 50) preview.letGo()
+      if (root.tick === 55) root.shot("deselected")
+      if (root.tick === 60) { console.log(root.captures === 3 ? "PASS" : "FAIL captures"); Qt.quit() }
+    }
+  }
+}
+''')
+    result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "select.qml")],
+                            env=env, capture_output=True, text=True, timeout=35, preexec_fn=no_core)
+    log = result.stdout + result.stderr
+    assert result.returncode == 0 and "DEBUG qml: PASS" in log, f"exit {result.returncode}\n{log}"
+    qslog.check(log, r"\$HYPRLAND_INSTANCE_SIGNATURE is unset")
+    differ = lambda a, b: subprocess.run(["magick", "compare", "-metric", "AE", base / (a + ".png"), base / (b + ".png"),
+                                          "null:"], capture_output=True, text=True).stderr.split()[0]
+    assert differ("unselected", "deselected") == "0", "a selection left the Markdown preview changed"
+    assert differ("unselected", "selected") != "0", "a Markdown selection did not show"
+    print("ok: a Markdown selection shows, and leaves the page as it was")

@@ -60,7 +60,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
     shutil.copyfile(plugin / "FilesIndex.js", base / "FilesIndex.js")
     shutil.copyfile(plugin / "FilesTip.qml", base / "FilesTip.qml")
     styled = (plugin / "FilesPreview.qml").read_text().replace("Style.font.subtitle", "root.panel.codePx")
-    styled = styled.replace("  id: root", "  id: root\n  readonly property real testBodyX: content.mapToItem(root, content.children[0].width + content.spacing, 0).x")
+    styled = styled.replace("  id: root", "  id: root\n  readonly property var testEditor: editor\n  readonly property real testBodyX: content.mapToItem(root, content.children[0].width + content.spacing, 0).x")
     # The code's handler, for the rich text to go without; the rich text in one piece, and the
     # styled in pieces of three lines, so every case crosses where one piece ends and the next begins.
     handler = re.compile(r"^( *)onLineLaidOut: function \(line\) \{\n.*?^\1\}\n", re.S | re.M).search(styled, styled.index("id: rendered")).group()
@@ -199,5 +199,48 @@ Scope {
         image = base / "out" / (name + "-styled.png")
         x = int(body_x[name])
         assert ink_bottoms(image, 0, x - 4) == ink_bottoms(image, x, x + 200), name + ": numbers off their lines"
+    # The editor wraps a long line to the pane, each number stays on its line's first row, and the
+    # preview's copy reaches the clipboard.
+    (base / "edit.qml").write_text('''import QtQuick
+import Quickshell
+Scope {
+  QtObject { id: panel; property int codePx: 13; property int lineHeight: 23; property string previewText: ""
+    property string previewBody: ""; property bool showsCode: false; property bool editing: true; property bool dirty: false
+    property bool showsMarkdown: false; property bool showsDir: false; property bool showsImage: false
+    property bool showsVideo: false; property bool showsDiff: false; property var dirColumns: []; property var settledSel: null
+    property string previewNote: ""; property int gutterGap: 16; property int dirTopPad: 7; property color hoverFill: "transparent" }
+  Window {
+    width: 500; height: 400; visible: true
+    Styled { id: view; panel: panel; anchors.fill: parent }
+    // Reads back what the preview copied.
+    TextEdit { id: back; visible: false }
+  }
+  Component.onCompleted: Qt.callLater(function () {
+    view.editorText = "short\\n" + "word ".repeat(80) + "\\nlast"
+    // Two of three lines of code picked.
+    panel.previewText = "one\\ntwo\\nthree"; view.from = 0; view.to = 1
+    settle.start()
+  })
+  // The numbers follow a relayout a beat later.
+  Timer { id: settle; interval: 200; onTriggered: {
+      var e = view.testEditor
+      var rows = view.lineNumbers.split("\\n")
+      var row = e.contentHeight / e.lineCount
+      var last = e.positionToRectangle(e.text.lastIndexOf("last")).y
+      if (e.lineCount > 3 && e.width <= view.paneWidth && rows.length === e.lineCount
+          && rows[0] === "1" && rows[1] === "2" && rows.indexOf("3") === Math.round(last / row)
+          && view.copyPicked() === undefined && back.paste() === undefined && back.text === "one\\ntwo")
+        console.log("PASS")
+      else console.log("FAIL", e.lineCount, e.width, view.paneWidth, JSON.stringify(rows), last, row)
+      Qt.quit()
+  } }
+}
+''')
+    result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "edit.qml")], cwd=base,
+                            env=env, capture_output=True, text=True, timeout=60)
+    log = result.stdout + result.stderr
+    assert result.returncode == 0 and "PASS" in log, log
+    qslog.check(log)
+
     print("ok: %d code previews, plain and coloured at three sizes, match the rich text pixel for pixel,"
           " numbers level with their lines" % len(pairs))

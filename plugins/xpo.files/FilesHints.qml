@@ -36,6 +36,7 @@ Item {
                                                       [["esc", "close"]])
     : root.panel.editing
       ? [["ctrl+s", "save"], ["ctrl+c/x/v", "clipboard"],
+         ["ctrl+t", root.panel.host || root.panel.windowed ? "unpin" : "window"],
          ["esc", root.panel.discarding ? "again to discard"
                  : root.panel.dirty ? "discard" : "back"]]
     : root.panel.naming
@@ -46,6 +47,7 @@ Item {
          : [["type", "the new name"],
             ["enter", { rename: "rename", copy: "duplicate", link: "make the link" }[root.panel.naming]],
             ["esc", "cancel"]])
+    : root.panel.textHeld ? [["ctrl+c", "copy"], ["shift+click", "extend"], ["esc", "let go"]]
     : root.panel.marks.length
       ? root.moves.concat([["ctrl+m", "mark"], ["ctrl+a", "all"], ["ctrl+x/c", "move/copy"], ["del", "trash"]],
          root.panel.held ? [root.paste] : [], [["shift+f10", "menu"], ["esc", "unmark " + root.panel.marks.length]])

@@ -20,7 +20,7 @@ Item {
   readonly property int videoStatus: video.status
   property alias editorText: editor.text
   readonly property string lineNumbers:
-    root.panel.editing ? FilesIndex.numbers(editor.text)
+    root.panel.editing ? FilesIndex.numbers(editor.text, root.editRows)
     : root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
     : root.panel.showsMarkdown ? "" : FilesIndex.numbers(root.panel.previewText)
 
@@ -101,6 +101,61 @@ Item {
 
   function focusEditor() { editor.forceActiveFocus() }
 
+  // Where a drag over the text began and where it is: lines of code, or characters of Markdown.
+  // Ctrl+C copies what lies between. Qt's own selection smeared Markdown's tables and dropped text.
+  property int from: -1
+  property int to: -1
+  // Its first and last, or null; read from both ends at once, as letting go sets one before the other.
+  function span() { return root.from < 0 || root.to < 0 ? null : [Math.min(root.from, root.to), Math.max(root.from, root.to)] }
+  readonly property string picked: {
+    var s = root.span()
+    return !s ? "" : root.panel.showsMarkdown ? markdownView.getText(s[0], s[1])
+      : root.panel.previewText.split("\n").slice(s[0], s[1] + 1).join("\n")
+  }
+  function letGo() { root.from = root.to = -1 }
+  function pickAt(x, y, extend) {
+    var p = pointer.mapToItem(markdownView, x, y)
+    // The cut's closing ellipsis is no line of the file.
+    var at = root.panel.showsMarkdown ? markdownView.positionAt(p.x, p.y)
+      : Util.clamp(hovered.line, 0, root.panel.previewText.split("\n").length - (root.panel.previewCut ? 2 : 1))
+    if (!extend || root.from < 0) root.from = at
+    root.to = at
+  }
+  // Through Qt's clipboard, as the editor copies: no argument limit on what it holds.
+  TextEdit { id: clip; visible: false; textFormat: TextEdit.PlainText }
+  function copyPicked() { clip.text = root.picked; clip.selectAll(); clip.copy(); clip.text = "" }
+  // A band over each line's picked Markdown. A line ends where the next position falls on another
+  // row: there a wrapped line continues, and a paragraph's next begins after its break.
+  function markdownBands(from, to) {
+    var bands = []
+    for (var p = from; p < to;) {
+      var a = markdownView.positionToRectangle(p)
+      var end = Math.min(to, markdownView.positionAt(markdownView.width, a.y + a.height / 2))
+      var wraps = markdownView.positionToRectangle(end).y !== a.y
+      var right = markdownView.positionToRectangle(wraps ? end - 1 : end).x
+      if (right > a.x) bands.push({ x: a.x, y: a.y, w: right - a.x, h: a.height })
+      p = Math.max(p + 1, wraps ? end : end + 1)
+    }
+    return bands
+  }
+
+  // Rows each line of the editor wraps to, from where the next line starts; null when none wraps.
+  // Counted after each relayout rather than bound: the numbers set the gutter's width, and so the editor's.
+  property var editRows: null
+  function countRows() {
+    var lines = editor.text.split("\n")
+    if (!root.panel.editing || editor.lineCount <= lines.length) { root.editRows = null; return }
+    var row = editor.contentHeight / editor.lineCount
+    var rows = [], at = 0, top = 0
+    for (var i = 0; i < lines.length; i++) {
+      at += lines[i].length + 1
+      var next = i + 1 < lines.length ? editor.positionToRectangle(at).y : editor.contentHeight
+      rows.push(Math.round((next - top) / row))
+      top = next
+    }
+    root.editRows = rows
+  }
+
   // Lay out more of a long file once the view comes within a screen of its end.
   function fill() {
     if (root.panel.previewCut && !root.panel.editing && scroller.contentY + scroller.height * 2 > scroller.contentHeight)
@@ -119,7 +174,7 @@ Item {
     else if (left + r.width > scroller.contentX + scroller.width)
       root.scrollAcross(left + r.width - scroller.contentX - scroller.width + Style.space(40))
   }
-  // Keep code unwrapped so line numbers stay aligned.
+  // Previewed code stays unwrapped and scrolls sideways; the editor wraps to the pane.
   Flickable {
     id: scroller
     // Isolate Markdown batches to avoid the Qt 6.12 scrolling crash.
@@ -157,6 +212,16 @@ Item {
       height: root.panel.lineHeight
       radius: height / 2
       color: root.panel.hoverFill
+    }
+
+    // The lines of code picked to copy, behind the text.
+    Rectangle {
+      readonly property var span: root.span()
+      visible: !!span && root.panel.showsCode && !root.panel.editing
+      y: content.y + (span ? span[0] : 0) * root.panel.lineHeight
+      width: Math.max(scroller.width, content.width)
+      height: span ? (span[1] - span[0] + 1) * root.panel.lineHeight : 0
+      color: Util.alpha(Commons.Color.accent, 0.35)
     }
 
     Row {
@@ -243,26 +308,43 @@ Item {
         selectedTextColor: Commons.Color.menu.text
         persistentSelection: true
         textFormat: TextEdit.PlainText
+        width: scroller.width - (gutter.visible ? gutter.width + content.spacing : 0)
+        wrapMode: TextEdit.Wrap
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.subtitle
         renderType: Text.NativeRendering
-        onTextChanged: if (root.panel.editing) root.panel.dirty = true
+        onTextChanged: { if (root.panel.editing) root.panel.dirty = true; Qt.callLater(root.countRows) }
+        onLineCountChanged: Qt.callLater(root.countRows)
+        onWidthChanged: Qt.callLater(root.countRows)
         onCursorRectangleChanged: root.revealCursor()
       }
 
-      // Markdown has its own Text: a line height that switched with the format, or a handler
-      // per line, made Qt lay out its tables many times slower.
-      Text {
+      // Markdown has its own view: a line height that switched with the format, or a handler
+      // per line, made Qt lay out its tables many times slower. A TextEdit, for where a point falls.
+      TextEdit {
+        id: markdownView
         visible: !root.panel.editing && root.panel.showsMarkdown
         width: scroller.width
         text: root.panel.showsMarkdown ? root.panel.previewBody : ""
-        wrapMode: Text.Wrap
-        textFormat: Text.MarkdownText
+        wrapMode: TextEdit.Wrap
+        textFormat: TextEdit.MarkdownText
+        readOnly: true
+        activeFocusOnPress: false
         color: Commons.Color.menu.text
         opacity: 0.92
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.subtitle
         renderType: Text.NativeRendering
+
+        Repeater {
+          model: { var s = root.span(); return s && root.panel.showsMarkdown ? root.markdownBands(s[0], s[1]) : [] }
+          Rectangle {
+            required property var modelData
+            z: -1
+            x: modelData.x; y: modelData.y; width: modelData.w; height: modelData.h
+            color: Util.alpha(Commons.Color.accent, 0.35)
+          }
+        }
       }
 
       // Code in pieces of pieceLines: one Text lays out its lines in time growing with their square,
@@ -372,12 +454,17 @@ Item {
   }
 
   // A click picks the folder entry under it and a double click opens the pick. Over the scroller
-  // rather than in it, so the second click counts whatever the pane shows by then.
+  // rather than in it, so the second click counts whatever the pane shows by then. Over text, a press
+  // or drag picks what to copy, and Shift extends it.
   MouseArea {
     id: pointer
+    readonly property bool overText: root.panel.showsCode || root.panel.showsMarkdown
     anchors.fill: scroller
     enabled: !root.panel.editing && !root.panel.showsVideo
     hoverEnabled: true
+    cursorShape: overText ? Qt.IBeamCursor : Qt.ArrowCursor
+    onPressed: mouse => { if (overText) root.pickAt(mouse.x, mouse.y, mouse.modifiers & Qt.ShiftModifier) }
+    onPositionChanged: mouse => { if (pressed && overText) root.pickAt(mouse.x, mouse.y, true) }
     onClicked: root.panel.pickPreview(hovered.column ? hovered.column.index : -1, hovered.line)
     onDoubleClicked: root.panel.openPicked()
   }

@@ -35,6 +35,9 @@ Right-click › Properties shows the selection's kind, size, permissions, owner 
 the preview's place, until you move on or press `Esc`. Hovering a name, in the
 list or a folder's preview, pops it up whole.
 
+Drag over a text preview to pick whole lines, `Shift`+click to extend, or select in rendered
+Markdown as in a browser; `Ctrl+C` copies it and `Esc` lets go. Pasting is for the editor.
+
 Files over 256 KiB are not previewed. `Ctrl+B` hides the list so the preview takes the
 whole card. Video previews need `qt6-multimedia` and `qt6-multimedia-ffmpeg`.
 
@@ -92,7 +95,8 @@ original and copies it.
 
 ## Editing
 
-`Ctrl+E` edits the previewed text file in place and `Ctrl+S` saves. `Esc` leaves; with
+`Ctrl+E` edits the previewed text file in place and `Ctrl+S` saves. Long lines wrap to the
+pane, and `Ctrl+T` pops the edit out as a window. `Esc` leaves; with
 unsaved changes, press it twice to discard. A save never overwrites a change made
 elsewhere meanwhile: the new version is shown, your draft is kept, and saving again
 overwrites. Files over 256 KiB, binary files, files that are not UTF-8, and files with
