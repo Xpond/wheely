@@ -231,6 +231,31 @@ Scope {
       var last = e.positionToRectangle(e.text.lastIndexOf("last")).y
       var wraps = e.lineCount > 3 && e.width <= view.paneWidth && rows.length === e.lineCount
         && rows[0] === "1" && rows[1] === "2" && rows.indexOf("3") === Math.round(last / row)
+      edits.wraps = wraps; edits.start()
+  } }
+  // Edits that wrap, unwrap, split and join lines: what each counts again matches counting all.
+  Timer { id: edits; interval: 100; repeat: true
+    property bool wraps: false
+    property int step: 0
+    property var mismatches: []
+    property var steps: [
+      e => e.insert(e.text.indexOf("word") + 100, "\\n"),
+      e => e.remove(e.text.indexOf("\\n", 10), e.text.indexOf("\\n", 10) + 1),
+      e => e.insert(2, "word ".repeat(50)),
+      e => e.insert(e.text.length, "\\n"),
+      e => e.remove(2, 252),
+      e => { e.text = "a\\nb\\n" + "z ".repeat(200) }]
+    onTriggered: {
+      if (step > 0) {
+        var counted = JSON.stringify(view.editRows)
+        view.countedLines = []; view.countRows()
+        if (counted !== JSON.stringify(view.editRows)) mismatches.push([step, counted, JSON.stringify(view.editRows)])
+      }
+      if (step < steps.length) { steps[step++](view.testEditor); return }
+      stop(); picks()
+  } }
+  function picks() {
+      var wraps = edits.wraps && !edits.mismatches.length && view.editRows.some(r => r > 1)
       panel.editing = false; panel.showsCode = true; panel.previewText = "one two three\\nfour five"
       var word = drag(at(4, 0), at(7, 0), false)
       view.pickAt(at(4, 0).x, at(4, 0).y, false)
@@ -240,9 +265,9 @@ Scope {
       var picks = [word, click, across, acrossBands, back.text]
       if (wraps && JSON.stringify(picks) === JSON.stringify(["two", ["", 0], "two three\\nfour", 3, "two"]))
         console.log("PASS")
-      else console.log("FAIL", e.lineCount, e.width, view.paneWidth, JSON.stringify(rows), last, row, JSON.stringify(picks))
+      else console.log("FAIL", edits.wraps, JSON.stringify(edits.mismatches), JSON.stringify(picks))
       Qt.quit()
-  } }
+  }
 }
 ''')
     result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "edit.qml")], cwd=base,

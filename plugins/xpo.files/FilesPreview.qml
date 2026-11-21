@@ -172,21 +172,25 @@ Item {
     return bands
   }
 
-  // Rows each line of the editor wraps to, from where the next line starts; null when none wraps.
+  // Rows each line of the editor wraps to, from where the next line starts, for countedLines.
   // Counted after each relayout rather than bound: the numbers set the gutter's width, and so the editor's.
-  property var editRows: null
+  // Wrapping one line moves no other's, so an edit measures only the lines it changed; a new width, all.
+  property var editRows: []
+  property var countedLines: []
   function countRows() {
-    var lines = editor.text.split("\n")
-    if (!root.panel.editing || editor.lineCount <= lines.length) { root.editRows = null; return }
-    var row = editor.contentHeight / editor.lineCount
-    var rows = [], at = 0, top = 0
-    for (var i = 0; i < lines.length; i++) {
+    if (!root.panel.editing) return
+    var lines = editor.text.split("\n"), old = root.countedLines, a = 0, b = 0, at = 0
+    while (a < lines.length && a < old.length && lines[a] === old[a]) at += lines[a++].length + 1
+    while (b < lines.length - a && b < old.length - a && lines[lines.length - 1 - b] === old[old.length - 1 - b]) b++
+    var row = editor.contentHeight / editor.lineCount, top = editor.positionToRectangle(at).y, rows = []
+    for (var i = a; i < lines.length - b; i++) {
       at += lines[i].length + 1
       var next = i + 1 < lines.length ? editor.positionToRectangle(at).y : editor.contentHeight
       rows.push(Math.round((next - top) / row))
       top = next
     }
-    root.editRows = rows
+    root.editRows = root.editRows.slice(0, a).concat(rows, root.editRows.slice(root.editRows.length - b))
+    root.countedLines = lines
   }
 
   // Lay out more of a long file once the view comes within a screen of its end.
@@ -352,7 +356,7 @@ Item {
         font.pixelSize: Style.font.subtitle
         renderType: Text.NativeRendering
         onTextChanged: { if (root.panel.editing) root.panel.dirty = true; Qt.callLater(root.countRows) }
-        onLineCountChanged: Qt.callLater(root.countRows)
+        onWidthChanged: { root.countedLines = []; Qt.callLater(root.countRows) }
         onCursorRectangleChanged: root.revealCursor()
       }
 
