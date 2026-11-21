@@ -353,6 +353,7 @@ Item {
         renderType: Text.NativeRendering
         onTextChanged: { if (root.panel.editing) root.panel.dirty = true; Qt.callLater(root.countRows) }
         onLineCountChanged: Qt.callLater(root.countRows)
+        onWidthChanged: Qt.callLater(root.countRows)
         onCursorRectangleChanged: root.revealCursor()
       }
 
