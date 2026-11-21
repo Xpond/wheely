@@ -291,11 +291,16 @@ assert.equal(typist.index, 0)
 console.log("ok: typing during a landing cancels it")
 
 // Space plays a selected video; Shift+Space still types.
-let toggles = 0
+let toggles = 0, mutes = 0
 const viewer = { filter: "movie", index: 7, editing: false, naming: "", listShown: true, showsVideo: true }
-const viewKey = keymap("plugins/xpo.files/FilesKeys.js", viewer, { doomed: "" }, { toggleVideo() { toggles++ } })
+const viewKey = keymap("plugins/xpo.files/FilesKeys.js", viewer, { doomed: "" }, { toggleVideo() { toggles++ }, toggleMute() { mutes++ } })
 viewKey("Key_Space", 0, " ")
 assert.deepEqual([toggles, viewer.filter, viewer.index], [1, "movie", 7], "Space did not toggle the video")
 viewKey("Key_Space", 1 << 25, " ")
 assert.deepEqual([toggles, viewer.filter], [1, "movie "], "Shift+Space did not type a space")
 console.log("ok: Space plays a selected video, Shift+Space types")
+viewKey("Key_M", 1 << 27, "m")
+assert.deepEqual([mutes, viewer.filter], [1, "movie "], "Alt+M did not toggle the sound")
+viewKey("Key_M", 0, "m")
+assert.deepEqual([mutes, viewer.filter], [1, "movie m"], "a bare m did not type")
+console.log("ok: Alt+M toggles a video's sound, m types")

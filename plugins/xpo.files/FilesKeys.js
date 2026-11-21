@@ -62,6 +62,11 @@ function onKey(panel, ops, preview, event) {
     event.accepted = true
     return
   }
+  if (event.key === Qt.Key_M && panel.showsVideo && event.modifiers === Qt.AltModifier) {
+    if (!event.isAutoRepeat) preview.toggleMute()
+    event.accepted = true
+    return
+  }
   if (event.modifiers & Qt.ControlModifier) {
     switch (event.key) {
     case Qt.Key_E: panel.edit(); event.accepted = true; return

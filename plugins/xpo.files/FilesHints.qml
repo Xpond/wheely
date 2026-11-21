@@ -21,7 +21,7 @@ Item {
   readonly property var moves: (!panel || root.panel.listShown
     ? [["↑↓", "select"], ["enter", "open"], ["←", "up"], ["shift+↑↓", "scroll"]]
     : [["↑↓", "scroll"], ["enter", "open"], ["←", "list"]])
-      .concat(panel && root.panel.showsVideo ? [["space", "play/pause"]] : [])
+      .concat(panel && root.panel.showsVideo ? [["space", "play/pause"], ["alt+m", "mute"]] : [])
   readonly property var paste: !panel || !root.panel.held ? []
     : ["ctrl+v", (root.panel.held.move ? "move " : "copy ") + root.panel.held.name + " here"]
   // A window closes like any other, so only the overlay offers esc.

@@ -9,7 +9,7 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
 {
   const home = "/home/test"
   assert.equal(M.scanCommand([home], M.SKIPPED, home).join(" "),
-    "fd --hidden --print0 --max-depth 6 --exclude .cache --exclude .git --exclude node_modules --exclude .ssh --exclude .gnupg --exclude .password-store . /home/test")
+    "fd --hidden --no-ignore-vcs --print0 --max-depth 6 --exclude .cache --exclude .git --exclude node_modules --exclude .ssh --exclude .gnupg --exclude .password-store . /home/test")
   const tree = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "wheel-scan-"))
   try {
   for (const name of ["home/.claude/CLAUDE.md", "home/Android/x", "home/Music [old]/x", "home/p/node_modules/m", "home/p/Android/x",
