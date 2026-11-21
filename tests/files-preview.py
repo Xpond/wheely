@@ -60,7 +60,7 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
     shutil.copyfile(plugin / "FilesIndex.js", base / "FilesIndex.js")
     shutil.copyfile(plugin / "FilesTip.qml", base / "FilesTip.qml")
     styled = (plugin / "FilesPreview.qml").read_text().replace("Style.font.subtitle", "root.panel.codePx")
-    styled = styled.replace("  id: root", "  id: root\n  readonly property real testBodyX: content.mapToItem(root, content.children[0].width + content.spacing, 0).x")
+    styled = styled.replace("  id: root", "  id: root\n  readonly property var testEditor: editor\n  readonly property var testRendered: rendered\n  readonly property var testPointer: pointer\n  readonly property var testPlain: plain\n  readonly property real testBodyX: content.mapToItem(root, content.children[0].width + content.spacing, 0).x")
     # The code's handler, for the rich text to go without; the rich text in one piece, and the
     # styled in pieces of three lines, so every case crosses where one piece ends and the next begins.
     handler = re.compile(r"^( *)onLineLaidOut: function \(line\) \{\n.*?^\1\}\n", re.S | re.M).search(styled, styled.index("id: rendered")).group()
@@ -199,5 +199,83 @@ Scope {
         image = base / "out" / (name + "-styled.png")
         x = int(body_x[name])
         assert ink_bottoms(image, 0, x - 4) == ink_bottoms(image, x, x + 200), name + ": numbers off their lines"
+    # The editor wraps a long line to the pane, each number stays on its line's first row; a drag over
+    # code picks characters, a bare click picks nothing, and the pick reaches the clipboard.
+    (base / "edit.qml").write_text('''import QtQuick
+import Quickshell
+Scope {
+  QtObject { id: panel; property int codePx: 13; property int lineHeight: 23; property string previewText: ""
+    property string previewBody: ""; property bool showsCode: false; property bool editing: true; property bool dirty: false
+    property bool showsMarkdown: false; property bool showsDir: false; property bool showsImage: false; property bool previewCut: false
+    property bool showsVideo: false; property bool showsDiff: false; property var dirColumns: []; property var settledSel: null
+    property string previewNote: ""; property int gutterGap: 16; property int dirTopPad: 7; property color hoverFill: "transparent" }
+  Window {
+    width: 500; height: 400; visible: true
+    Styled { id: view; panel: panel; anchors.fill: parent }
+    // Reads back what the preview copied.
+    TextEdit { id: back; visible: false }
+    TextMetrics { id: ruler; font: view.testPlain.font }
+  }
+  Component.onCompleted: Qt.callLater(function () { view.editorText = "short\\n" + "word ".repeat(80) + "\\nlast"; settle.start() })
+  // Where column col of a line of code is drawn, in the pointer's terms.
+  function at(col, line) {
+    ruler.text = panel.previewText.split("\\n")[line].slice(0, col)
+    return view.testRendered.mapToItem(view.testPointer, ruler.advanceWidth, (line + 0.5) * panel.lineHeight)
+  }
+  function drag(a, b, extend) { view.pickAt(a.x, a.y, extend); view.pickAt(b.x, b.y, true); return view.picked }
+  // The numbers follow a relayout a beat later.
+  Timer { id: settle; interval: 200; onTriggered: {
+      var e = view.testEditor
+      var rows = view.lineNumbers.split("\\n")
+      var row = e.contentHeight / e.lineCount
+      var last = e.positionToRectangle(e.text.lastIndexOf("last")).y
+      var wraps = e.lineCount > 3 && e.width <= view.paneWidth && rows.length === e.lineCount
+        && rows[0] === "1" && rows[1] === "2" && rows.indexOf("3") === Math.round(last / row)
+      edits.wraps = wraps; edits.start()
+  } }
+  // Edits that wrap, unwrap, split and join lines: what each counts again matches counting all.
+  Timer { id: edits; interval: 100; repeat: true
+    property bool wraps: false
+    property int step: 0
+    property var mismatches: []
+    property var steps: [
+      e => e.insert(e.text.indexOf("word") + 100, "\\n"),
+      e => e.remove(e.text.indexOf("\\n", 10), e.text.indexOf("\\n", 10) + 1),
+      e => e.insert(2, "word ".repeat(50)),
+      e => e.insert(e.text.length, "\\n"),
+      e => e.remove(2, 252),
+      e => { e.text = "a\\nb\\n" + "z ".repeat(200) },
+      e => e.remove(e.text.indexOf("\\n", 2), e.text.length)]
+    onTriggered: {
+      if (step > 0) {
+        var counted = JSON.stringify(view.editRows)
+        view.countedLines = []; view.countRows()
+        if (counted !== JSON.stringify(view.editRows)) mismatches.push([step, counted, JSON.stringify(view.editRows)])
+      }
+      if (step < steps.length) { steps[step++](view.testEditor); return }
+      stop(); picks()
+  } }
+  function picks() {
+      var wraps = edits.wraps && !edits.mismatches.length
+      panel.editing = false; panel.showsCode = true; panel.previewText = "one two three\\nfour five"
+      var word = drag(at(4, 0), at(7, 0), false)
+      view.pickAt(at(4, 0).x, at(4, 0).y, false)
+      var click = [view.picked, view.bands.length]
+      var across = drag(at(4, 0), at(4, 1), true), acrossBands = view.bands.length
+      drag(at(4, 0), at(7, 0), false); view.copyPicked(); back.paste()
+      var picks = [word, click, across, acrossBands, back.text]
+      if (wraps && JSON.stringify(picks) === JSON.stringify(["two", ["", 0], "two three\\nfour", 3, "two"]))
+        console.log("PASS")
+      else console.log("FAIL", edits.wraps, JSON.stringify(edits.mismatches), JSON.stringify(picks))
+      Qt.quit()
+  }
+}
+''')
+    result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "edit.qml")], cwd=base,
+                            env=env, capture_output=True, text=True, timeout=60)
+    log = result.stdout + result.stderr
+    assert result.returncode == 0 and "PASS" in log, log
+    qslog.check(log)
+
     print("ok: %d code previews, plain and coloured at three sizes, match the rich text pixel for pixel,"
           " numbers level with their lines" % len(pairs))

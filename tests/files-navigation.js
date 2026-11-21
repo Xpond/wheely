@@ -304,3 +304,15 @@ assert.deepEqual([mutes, viewer.filter], [1, "movie "], "Alt+M did not toggle th
 viewKey("Key_M", 0, "m")
 assert.deepEqual([mutes, viewer.filter], [1, "movie m"], "a bare m did not type")
 console.log("ok: Alt+M toggles a video's sound, m types")
+
+// Ctrl+C copies text picked in the preview before the entries, and Esc lets go of it first.
+const held = [], notes = [], picking = { picked: "two lines", copies: 0, copyPicked() { this.copies++ }, letGo() { this.picked = "" } }
+const reader = { editing: false, naming: "", menu: null, marks: [], targets: ["entry"], filter: "" }
+const readKey = keymap("plugins/xpo.files/FilesKeys.js", reader, { doomed: "", hold: t => held.push(t), note: n => notes.push(n) }, picking)
+readKey("Key_C", 1 << 26)
+assert.deepEqual([picking.copies, notes, held], [1, ["copied"], []], "Ctrl+C did not copy the picked text")
+readKey("Key_Escape")
+assert.equal(picking.picked, "", "Esc did not let go of the picked text")
+readKey("Key_C", 1 << 26)
+assert.deepEqual(held, [["entry"]], "with nothing picked Ctrl+C no longer takes the entries")
+console.log("ok: Ctrl+C copies picked preview text, Esc lets go")

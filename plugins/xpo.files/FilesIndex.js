@@ -551,3 +551,8 @@ function numbers(text) {
   for (var i = 1; i <= n; i++) out.push(i)
   return out.join("\n")
 }
+
+// Each line's number on the first of the rows it wraps to.
+function wrappedNumbers(rows) {
+  return rows.map(function (r, i) { return i + 1 + "\n".repeat(r - 1) }).join("\n")
+}

@@ -12,6 +12,7 @@ Item {
 
   // Delete confirmation takes priority over the key legend.
   readonly property bool arming: !!panel && !!root.panel.doomed
+  readonly property var windowKey: ["ctrl+t", !!panel && (root.panel.host || root.panel.windowed) ? "unpin" : "window"]
   readonly property var listKey: ["ctrl+b", !!panel && root.panel.listShown ? "hide list" : "show list"]
   // Offered where there is something to diff, or a diff to leave. Lit while the diff is on,
   // since the browser reopens in it and a diff unexplained looks like a broken file.
@@ -36,6 +37,7 @@ Item {
                                                       [["esc", "close"]])
     : root.panel.editing
       ? [["ctrl+s", "save"], ["ctrl+c/x/v", "clipboard"],
+         root.windowKey,
          ["esc", root.panel.discarding ? "again to discard"
                  : root.panel.dirty ? "discard" : "back"]]
     : root.panel.naming
@@ -46,6 +48,7 @@ Item {
          : [["type", "the new name"],
             ["enter", { rename: "rename", copy: "duplicate", link: "make the link" }[root.panel.naming]],
             ["esc", "cancel"]])
+    : root.panel.textHeld ? [["ctrl+c", "copy"], ["shift+click", "extend"], ["esc", "let go"]]
     : root.panel.marks.length
       ? root.moves.concat([["ctrl+m", "mark"], ["ctrl+a", "all"], ["ctrl+x/c", "move/copy"], ["del", "trash"]],
          root.panel.held ? [root.paste] : [], [["shift+f10", "menu"], ["esc", "unmark " + root.panel.marks.length]])
@@ -57,7 +60,7 @@ Item {
          ["ctrl+e", "edit"], ["ctrl+enter", "terminal"], ["ctrl+y", "copy path"],
          ["ctrl+o", "sort"], ["f2", "rename"], ["ctrl+shift+n", "new"], ["del", "trash"],
          ["ctrl+m", "mark"], ["ctrl+a", "mark all"], ["shift+f10", "menu"], root.listKey],
-         root.diffKey, [["ctrl+t", root.panel.host || root.panel.windowed ? "unpin" : "window"]], root.leave,
+         root.diffKey, [root.windowKey], root.leave,
          [["f1", "fewer keys"]])
     : root.moves.concat([["ctrl+e", "edit"], root.listKey], root.diffKey, root.leave, [["f1", "all keys"]])
 
