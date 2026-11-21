@@ -35,8 +35,8 @@ Right-click › Properties shows the selection's kind, size, permissions, owner 
 the preview's place, until you move on or press `Esc`. Hovering a name, in the
 list or a folder's preview, pops it up whole.
 
-Drag over a text preview to pick whole lines, `Shift`+click to extend, or select in rendered
-Markdown as in a browser; `Ctrl+C` copies it and `Esc` lets go. Pasting is for the editor.
+Drag over a text preview, code or rendered Markdown, to pick text as in a browser, and
+`Shift`+click to extend; `Ctrl+C` copies it and `Esc` lets go. Pasting is for the editor.
 
 Files over 256 KiB are not previewed. `Ctrl+B` hides the list so the preview takes the
 whole card. Video previews need `qt6-multimedia` and `qt6-multimedia-ffmpeg`.

@@ -549,6 +549,6 @@ function numbers(text, rows) {
   if (!t.length) return ""
   var n = t.split("\n").length
   var out = []
-  for (var i = 1; i <= n; i++) out.push(rows ? i + "\n".repeat(Math.max(1, rows[i - 1] || 1) - 1) : i)
+  for (var i = 1; i <= n; i++) out.push(rows ? i + "\n".repeat((rows[i - 1] || 1) - 1) : i)
   return out.join("\n")
 }

@@ -101,7 +101,7 @@ Item {
 
   function focusEditor() { editor.forceActiveFocus() }
 
-  // Where a drag over the text began and where it is: lines of code, or characters of Markdown.
+  // Where a drag over the text began and where it is, in characters of the code or the Markdown.
   // Ctrl+C copies what lies between. Qt's own selection smeared Markdown's tables and dropped text.
   property int from: -1
   property int to: -1
@@ -109,23 +109,56 @@ Item {
   function span() { return root.from < 0 || root.to < 0 ? null : [Math.min(root.from, root.to), Math.max(root.from, root.to)] }
   readonly property string picked: {
     var s = root.span()
-    return !s ? "" : root.panel.showsMarkdown ? markdownView.getText(s[0], s[1])
-      : root.panel.previewText.split("\n").slice(s[0], s[1] + 1).join("\n")
+    return !s ? "" : root.panel.showsMarkdown ? markdownView.getText(s[0], s[1]) : root.panel.previewText.slice(s[0], s[1])
   }
   function letGo() { root.from = root.to = -1 }
   function pickAt(x, y, extend) {
-    var p = pointer.mapToItem(markdownView, x, y)
-    // The cut's closing ellipsis is no line of the file.
-    var at = root.panel.showsMarkdown ? markdownView.positionAt(p.x, p.y)
-      : Util.clamp(hovered.line, 0, root.panel.previewText.split("\n").length - (root.panel.previewCut ? 2 : 1))
+    var p = pointer.mapToItem(root.panel.showsMarkdown ? markdownView : rendered, x, y)
+    var at = root.panel.showsMarkdown ? markdownView.positionAt(p.x, p.y) : root.codeAt(p)
     if (!extend || root.from < 0) root.from = at
     root.to = at
   }
-  // Through Qt's clipboard, as the editor copies: no argument limit on what it holds.
-  TextEdit { id: clip; visible: false; textFormat: TextEdit.PlainText }
-  function copyPicked() { clip.text = root.picked; clip.selectAll(); clip.copy(); clip.text = "" }
-  // A band over each line's picked Markdown. A line ends where the next position falls on another
-  // row: there a wrapped line continues, and a paragraph's next begins after its break.
+
+  // Where each line of the previewed code starts; the cut's closing ellipsis is no line of the file.
+  readonly property var codeStarts: {
+    var s = [0], lines = root.panel.previewText.split("\n")
+    for (var i = 0; i < lines.length - (root.panel.previewCut ? 1 : 0); i++) s.push(s[i] + lines[i].length + 1)
+    return s
+  }
+  function lineOf(at) { var n = 0; while (root.codeStarts[n + 1] <= at) n++; return n }
+  // Hidden plain text in the code's font: a line of code laid out in it says where a point falls.
+  // Copies go through it too, as the editor's do: no argument limit on what Qt's clipboard holds.
+  TextEdit {
+    id: plain
+    visible: false
+    textFormat: TextEdit.PlainText
+    font.family: Style.font.menuFamily
+    font.pixelSize: Style.font.subtitle
+    renderType: Text.NativeRendering
+  }
+  function copyPicked() { plain.text = root.picked; plain.selectAll(); plain.copy(); plain.text = "" }
+  function layLine(n) { plain.text = root.panel.previewText.slice(root.codeStarts[n], root.codeStarts[n + 1] - 1) }
+  function codeAt(p) {
+    var n = Util.clamp(Math.floor(p.y / root.panel.lineHeight), 0, root.codeStarts.length - 2)
+    root.layLine(n)
+    return root.codeStarts[n] + plain.positionAt(p.x, 0)
+  }
+  function codeX(at) { var n = root.lineOf(at); root.layLine(n); return plain.positionToRectangle(at - root.codeStarts[n]).x }
+
+  // Bands behind the pick, from the text's corner: its first line of code from where it starts, the
+  // lines between whole, and its last up to where it ends; or each line of Markdown it covers.
+  readonly property var bands: {
+    var s = root.span()
+    if (!s || s[0] === s[1]) return []
+    // Laid out again at another width, Markdown's lines move.
+    if (root.panel.showsMarkdown) return markdownView.width > 0 ? root.markdownBands(s[0], s[1]) : []
+    var h = root.panel.lineHeight, a = root.lineOf(s[0]), b = root.lineOf(s[1])
+    var x0 = root.codeX(s[0]), x1 = root.codeX(s[1]), w = Math.max(rendered.width, scroller.width)
+    return a === b ? [{ x: x0, y: a * h, w: x1 - x0, h: h }]
+      : [{ x: x0, y: a * h, w: w - x0, h: h }, { x: 0, y: (a + 1) * h, w: w, h: (b - a - 1) * h }, { x: 0, y: b * h, w: x1, h: h }]
+  }
+  // A line of Markdown ends where the next position falls on another row: there a wrapped line
+  // continues, and a paragraph's next begins after its break.
   function markdownBands(from, to) {
     var bands = []
     for (var p = from; p < to;) {
@@ -214,14 +247,19 @@ Item {
       color: root.panel.hoverFill
     }
 
-    // The lines of code picked to copy, behind the text.
-    Rectangle {
-      readonly property var span: root.span()
-      visible: !!span && root.panel.showsCode && !root.panel.editing
-      y: content.y + (span ? span[0] : 0) * root.panel.lineHeight
-      width: Math.max(scroller.width, content.width)
-      height: span ? (span[1] - span[0] + 1) * root.panel.lineHeight : 0
-      color: Util.alpha(Commons.Color.accent, 0.35)
+    // The text picked to copy, behind it.
+    Item {
+      visible: !root.panel.editing
+      x: content.x + (root.panel.showsMarkdown ? markdownView.x : rendered.x)
+      y: content.y
+      Repeater {
+        model: root.bands
+        Rectangle {
+          required property var modelData
+          x: modelData.x; y: modelData.y; width: modelData.w; height: modelData.h
+          color: Util.alpha(Commons.Color.accent, 0.35)
+        }
+      }
     }
 
     Row {
@@ -315,7 +353,6 @@ Item {
         renderType: Text.NativeRendering
         onTextChanged: { if (root.panel.editing) root.panel.dirty = true; Qt.callLater(root.countRows) }
         onLineCountChanged: Qt.callLater(root.countRows)
-        onWidthChanged: Qt.callLater(root.countRows)
         onCursorRectangleChanged: root.revealCursor()
       }
 
@@ -335,16 +372,6 @@ Item {
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.subtitle
         renderType: Text.NativeRendering
-
-        Repeater {
-          model: { var s = root.span(); return s && root.panel.showsMarkdown ? root.markdownBands(s[0], s[1]) : [] }
-          Rectangle {
-            required property var modelData
-            z: -1
-            x: modelData.x; y: modelData.y; width: modelData.w; height: modelData.h
-            color: Util.alpha(Commons.Color.accent, 0.35)
-          }
-        }
       }
 
       // Code in pieces of pieceLines: one Text lays out its lines in time growing with their square,
@@ -454,8 +481,8 @@ Item {
   }
 
   // A click picks the folder entry under it and a double click opens the pick. Over the scroller
-  // rather than in it, so the second click counts whatever the pane shows by then. Over text, a press
-  // or drag picks what to copy, and Shift extends it.
+  // rather than in it, so the second click counts whatever the pane shows by then. Over text, a drag
+  // picks what to copy, and Shift+click extends it.
   MouseArea {
     id: pointer
     readonly property bool overText: root.panel.showsCode || root.panel.showsMarkdown
