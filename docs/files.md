@@ -26,7 +26,7 @@ double-click to open, right-click for the menu, `Ctrl`/`Shift`+click to mark.
 |---|---|
 | folder | its contents, with sizes and dates; the header adds the folder's total size |
 | image | the image, with its pixel size |
-| video | plays muted; `Space` pauses (`Shift+Space` types a space), the fullsize button opens mpv |
+| video | plays muted; `Space` pauses (`Shift+Space` types a space), `Alt+M` toggles sound, the fullsize button opens mpv |
 | Markdown | rendered |
 | other text | syntax highlighted, with line numbers |
 | anything else | its size |

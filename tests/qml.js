@@ -20,7 +20,7 @@ function method(source, name, scope) {
 // distinctly; real Qt values would be a table to keep correct for no gain.
 function keymap(name, ...bound) {
   const src = read(name).replace(/^\.pragma library/m, "")
-  const Qt = { ShiftModifier: 1 << 25, ControlModifier: 1 << 26 }
+  const Qt = { ShiftModifier: 1 << 25, ControlModifier: 1 << 26, AltModifier: 1 << 27 }
   let n = 1
   for (const [, key] of src.matchAll(/Qt\.(Key_\w+)/g)) Qt[key] = Qt[key] || n++
   const onKey = new Function("Qt", src + "\nreturn onKey")(Qt)
