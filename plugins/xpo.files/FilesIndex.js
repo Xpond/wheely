@@ -162,7 +162,6 @@ var VIDEO = { mp4: 1, m4v: 1, mkv: 1, webm: 1, mov: 1, avi: 1, mpg: 1, mpeg: 1,
 // entities StyledText cannot collapse. highlight.py applies the same rules.
 function styledCode(text) {
   var t = String(text || "")
-  if (t.charAt(0) === "\n") t = t.slice(1)
   if (t.charAt(t.length - 1) === "\n") t = t.slice(0, -1)
   return t.replace(/\r/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/[\n\u2028\u2029]/g, "<br>").replace(/ /g, "&#32;").replace(/\t/g, "&#9;")
@@ -543,12 +542,11 @@ function stamp(when) {
        + String(d.getFullYear()).slice(2)
 }
 
-// rows, when given, is how many rows each line wraps to; its number sits on the first.
-function numbers(text, rows) {
+function numbers(text) {
   var t = String(text || "")
   if (!t.length) return ""
   var n = t.split("\n").length
   var out = []
-  for (var i = 1; i <= n; i++) out.push(rows ? i + "\n".repeat((rows[i - 1] || 1) - 1) : i)
+  for (var i = 1; i <= n; i++) out.push(i)
   return out.join("\n")
 }

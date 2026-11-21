@@ -20,16 +20,58 @@ Item {
   readonly property int videoStatus: video.status
   property alias editorText: editor.text
   readonly property string lineNumbers:
-    root.panel.editing ? FilesIndex.numbers(editor.text, root.editRows)
+    root.panel.editing ? FilesIndex.numbers(editor.text)
     : root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
     : root.panel.showsMarkdown ? "" : FilesIndex.numbers(root.panel.previewText)
 
-  // StyledText sets each line's baseline at its ascent. The rich text it replaced
-  // set it 4/5 down a fixed-height line whatever the fonts; keep that placement,
-  // which the gutter's numbers share.
-  function baselineIn(lineHeight) { return Math.floor(lineHeight * 256 / 5) / 64 }
-  // Measured as each layout starts: a binding could still hold the previous font.
-  property real codeBaseline: 0
+  // Code is laid out as the editor lays it out, previewed or edited: wrapped at one width, each row
+  // as tall as its glyphs. The gutter is as wide as the file's last number in both.
+  readonly property bool numbered: root.panel.editing || root.panel.showsCode
+  readonly property int lastNumber: String((root.panel.editing ? editor.text : root.panel.fullText) || "").split("\n").length
+  TextMetrics { id: numberWidth; font: gutter.font; text: String(root.lastNumber) }
+  readonly property real codeWidth: scroller.width - (root.numbered ? numberWidth.advanceWidth + root.panel.gutterGap : 0)
+  // Where each line of code starts, its rows, and its first baseline, measured as the editor lays the
+  // line out. Printable ASCII narrower than the pane is one plain row; other lines are laid out once
+  // and kept, by line, for the width and font they were measured at. Measuring lays text out, so it
+  // runs on the changes that call for it rather than in a binding.
+  readonly property var kept: ({ width: 0, font: "", lines: new Map() })
+  function layoutOf(text) {
+    // Measured at the code's width and in the editor's font as they are now, whichever bindings
+    // have caught up with them.
+    var kept = root.kept, width = root.codeWidth, font = editor.font
+    plain.font = font
+    plain.width = width
+    if (kept.width !== width || kept.font !== String(font)) { kept.lines.clear(); kept.width = width; kept.font = String(font) }
+    plain.text = "0"
+    var row = plain.positionToRectangle(0).height, base = plain.baselineOffset
+    var fits = Math.floor(width / plain.contentWidth) - 1, tops = [0], rows = [], baselines = []
+    String(text || "").split("\n").forEach((line, i) => {
+      var size = [row, 1, base]
+      if (line.length > fits || /[^\x20-\x7e]/.test(line)) {
+        if (!kept.lines.has(line)) {
+          plain.text = line
+          var last = plain.positionToRectangle(line.length)
+          kept.lines.set(line, [last.y + last.height, Math.round(last.y / row) + 1, plain.baselineOffset])
+        }
+        size = kept.lines.get(line)
+      }
+      tops.push(tops[i] + size[0])
+      rows.push(size[1])
+      baselines.push(size[2])
+    })
+    return { tops: tops, rows: rows, baselines: baselines, base: base, row: row }
+  }
+  // Where each row of the previewed lines from first lies, from the first's top, and its baseline.
+  function rowsIn(first, count) {
+    var l = root.codeLayout, out = []
+    for (var i = first; i < Math.min(first + count, l.rows.length); i++)
+      for (var k = 0, h = (l.tops[i + 1] - l.tops[i]) / l.rows[i]; k < l.rows[i]; k++)
+        out.push({ y: l.tops[i] - l.tops[first] + k * h, baseline: k ? l.base : l.baselines[i], line: i - first })
+    return out
+  }
+
+  // A row of styled text is as tall as its glyphs and the line break ending it, which the editor has
+  // not: each row goes where the editor has it, its glyphs on the editor's baseline.
   property real codeAscent: 0
   // Text lays out only once its implicit size is wanted, and baselineOffset needs the layout.
   Text {
@@ -39,14 +81,11 @@ Item {
     textFormat: Text.StyledText
     renderType: Text.NativeRendering
   }
-
   function measure(piece) {
-    root.codeBaseline = root.baselineIn(piece.lineHeight)
     probe.font = piece.font
     probe.text = "x"
     root.codeAscent = probe.baselineOffset
   }
-
   // Printable ASCII is drawn in the code font; anything else may fall back to another.
   // Every line but a piece's last also ends in a line separator drawn in the code font.
   function ascentOf(lines, n) {
@@ -55,6 +94,37 @@ Item {
     probe.text = markup
     return n < lines.length - 1 ? Math.max(root.codeAscent, probe.baselineOffset)
                                 : probe.baselineOffset
+  }
+  property var codeLayout: ({ tops: [0], rows: [], baselines: [], base: 0, row: 0 })
+  property var editLayout: root.codeLayout
+  function measureCode() { root.codeLayout = root.layoutOf(root.panel.showsCode ? root.panel.previewText : "") }
+  function measureEdit() { if (root.panel.editing) root.editLayout = root.layoutOf(editor.text) }
+  function measureAll() { root.measureCode(); root.measureEdit() }
+  onCodeWidthChanged: root.measureAll()
+  Component.onCompleted: root.measureAll()
+  Connections {
+    target: root.panel
+    function onPreviewTextChanged() { root.measureCode() }
+    function onShowsCodeChanged() { root.measureCode() }
+    // Qt leaves a hidden TextEdit blank when it is given new text over text it drew before, so an
+    // edit that ends empties the editor for the next to start from. Preview and edit lay code out
+    // alike, so a switch may change no height to place the view by: place it now.
+    function onEditingChanged() {
+      if (!root.panel.editing) editor.text = ""
+      root.measureEdit()
+      Qt.callLater(root.takePlace)
+    }
+  }
+  readonly property var shownLayout: root.panel.editing ? root.editLayout : root.codeLayout
+  // The numbers are placed as the gutter lays out, which may come before the lines are measured: once
+  // settled, place them again if what they were placed by differs. A keystroke mostly moves no line.
+  property var placedBy: null
+  onShownLayoutChanged: Qt.callLater(root.placeNumbers)
+  function placeNumbers() {
+    var now = root.shownLayout, was = root.placedBy
+    if (was && now.tops.length === was.tops.length && now.tops.every((t, i) => t === was.tops[i])
+        && now.baselines.every((b, i) => b === was.baselines[i])) return
+    gutter.forceLayout()
   }
 
   function scrollBy(dy) {
@@ -96,7 +166,8 @@ Item {
     scroller.contentX = 0
     root.pendingAt = -1
     if (root.panel.editing)
-      editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - root.panel.dirTopPad + 2))
+      // On the first row wholly in view, not one the top edge cuts.
+      editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - root.panel.dirTopPad + root.editLayout.row - 1))
   }
 
   function focusEditor() { editor.forceActiveFocus() }
@@ -126,36 +197,42 @@ Item {
     return s
   }
   function lineOf(at) { var n = 0; while (root.codeStarts[n + 1] <= at) n++; return n }
-  // Hidden plain text in the code's font: a line of code laid out in it says where a point falls.
-  // Copies go through it too, as the editor's do: no argument limit on what Qt's clipboard holds.
+  // Hidden plain text, at the code's width and font as layoutOf last set them: a line of code laid out
+  // in it says where a point falls. Copies go through it too, as the editor's do: no argument limit on
+  // what Qt's clipboard holds.
   TextEdit {
     id: plain
     visible: false
+    wrapMode: TextEdit.Wrap
     textFormat: TextEdit.PlainText
-    font.family: Style.font.menuFamily
-    font.pixelSize: Style.font.subtitle
     renderType: Text.NativeRendering
   }
   function copyPicked() { plain.text = root.picked; plain.selectAll(); plain.copy(); plain.text = "" }
   function layLine(n) { plain.text = root.panel.previewText.slice(root.codeStarts[n], root.codeStarts[n + 1] - 1) }
   function codeAt(p) {
-    var n = Util.clamp(Math.floor(p.y / root.panel.lineHeight), 0, root.codeStarts.length - 2)
+    var tops = root.codeLayout.tops, n = 0
+    while (n < root.codeStarts.length - 2 && tops[n + 1] <= p.y) n++
     root.layLine(n)
-    return root.codeStarts[n] + plain.positionAt(p.x, 0)
+    return root.codeStarts[n] + plain.positionAt(p.x, Math.max(0, p.y - tops[n]))
   }
-  function codeX(at) { var n = root.lineOf(at); root.layLine(n); return plain.positionToRectangle(at - root.codeStarts[n]).x }
+  // Where a character of the code is drawn, from the text's corner, and its row's height.
+  function codePoint(at) {
+    var n = root.lineOf(at)
+    root.layLine(n)
+    var r = plain.positionToRectangle(at - root.codeStarts[n])
+    return { x: r.x, y: root.codeLayout.tops[n] + r.y, h: r.height }
+  }
 
-  // Bands behind the pick, from the text's corner: its first line of code from where it starts, the
-  // lines between whole, and its last up to where it ends; or each line of Markdown it covers.
+  // Bands behind the pick, from the text's corner: its first row of code from where it starts, the
+  // rows between whole, and its last up to where it ends; or each line of Markdown it covers.
   readonly property var bands: {
     var s = root.span()
     if (!s || s[0] === s[1]) return []
     // Laid out again at another width, Markdown's lines move.
     if (root.panel.showsMarkdown) return markdownView.width > 0 ? root.markdownBands(s[0], s[1]) : []
-    var h = root.panel.lineHeight, a = root.lineOf(s[0]), b = root.lineOf(s[1])
-    var x0 = root.codeX(s[0]), x1 = root.codeX(s[1]), w = Math.max(rendered.width, scroller.width)
-    return a === b ? [{ x: x0, y: a * h, w: x1 - x0, h: h }]
-      : [{ x: x0, y: a * h, w: w - x0, h: h }, { x: 0, y: (a + 1) * h, w: w, h: (b - a - 1) * h }, { x: 0, y: b * h, w: x1, h: h }]
+    var a = root.codePoint(s[0]), b = root.codePoint(s[1]), w = root.codeWidth
+    return a.y === b.y ? [{ x: a.x, y: a.y, w: b.x - a.x, h: a.h }]
+      : [{ x: a.x, y: a.y, w: w - a.x, h: a.h }, { x: 0, y: a.y + a.h, w: w, h: b.y - a.y - a.h }, { x: 0, y: b.y, w: b.x, h: b.h }]
   }
   // A line of Markdown ends where the next position falls on another row: there a wrapped line
   // continues, and a paragraph's next begins after its break.
@@ -172,23 +249,6 @@ Item {
     return bands
   }
 
-  // Rows each line of the editor wraps to, from where the next line starts; null when none wraps.
-  // Counted after each relayout rather than bound: the numbers set the gutter's width, and so the editor's.
-  property var editRows: null
-  function countRows() {
-    var lines = editor.text.split("\n")
-    if (!root.panel.editing || editor.lineCount <= lines.length) { root.editRows = null; return }
-    var row = editor.contentHeight / editor.lineCount
-    var rows = [], at = 0, top = 0
-    for (var i = 0; i < lines.length; i++) {
-      at += lines[i].length + 1
-      var next = i + 1 < lines.length ? editor.positionToRectangle(at).y : editor.contentHeight
-      rows.push(Math.round((next - top) / row))
-      top = next
-    }
-    root.editRows = rows
-  }
-
   // Lay out more of a long file once the view comes within a screen of its end.
   function fill() {
     if (root.panel.previewCut && !root.panel.editing && scroller.contentY + scroller.height * 2 > scroller.contentHeight)
@@ -202,12 +262,8 @@ Item {
     if (top < scroller.contentY) root.scrollBy(top - scroller.contentY)
     else if (top + r.height > scroller.contentY + scroller.height)
       root.scrollBy(top + r.height - scroller.contentY - scroller.height)
-    var left = editor.x + r.x
-    if (left < scroller.contentX) root.scrollAcross(left - scroller.contentX - Style.space(40))
-    else if (left + r.width > scroller.contentX + scroller.width)
-      root.scrollAcross(left + r.width - scroller.contentX - scroller.width + Style.space(40))
   }
-  // Previewed code stays unwrapped and scrolls sideways; the editor wraps to the pane.
+  // Code wraps to the pane, previewed or edited alike.
   Flickable {
     id: scroller
     // Isolate Markdown batches to avoid the Qt 6.12 scrolling crash.
@@ -318,21 +374,21 @@ Item {
 
       Text {
         id: gutter
-        visible: root.lineNumbers.length > 0
+        visible: root.numbered
+        width: numberWidth.advanceWidth
         text: root.lineNumbers
         horizontalAlignment: Text.AlignRight
         color: Commons.Color.menu.text
         opacity: 0.32
         font.family: Style.font.menuFamily
-        // Match the gutter rhythm to editable text or fixed-height preview code.
-        font.pixelSize: root.panel.editing ? Style.font.subtitle : Style.font.bodySmall
+        font.pixelSize: Style.font.bodySmall
         renderType: Text.NativeRendering
-        lineHeightMode: root.panel.editing ? Text.ProportionalHeight : Text.FixedHeight
-        lineHeight: root.panel.editing ? 1.0 : root.panel.lineHeight
-        // Left to Qt, the smaller numbers sat above the code's baseline; share it instead.
+        height: root.shownLayout.tops[root.shownLayout.tops.length - 1]
+        // Each number on its line's first baseline, as the editor has it.
         onLineLaidOut: function (line) {
-          if (!root.panel.editing)
-            line.y = line.number * lineHeight + root.baselineIn(lineHeight) - gutterMetrics.ascent
+          var layout = root.shownLayout, n = Math.min(line.number, layout.baselines.length - 1)
+          if (line.number === 0) root.placedBy = layout
+          line.y = layout.tops[n] + layout.baselines[n] - gutterMetrics.ascent
         }
       }
       FontMetrics { id: gutterMetrics; font: gutter.font }
@@ -346,14 +402,13 @@ Item {
         selectedTextColor: Commons.Color.menu.text
         persistentSelection: true
         textFormat: TextEdit.PlainText
-        width: scroller.width - (gutter.visible ? gutter.width + content.spacing : 0)
+        width: root.codeWidth
         wrapMode: TextEdit.Wrap
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.subtitle
         renderType: Text.NativeRendering
-        onTextChanged: { if (root.panel.editing) root.panel.dirty = true; Qt.callLater(root.countRows) }
-        onLineCountChanged: Qt.callLater(root.countRows)
-        onWidthChanged: Qt.callLater(root.countRows)
+        onTextChanged: { if (root.panel.editing) root.panel.dirty = true; root.measureEdit() }
+        onFontChanged: root.measureAll()
         onCursorRectangleChanged: root.revealCursor()
       }
 
@@ -392,9 +447,19 @@ Item {
           delegate: Text {
             id: piece
             required property string markup
+            required property int index
             readonly property var lines: markup.split("<br>")
+            readonly property int first: piece.index * root.pieceLines
+            readonly property var rows: root.rowsIn(piece.first, piece.lines.length)
+            // Its rows are placed as it lays out, which may come before the lines are measured: once
+            // settled, place them again if they moved.
+            property string placedBy: ""
+            onRowsChanged: Qt.callLater(function () { if (JSON.stringify(piece.rows) !== piece.placedBy) piece.forceLayout() })
             // A piece ending on a blank line still counts it, which StyledText would drop.
-            height: piece.lines.length * lineHeight
+            height: root.codeLayout.tops[Math.min(piece.first + piece.lines.length, root.codeLayout.tops.length - 1)]
+                    - root.codeLayout.tops[piece.first]
+            width: root.codeWidth
+            wrapMode: Text.Wrap
             text: markup
             color: Commons.Color.menu.text
             opacity: 0.92
@@ -402,12 +467,10 @@ Item {
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.subtitle
             renderType: Text.NativeRendering
-            lineHeightMode: Text.FixedHeight
-            lineHeight: root.panel.lineHeight
             onLineLaidOut: function (line) {
-              if (line.number === 0) root.measure(piece)
-              // Absolute: Text has already lowered the line to the foot of its fixed height.
-              line.y = line.number * lineHeight + root.codeBaseline - root.ascentOf(piece.lines, line.number)
+              if (line.number === 0) { root.measure(piece); piece.placedBy = JSON.stringify(piece.rows) }
+              var row = piece.rows[line.number]
+              if (row) line.y = row.y + row.baseline - root.ascentOf(piece.lines, row.line)
             }
           }
         }

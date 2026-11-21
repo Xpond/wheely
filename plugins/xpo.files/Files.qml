@@ -111,7 +111,7 @@ Item {
                                    + Style.spacing.lg * 2 + Style.spacing.panelPadding * 2
 
   readonly property int rowHeight: Style.spacing.popupRowHeight + Style.spacing.md
-  // Shared by gutter, body, and keyboard scrolling to keep line numbers aligned.
+  // A folder preview's rows, and the step keyboard scrolling takes.
   readonly property int lineHeight: Math.round(Style.font.subtitle * 1.75)
 
   readonly property int previewLimit: 262144

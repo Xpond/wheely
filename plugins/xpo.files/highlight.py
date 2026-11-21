@@ -29,10 +29,9 @@ def lexer_for(name):
 def first_tokens(lexer):
     # Keep lookahead past the cut for comments and heredocs; stop consuming tokens at the cut.
     # Match Pygments' CR/BOM normalization without treating lone CRs as Qt line boundaries.
-    # The cut keeps the break after its last line, for the strip below to take rather than a blank
-    # line, and a line more when that strip takes a blank first one.
+    # The cut keeps the break after its last line, for the strip below to take rather than a blank line.
     body = src.removeprefix("\ufeff")
-    n = lines + body.startswith(("\n", "\r\n"))
+    n = lines
     parts = body.split("\n", n)
     prefix = "\n".join(parts[:n]) + "\n" * (len(parts) > n)
     left = len(prefix.replace("\r\n", "\n").replace("\r", "\n"))
@@ -51,8 +50,6 @@ except Exception:
 html = format(first_tokens(lexer), HtmlFormatter(nowrap=True, noclasses=True, style="one-dark"))
 
 # The same rules as FilesIndex.styledCode(), which shows the file until this answers.
-if html.startswith("\n"):
-    html = html[1:]
 if html.endswith("\n"):
     html = html[:-1]
 space = re.compile("[\t\x0b\x0c \xa0\u1680\u2000-\u200a\u202f\u205f\u3000]")

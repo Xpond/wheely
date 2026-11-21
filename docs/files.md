@@ -96,7 +96,7 @@ original and copies it.
 ## Editing
 
 `Ctrl+E` edits the previewed text file in place and `Ctrl+S` saves. Long lines wrap to the
-pane, and `Ctrl+T` pops the edit out as a window. `Esc` leaves; with
+pane as in the preview, line for line, and `Ctrl+T` pops the edit out as a window. `Esc` leaves; with
 unsaved changes, press it twice to discard. A save never overwrites a change made
 elsewhere meanwhile: the new version is shown, your draft is kept, and saving again
 overwrites. Files over 256 KiB, binary files, files that are not UTF-8, and files with
