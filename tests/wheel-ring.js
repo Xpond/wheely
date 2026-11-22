@@ -52,6 +52,10 @@ const shift = 1 << 25, ctrl = 1 << 26
   const ring = () => ed.ring.map(M.keyOf).join(" ") + " @" + ed.selected
   const written = () => JSON.parse(saved.at(-1))
 
+  for (const [raw, broken] of [["", false], ["  \n", false], ["// only a note\n", false], ["{}", false], ['{"a":1,}', false],
+                               ['{"a":[1] "b":2}', true], ["{", true]])
+    assert.equal(M.isBroken(raw), broken, "isBroken " + JSON.stringify(raw))
+
   ed.edit({ setting: "ring" })
   assert.deepEqual([ed.editingRing, ed.resetAsked, ed.path, ed.query], [true, false, [], ""])
   assert.equal(ring(), "omarchy.audio omarchy.network omarchy.clipboard @-1", "the editor did not start from the bar")
