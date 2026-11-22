@@ -125,8 +125,9 @@ console.log("ok: deleted rows follow the live ones, so their arrival moves no se
 function fakeGit(status) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-git-fake-"))
   fs.writeFileSync(path.join(dir, "status"), status)
-  fs.writeFileSync(path.join(dir, "git"), '#!/bin/sh\ncase "$*" in *rev-parse*) printf "%s\\n\\n" "' + dir + '" ;;\n'
-    + '*--get-regexp*) exit 1 ;;\n'
+  fs.writeFileSync(path.join(dir, "git"), '#!/bin/sh\ncase "$*" in *--show-prefix*) echo ;;\n'
+    + '*rev-parse*) printf "%s\\n" "' + dir + '" ;;\n'
+    + '*--show-scope*) exit 0 ;;\n'
     + '*) echo $$ > "' + dir + '/pid"; [ -s "' + dir + '/status" ] && exec cat "' + dir + '/status"; exec sleep 30 ;; esac\n', { mode: 0o755 })
   return { dir, env: { ...process.env, PATH: dir + ":" + process.env.PATH } }
 }
