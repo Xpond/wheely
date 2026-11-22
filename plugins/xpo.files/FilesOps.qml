@@ -83,10 +83,10 @@ Item {
   }
   function showProgress() { if (root.total > 0) root.progress = Math.min(1, gauge.done / root.total) }
 
-  // Pass paths as arguments to preserve shell metacharacters. A failed copy takes what it made with
-  // it; a rename or link makes nothing when it fails.
+  // Pass paths as arguments to preserve shell metacharacters. A failed copy keeps a folder holding
+  // what did copy (19) and drops anything else it made; a rename or link makes nothing when it fails.
   function guarded(verb, src, dst) {
-    var undo = verb === "cp -r" ? ' || { rm -rf -- "$2"; exit 1; }' : ""
+    var undo = verb === "cp -r" ? ' || { rm -df -- "$2" 2>/dev/null; [ -d "$2" ] && exit 19; exit 1; }' : ""
     return ["sh", "-c", 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; ' + verb + ' -- "$1" "$2"' + undo,
             "files", src, dst]
   }
@@ -95,13 +95,16 @@ Item {
 
   // Each into the folder in turn, past a name already taken, its own name included: 17 when every
   // name was taken, 18 when some were, 19 on partial failure, 1 on total failure. A move to another
-  // filesystem is a whole copy before the source goes, so a failure or cancel removes only the
-  // unfinished copy, and a cancel stops before the next.
+  // filesystem is a whole copy before the source goes, so its failure, like any cancel, removes only
+  // the unfinished copy, read-only folders too; a cancel stops before the next. A failed copy keeps a
+  // folder holding what did copy, which counts as partial.
   function pasteCommand(move, dir, paths) {
     return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; trap "k=1" TERM; [ "$v" = mv ] && e=$(stat -c %d -- "$d"); put() { '
       + 'if [ "$v" = mv ] && [ "$(stat -c %d -- "$1")" = "$e" ]; then mv -- "$1" "$2"; return; fi; '
       + 'if [ "$v" = mv ]; then o=-a; else o=-r; fi; '
-      + 'if ! cp $o -- "$1" "$2"; then rm -rf -- "$2"; return 1; fi; [ "$v" = cp ] || rm -rf -- "$1"; }; '
+      + 'if ! cp $o -- "$1" "$2"; then if [ -n "$k" ] || [ "$v" = mv ]; '
+      + 'then find "$2" -type d -exec chmod u+rwx {} + 2>/dev/null; rm -rf -- "$2"; '
+      + 'else rm -df -- "$2" 2>/dev/null; [ ! -d "$2" ] || p=1; fi; return 1; fi; [ "$v" = cp ] || rm -rf -- "$1"; }; '
       + 'for f do [ -z "$k" ] || break; t="$d/${f##*/}"; '
       + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif put "$f" "$t"; then p=1; else s=1; fi; done; '
       + '[ -z "$k" ] || exit 130; if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',
@@ -117,7 +120,7 @@ Item {
                doing: (h.move ? "moving " : "copying ") + h.name,
                occupied: h.items.length > 1 ? "all " + h.items.length + " names are already here" : "a " + h.name + " is already here",
                taken: "some names were already here; the rest " + (h.move ? "moved" : "copied"),
-               partial: "some items " + (h.move ? "moved" : "copied") + "; others could not be " + (h.move ? "moved" : "copied"),
+               partial: !h.move && h.items.length === 1 ? "copy incomplete" : "some items " + (h.move ? "moved" : "copied") + "; others could not be " + (h.move ? "moved" : "copied"),
                done: (h.move ? "moved " : "copied ") + h.name + (into ? " into " + into.slice(into.lastIndexOf("/") + 1) : ""),
                fail: (h.move ? "move" : "copy") + " failed" })
   }

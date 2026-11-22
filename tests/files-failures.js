@@ -52,6 +52,13 @@ try {
   assert.equal(root.status, 19)
   assert.ok(root.held)
   assert.equal(root.message, "some items copied; others could not be copied")
+  // One folder copied in part stays, and says so.
+  fs.mkdirSync(at("album")); fs.writeFileSync(at("album", "ok"), "copy me"); fs.writeFileSync(at("album", "locked"), "", { mode: 0 })
+  root.held = hold(["album"], false)
+  root.paste()
+  assert.equal(root.status, 19)
+  assert.equal(root.message, "copy incomplete")
+  assert.equal(fs.readFileSync(at("dest", "album", "ok"), "utf8"), "copy me")
   for (const name of ["a.txt", "b.txt"]) {
     fs.writeFileSync(at(name), "source")
     fs.writeFileSync(at("dest", name), "keep")

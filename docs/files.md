@@ -60,8 +60,9 @@ rest. `Ctrl+D` shows a changed file's diff instead of its contents.
 - A paste, extract, compress or trash shows in the header while it runs, with its time,
   how far it has got (`12.6G of 30G`) and a bar along the header's foot. `Ctrl+K` cancels it and
   leaves nothing half-made: a move to another drive copies everything before it removes
-  the original. Paste a cancelled move again to finish it. A copy that fails removes what it
-  made, so it can be pasted again. One file job runs at a time.
+  the original. Paste a cancelled move again to finish it. A failed file copy or move removes
+  what it made, so it can be pasted again. A folder that copies only in part keeps that part
+  and says the copy is incomplete. One file job runs at a time.
 
 ## Marking several
 

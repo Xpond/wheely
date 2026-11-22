@@ -71,16 +71,20 @@ try {
     assert.deepEqual(fs.readdirSync(at("from")).sort(), ["one", "two"], "a cancelled paste lost a source")
   }
 
-  // A copy that fails partway goes too, so a retry does not find its name taken: paste, a move to
-  // another filesystem, and Duplicate. Their sources stay.
-  fs.writeFileSync(at("bin", "cp"), '#!/bin/sh\nmkdir "$4"; printf half > "$4/half"; exit 1\n', { mode: 0o755 })
+  // A failed copy keeps a folder holding what did copy, and drops a half file or an empty folder. A
+  // failed move keeps nothing, a read-only folder included, so a retry finds its name free.
+  const from = at("from", "one"), to = at("to", "one")
   const guarded = method(opsSource, "guarded", {})
-  for (const [what, command] of [["paste", pasteCommand(false, at("to"), [at("from", "one")])],
-                                  ["move", pasteCommand(true, at("to"), [at("from", "one")])],
-                                  ["duplicate", guarded("cp -r", at("from", "one"), at("to", "one"))]]) {
-    assert.equal(spawnSync(command[0], command.slice(1), { env }).status, 1, what)
-    assert.deepEqual(fs.readdirSync(at("to")), [], "a failed " + what + " left a partial copy")
-    assert.ok(fs.existsSync(at("from", "one")), "a failed " + what + " lost its source")
+  const paste = pasteCommand(false, at("to"), [from]), duplicate = guarded("cp -r", from, to)
+  const file = 'printf half > "$4"', folder = 'mkdir -p "$4/ro"; printf half > "$4/ro/half"; chmod 555 "$4/ro"'
+  for (const [what, made, command, status] of [["file paste", file, paste, 1], ["file duplicate", file, duplicate, 1],
+      ["empty folder paste", 'mkdir "$4"', paste, 1], ["move", folder, pasteCommand(true, at("to"), [from]), 1],
+      ["folder paste", folder, paste, 19], ["folder duplicate", folder, duplicate, 19]]) {
+    fs.writeFileSync(at("bin", "cp"), "#!/bin/sh\n" + made + "\nexit 1\n", { mode: 0o755 })
+    assert.equal(spawnSync(command[0], command.slice(1), { env }).status, status, what)
+    assert.deepEqual(fs.readdirSync(at("to")), status === 19 ? ["one"] : [], "a failed " + what + " left the wrong thing")
+    assert.ok(fs.existsSync(from), "a failed " + what + " lost its source")
+    if (status === 19) { fs.chmodSync(path.join(to, "ro"), 0o755); fs.rmSync(to, { recursive: true }) }
   }
 
   // Ctrl+K cancels; it is no one else's key outside naming and editing.
@@ -101,6 +105,7 @@ try {
   cancel()
   assert.equal(sent, 1)
 } finally {
+  spawnSync("chmod", ["-R", "u+rwX", base]) // A failed case can leave its read-only folder.
   fs.rmSync(base, { recursive: true, force: true })
 }
-console.log("ok: cancelled extract, compress, copy and move, and failed copies, leave nothing behind; the gauge reads what a job has read")
+console.log("ok: cancelled extract, compress, copy and move leave nothing behind, failed copies keep only folders; the gauge reads what a job has read")

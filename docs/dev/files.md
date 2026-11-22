@@ -200,7 +200,7 @@ entry its hover tint already finds and keeps the popup inside the pane.
 
 **One process, one contract.** Every write goes through the same `Process` and
 the same exit codes: `0` done, `17` names taken with nothing pasted, `18` partial
-paste with collisions, `19` partial paste with failures, anything else failed.
+paste with collisions, `19` partial paste or folder copy, anything else failed.
 `op` carries what to say about each outcome, so move, copy, rename and delete
 share one success path and one failure path rather than three of each.
 
@@ -363,8 +363,9 @@ would otherwise leave a Trash armed for a different list.
 destination's filesystem once rather than once an item. It goes on past
 a name already taken — its own, when pasted where it already is. `17` means every
 name was, so nothing went and the hold stays. `18` means some names collided;
-`19` means some entries succeeded and others failed. Both clear a move hold,
-since it contains paths already moved. Total failure preserves the hold for retry.
+`19` means some entries succeeded and others failed, or a folder copied in part. Both
+clear a move hold, since it contains paths already moved. Total failure preserves the
+hold for retry.
 
 `node tests/files-menu.js` holds each kind of entry to its rows, the marks to theirs,
 drives the menu's and the marks' keys, and runs compress, extract, convert, duplicate,
