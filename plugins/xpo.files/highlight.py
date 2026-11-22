@@ -31,9 +31,8 @@ def first_tokens(lexer):
     # Match Pygments' CR/BOM normalization without treating lone CRs as Qt line boundaries.
     # The cut keeps the break after its last line, for the strip below to take rather than a blank line.
     body = src.removeprefix("\ufeff")
-    n = lines
-    parts = body.split("\n", n)
-    prefix = "\n".join(parts[:n]) + "\n" * (len(parts) > n)
+    parts = body.split("\n", lines)
+    prefix = "\n".join(parts[:lines]) + "\n" * (len(parts) > lines)
     left = len(prefix.replace("\r\n", "\n").replace("\r", "\n"))
     for token, text in lexer.get_tokens(src):
         yield token, text[:left]

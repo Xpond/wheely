@@ -143,6 +143,8 @@ Item {
   // Properties stand in for the preview until the selection moves or Esc.
   property bool props: false
   readonly property bool showsProps: root.props && !root.editing && !root.diffMode
+  // They hide the text, so nothing in it stays picked for Esc and Ctrl+C.
+  onShowsPropsChanged: if (root.showsProps) preview.letGo()
   readonly property bool showsMarkdown: !root.showsDiff && !!root.settledSel && !root.settledSel.isDir
                                         && !root.settledSel.missing && FilesIndex.isMarkdown(root.settledSel.name)
   readonly property string previewPath:

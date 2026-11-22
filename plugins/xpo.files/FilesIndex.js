@@ -156,10 +156,9 @@ var IMAGE = { png: 1, jpg: 1, jpeg: 1, gif: 1, webp: 1, bmp: 1,
 var VIDEO = { mp4: 1, m4v: 1, mkv: 1, webm: 1, mov: 1, avi: 1, mpg: 1, mpeg: 1,
               ogv: 1, wmv: 1, flv: 1, "3gp": 1, "3g2": 1, m2ts: 1, vob: 1 }
 
-// StyledText lays code out an order of magnitude faster than the rich-text <pre>
-// it replaced. Keep <pre>'s rules: drop a newline after its opening tag and one
-// before its closing tag, drop \r, and keep other whitespace as written, through
-// entities StyledText cannot collapse. highlight.py applies the same rules.
+// StyledText lays code out an order of magnitude faster than rich text. Drop the
+// last newline and \r, and keep other whitespace as written, through entities
+// StyledText cannot collapse. highlight.py applies the same rules.
 function styledCode(text) {
   var t = String(text || "")
   if (t.charAt(t.length - 1) === "\n") t = t.slice(0, -1)
@@ -258,7 +257,7 @@ function styledDiff(text) {
   if (!text) return ""
   var lines = String(text).replace(/\n$/, "").split("\n"), header = lines[0].slice(0, 2) !== "@@"
   return lines.map(function (line, i) {
-    if (line.slice(0, 2) === "@@") line = ("⋯ " + line.replace(/^@@[^@]*@@ ?/, "")).trim()
+    line = shownLine(line)
     var lead = line.charAt(0)
     var colour = header ? "#7f848e" : lead === "⋯" ? "#61afef"
       : lead === "+" ? "#98c379" : lead === "-" ? "#e06c75" : ""
@@ -270,6 +269,11 @@ function styledDiff(text) {
     return colour ? '<font color="' + colour + '">' + code + "</font>" : code
   }).join("<br>")
 }
+
+function shownLine(line) {
+  return line.slice(0, 2) === "@@" ? ("⋯ " + line.replace(/^@@[^@]*@@ ?/, "")).trim() : line
+}
+function shownDiff(text) { return text.split("\n").map(shownLine).join("\n") }
 
 // Each line's number in the file as it is now, the numbers its plain preview shows.
 // A removed line is no longer in the file, so it has none.

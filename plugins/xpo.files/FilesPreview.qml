@@ -27,33 +27,38 @@ Item {
   // Code is laid out as the editor lays it out, previewed or edited: wrapped at one width, each row
   // as tall as its glyphs. The gutter is as wide as the file's last number in both.
   readonly property bool numbered: root.panel.editing || root.panel.showsCode
-  readonly property int lastNumber: String((root.panel.editing ? editor.text : root.panel.fullText) || "").split("\n").length
+  readonly property int lastNumber: root.panel.showsDiff
+    ? FilesIndex.diffNumbers(root.panel.shownText).split("\n").reduce((most, n) => Math.max(most, n), 1)
+    : String((root.panel.editing ? editor.text : root.panel.fullText) || "").split("\n").length
   TextMetrics { id: numberWidth; font: gutter.font; text: String(root.lastNumber) }
   readonly property real codeWidth: scroller.width - (root.numbered ? numberWidth.advanceWidth + root.panel.gutterGap : 0)
   // Where each line of code starts, its rows, and its first baseline, measured as the editor lays the
   // line out. Printable ASCII narrower than the pane is one plain row; other lines are laid out once
   // and kept, by line, for the width and font they were measured at. Measuring lays text out, so it
   // runs on the changes that call for it rather than in a binding.
-  readonly property var kept: ({ width: 0, font: "", lines: new Map() })
+  // An object, not a Map: V4 searches a Map key by key, so each keystroke took a big file's lines squared.
+  readonly property var kept: ({ width: 0, font: "", lines: Object.create(null) })
+  // A line as drawn: the \r of a CRLF is no break of its own, as a TextEdit would take it.
+  function drawn(line) { return line.replace(/\r$/, "") }
   function layoutOf(text) {
     // Measured at the code's width and in the editor's font as they are now, whichever bindings
     // have caught up with them.
     var kept = root.kept, width = root.codeWidth, font = editor.font
     plain.font = font
     plain.width = width
-    if (kept.width !== width || kept.font !== String(font)) { kept.lines.clear(); kept.width = width; kept.font = String(font) }
+    if (kept.width !== width || kept.font !== String(font)) { kept.lines = Object.create(null); kept.width = width; kept.font = String(font) }
     plain.text = "0"
     var row = plain.positionToRectangle(0).height, base = plain.baselineOffset
     var fits = Math.floor(width / plain.contentWidth) - 1, tops = [0], rows = [], baselines = []
     String(text || "").split("\n").forEach((line, i) => {
       var size = [row, 1, base]
       if (line.length > fits || /[^\x20-\x7e]/.test(line)) {
-        if (!kept.lines.has(line)) {
-          plain.text = line
-          var last = plain.positionToRectangle(line.length)
-          kept.lines.set(line, [last.y + last.height, Math.round(last.y / row) + 1, plain.baselineOffset])
+        if (!kept.lines[line]) {
+          plain.text = root.drawn(line)
+          var last = plain.positionToRectangle(plain.length)
+          kept.lines[line] = [last.y + last.height, plain.lineCount, plain.baselineOffset]
         }
-        size = kept.lines.get(line)
+        size = kept.lines[line]
       }
       tops.push(tops[i] + size[0])
       rows.push(size[1])
@@ -61,50 +66,30 @@ Item {
     })
     return { tops: tops, rows: rows, baselines: baselines, base: base, row: row }
   }
-  // Where each row of the previewed lines from first lies, from the first's top, and its baseline.
+  // Where the top of each row of styled text goes, from the first line's, for its glyphs to sit as the
+  // editor's do: a line's last row also holds the code font's line break, which the editor has not, so
+  // one of shorter glyphs goes higher by the difference.
   function rowsIn(first, count) {
     var l = root.codeLayout, out = []
     for (var i = first; i < Math.min(first + count, l.rows.length); i++)
-      for (var k = 0, h = (l.tops[i + 1] - l.tops[i]) / l.rows[i]; k < l.rows[i]; k++)
-        out.push({ y: l.tops[i] - l.tops[first] + k * h, baseline: k ? l.base : l.baselines[i], line: i - first })
+      for (var k = 0, h = (l.tops[i + 1] - l.tops[i]) / l.rows[i]; k < l.rows[i]; k++) {
+        var broken = k === l.rows[i] - 1 && i < first + count - 1
+        out.push(l.tops[i] - l.tops[first] + k * h + (broken ? Math.min(0, l.baselines[i] - l.base) : 0))
+      }
     return out
-  }
-
-  // A row of styled text is as tall as its glyphs and the line break ending it, which the editor has
-  // not: each row goes where the editor has it, its glyphs on the editor's baseline.
-  property real codeAscent: 0
-  // Text lays out only once its implicit size is wanted, and baselineOffset needs the layout.
-  Text {
-    id: probe
-    visible: false
-    width: implicitWidth
-    textFormat: Text.StyledText
-    renderType: Text.NativeRendering
-  }
-  function measure(piece) {
-    probe.font = piece.font
-    probe.text = "x"
-    root.codeAscent = probe.baselineOffset
-  }
-  // Printable ASCII is drawn in the code font; anything else may fall back to another.
-  // Every line but a piece's last also ends in a line separator drawn in the code font.
-  function ascentOf(lines, n) {
-    var markup = lines[n]
-    if (!/[^\x20-\x7e]|&#(?!(?:32|9|39);)/.test(markup)) return root.codeAscent
-    probe.text = markup
-    return n < lines.length - 1 ? Math.max(root.codeAscent, probe.baselineOffset)
-                                : probe.baselineOffset
   }
   property var codeLayout: ({ tops: [0], rows: [], baselines: [], base: 0, row: 0 })
   property var editLayout: root.codeLayout
-  function measureCode() { root.codeLayout = root.layoutOf(root.panel.showsCode ? root.panel.previewText : "") }
+  // The code as drawn, to measure, hit and copy: a diff's @@ lines are drawn shorter.
+  readonly property string codeText: root.panel.showsDiff ? FilesIndex.shownDiff(root.panel.previewText) : root.panel.previewText
+  onCodeTextChanged: root.measureCode()
+  function measureCode() { root.codeLayout = root.layoutOf(root.panel.showsCode ? root.codeText : "") }
   function measureEdit() { if (root.panel.editing) root.editLayout = root.layoutOf(editor.text) }
   function measureAll() { root.measureCode(); root.measureEdit() }
   onCodeWidthChanged: root.measureAll()
   Component.onCompleted: root.measureAll()
   Connections {
     target: root.panel
-    function onPreviewTextChanged() { root.measureCode() }
     function onShowsCodeChanged() { root.measureCode() }
     // Qt leaves a hidden TextEdit blank when it is given new text over text it drew before, so an
     // edit that ends empties the editor for the next to start from. Preview and edit lay code out
@@ -153,18 +138,21 @@ Item {
     scroller.contentX = 0
   }
 
-  // Preserve relative scroll position while rendered and editable heights change.
+  // Code keeps its offset, laid out alike previewed or edited. Markdown and a diff keep their share.
   property real pendingAt: -1
+  property real pendingY: -1
   function keepPlace() {
+    root.pendingY = root.panel.showsMarkdown || root.panel.showsDiff ? -1 : scroller.contentY
     var at = Util.clamp(scroller.contentY / Math.max(1, scroller.contentHeight - scroller.height), 0, 1)
     // A partly laid out file is only its share of the text.
     root.pendingAt = root.panel.previewCut ? at * root.panel.previewText.length / root.panel.shownText.length : at
   }
   function takePlace() {
     if (root.pendingAt < 0) return
-    scroller.contentY = root.pendingAt * Math.max(0, scroller.contentHeight - scroller.height)
+    var most = Math.max(0, scroller.contentHeight - scroller.height)
+    scroller.contentY = root.pendingY >= 0 && !root.panel.showsDiff ? Math.min(root.pendingY, most) : root.pendingAt * most
     scroller.contentX = 0
-    root.pendingAt = -1
+    root.pendingAt = root.pendingY = -1
     if (!root.panel.editing) return
     // On the first row wholly in view, not one the top edge cuts.
     editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - root.panel.dirTopPad + root.editLayout.row - 1))
@@ -184,7 +172,10 @@ Item {
   function span() { return root.from < 0 || root.to < 0 ? null : [Math.min(root.from, root.to), Math.max(root.from, root.to)] }
   readonly property string picked: {
     var s = root.span()
-    return !s ? "" : root.panel.showsMarkdown ? markdownView.getText(s[0], s[1]) : root.panel.previewText.slice(s[0], s[1])
+    // Without the zero-width space escapeTags() parts each "![" with, which is only there to draw.
+    return !s ? "" : root.panel.showsMarkdown
+      ? markdownView.getText(s[0], s[1]).replace(/\u200b(?=\[|$)/g, "")
+      : root.codeText.slice(s[0], s[1])
   }
   function letGo() { root.from = root.to = -1 }
   function pickAt(x, y, extend) {
@@ -196,7 +187,7 @@ Item {
 
   // Where each line of the previewed code starts; the cut's closing ellipsis is no line of the file.
   readonly property var codeStarts: {
-    var s = [0], lines = root.panel.previewText.split("\n")
+    var s = [0], lines = root.codeText.split("\n")
     for (var i = 0; i < lines.length - (root.panel.previewCut ? 1 : 0); i++) s.push(s[i] + lines[i].length + 1)
     return s
   }
@@ -212,7 +203,7 @@ Item {
     renderType: Text.NativeRendering
   }
   function copyPicked() { plain.text = root.picked; plain.selectAll(); plain.copy(); plain.text = "" }
-  function layLine(n) { plain.text = root.panel.previewText.slice(root.codeStarts[n], root.codeStarts[n + 1] - 1) }
+  function layLine(n) { plain.text = root.drawn(root.codeText.slice(root.codeStarts[n], root.codeStarts[n + 1] - 1)) }
   function codeAt(p) {
     var tops = root.codeLayout.tops, n = 0
     while (n < root.codeStarts.length - 2 && tops[n + 1] <= p.y) n++
@@ -238,17 +229,26 @@ Item {
     return a.y === b.y ? [{ x: a.x, y: a.y, w: b.x - a.x, h: a.h }]
       : [{ x: a.x, y: a.y, w: w - a.x, h: a.h }, { x: 0, y: a.y + a.h, w: w, h: b.y - a.y - a.h }, { x: 0, y: b.y, w: b.x, h: b.h }]
   }
-  // A line of Markdown ends where the next position falls on another row: there a wrapped line
-  // continues, and a paragraph's next begins after its break.
+  // A band for each row of each block picked; a table's cells are blocks. A block's rows only go down,
+  // so a row's last character is found by halving, where asking the pane's edge found another cell's.
   function markdownBands(from, to) {
-    var bands = []
-    for (var p = from; p < to;) {
-      var a = markdownView.positionToRectangle(p)
-      var end = Math.min(to, markdownView.positionAt(markdownView.width, a.y + a.height / 2))
-      var wraps = markdownView.positionToRectangle(end).y !== a.y
-      var right = markdownView.positionToRectangle(wraps ? end - 1 : end).x
-      if (right > a.x) bands.push({ x: a.x, y: a.y, w: right - a.x, h: a.height })
-      p = Math.max(p + 1, wraps ? end : end + 1)
+    var bands = [], p = from, at = n => markdownView.positionToRectangle(n)
+    for (var block of markdownView.getText(from, to).split(/[\n\u2029\ufdd0\ufdd1]/)) {
+      var end = p + block.length
+      while (p < end) {
+        var a = at(p), last = p, high = end
+        while (last < high) {
+          var middle = Math.ceil((last + high) / 2)
+          if (at(middle).y === a.y) last = middle
+          else high = middle - 1
+        }
+        var right = at(last).x
+        // Wrapped, the row's last character reaches past where it starts, as far as the one before it.
+        if (last < end) right += last > p ? right - at(last - 1).x : a.height / 2
+        if (right > a.x) bands.push({ x: a.x, y: a.y, w: right - a.x, h: a.height })
+        p = last < end ? last + 1 : end
+      }
+      p = end + 1
     }
     return bands
   }
@@ -472,9 +472,9 @@ Item {
             font.pixelSize: Style.font.subtitle
             renderType: Text.NativeRendering
             onLineLaidOut: function (line) {
-              if (line.number === 0) { root.measure(piece); piece.placedBy = JSON.stringify(piece.rows) }
-              var row = piece.rows[line.number]
-              if (row) line.y = row.y + row.baseline - root.ascentOf(piece.lines, row.line)
+              if (line.number === 0) piece.placedBy = JSON.stringify(piece.rows)
+              var top = piece.rows[line.number]
+              if (top !== undefined) line.y = top
             }
           }
         }

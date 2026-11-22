@@ -189,17 +189,8 @@ Scope {
     # Editing from the end of a preview keeps the view where it was, with the cursor in it; editing a
     # shorter file after it draws that file as its preview did; a drag over code picks characters, a bare click
     # picks nothing, and the pick reaches the clipboard.
-    (base / "edit.qml").write_text('''import QtQuick
-import Quickshell
-import "FilesIndex.js" as FilesIndex
-Scope {
-  QtObject { id: panel; property int codePx: 13; property int lineHeight: Math.round(codePx * 1.75); property string previewText: ""
-    property string fullText: previewText; property string previewBody: ""; property bool showsCode: !!previewText
-    property bool editing: false; property bool dirty: false
-    property bool showsMarkdown: false; property bool showsDir: false; property bool showsImage: false; property bool previewCut: false
-    property bool showsVideo: false; property bool showsDiff: false; property var dirColumns: []; property var settledSel: null
-    property string previewNote: ""; property int gutterGap: 16; property int dirTopPad: 7; property color hoverFill: "transparent" }
-  Window {
+    fixture = (base / "shell.qml").read_text()
+    (base / "edit.qml").write_text(fixture[:fixture.index("  Window {")] + '''  Window {
     width: 500; height: 400; visible: true
     Styled { id: view; panel: panel; anchors.fill: parent }
     // Reads back what the preview copied.
@@ -261,6 +252,73 @@ Scope {
     assert again[0].read_bytes() == again[1].read_bytes() or subprocess.run(
         ["magick", "compare", "-metric", "AE", *again, "null:"], capture_output=True, text=True).stderr.split()[0] == "0", \
         "a second edit is not drawn as its preview was"
+
+    # Lines are measured as drawn (CRLF, a diff's header, rows of fallback glyphs), a diff's numbers fit,
+    # an edit of a partly laid out file moves nothing, and laying out known lines again is quick.
+    head = fixture[:fixture.index("  function grab(")].replace("    property string fullText: previewText\n",
+        "    property string fullText: previewText\n    property string shownText: fullText\n    property int shownLines: 1\n")
+    (base / "faults.qml").write_text(head + '''  property string long: ''' + json.dumps((repo / "plugins/xpo.wheel/Wheel.qml").read_text()) + '''
+  function show(text, body) { panel.previewText = text; panel.previewBody = body || FilesIndex.styledCode(text) }
+  function check(ok, what) { if (!ok) failed.push(what) }
+  function crlf() {
+    show("one\\r\\ntwo\\r\\nthree\\r\\n")
+    after(function () {
+      check(view.codeLayout.rows.every(n => n === 1), "CRLF rows")
+      var p = view.testRendered.mapToItem(view.testPointer, 0, view.codeLayout.row * 1.5)
+      view.pickAt(p.x, p.y, false); view.pickAt(p.x + 300, p.y, true)
+      check(view.picked === "two", "CRLF pick")
+      view.letGo(); emoji()
+    })
+  }
+  function emoji() {
+    show("\\ud83d\\ude00\\ud83d\\ude80\\u2728\\ud83d\\udd25".repeat(120) + "\\nnext")
+    after(function () {
+      var piece = view.testRendered.children[0], rows = view.codeLayout.rows[0]
+      check(piece.lineCount === rows + 1, "emoji rows")
+      // The last wrapped row ends where the next line starts, less what its line break adds above it.
+      check(piece.rows[rows - 1] < piece.rows[rows - 2] + view.codeLayout.tops[1] / rows, "emoji last row")
+      diff()
+    })
+  }
+  function diff() {
+    var text = "@@ -1200,3 +1200,3 @@ " + "x".repeat(72) + "\\n a\\n-b\\n+c\\n"
+    panel.showsDiff = true; panel.shownText = text; panel.fullText = ""
+    show(text, FilesIndex.styledDiff(text))
+    after(function () {
+      var gutter = view.testContent.children[0]
+      check(view.codeLayout.rows[0] === 1, "diff header rows")
+      check(gutter.contentWidth <= gutter.width + 0.5, "diff numbers clipped")
+      cut()
+    })
+  }
+  function cut() {
+    panel.showsDiff = false; panel.shownText = panel.fullText = long
+    panel.previewCut = true
+    show(FilesIndex.head(long, 150))
+    after(function () {
+      view.testScroller.contentY = 600
+      view.keepPlace(); view.editorText = long; panel.previewCut = false; panel.editing = true
+      after(function () { check(view.testScroller.contentY === 600, "cut edit moves"); quick() })
+    })
+  }
+  function quick() {
+    var tabs = []
+    for (var i = 0; i < 9000; i++) tabs.push("\\tcall(" + i + ")")
+    var text = tabs.join("\\n")
+    view.layoutOf(text)
+    var began = Date.now()
+    view.layoutOf(text)
+    check(Date.now() - began < 100, "known lines slow: " + (Date.now() - began) + " ms")
+    console.log(failed.length ? "FAIL " + failed.join("; ") : "PASS"); Qt.quit()
+  }
+  Component.onCompleted: Qt.callLater(crlf)
+}
+''')
+    result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "faults.qml")], cwd=base,
+                            env=env, capture_output=True, text=True, timeout=60)
+    log = result.stdout + result.stderr
+    assert result.returncode == 0 and "PASS" in log, log
+    qslog.check(log)
 
     print("ok: %d code previews at three sizes lay out as the editor does, plain ones pixel for pixel;"
           " editing keeps the view, shows the cursor and draws a second file" % len(cases))
