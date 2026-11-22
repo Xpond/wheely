@@ -181,6 +181,25 @@ browser.naming = ""; browser.editing = true
 assert.equal(press("Key_Menu"), "", "the menu opened over an edit")
 console.log("ok: the menu's keys move, run, go back and close; other keys close it and do their own")
 
+// A held key repeats: whatever asks twice hears only the presses.
+{
+  const held = []
+  const menu = { open: true, current: "trash", fire: () => held.push("fire"), trash: () => held.push("trash"), close() {} }
+  const panel = { menu, editing: false, naming: "", listShown: true, filter: "", targets: [],
+    save: () => held.push("save"), leaveEdit: () => held.push("discard") }
+  const keys = keymap("plugins/xpo.files/FilesKeys.js", panel, { doomed: "/x", remove: () => held.push("remove") }, {})
+  for (const [k, m, does, state] of [["Key_Return", 0, "fire", { open: true }], ["Key_Delete", 0, "trash", { open: true }],
+      ["Key_Delete", 0, "remove", { open: false }], ["Key_Escape", 0, "discard", { editing: true }],
+      ["Key_S", CTRL, "save", { editing: true }]]) {
+    menu.open = !!state.open; panel.editing = !!state.editing; held.length = 0
+    assert.equal(keys(k, m, "", true).accepted, true, "a held " + k + " escaped")
+    assert.deepEqual(held, [], "a held " + k + " answered: " + does)
+    keys(k, m)
+    assert.deepEqual(held, [does], "a pressed " + k + " did not " + does)
+  }
+}
+console.log("ok: a held key confirms no trash, discard or overwrite")
+
 // Ctrl+M marks and Ctrl+A marks all; the verbs take the marks, and Esc lets them go first.
 browser.editing = false; browser.filter = "typed"
 Object.assign(browser, { marks: [{ path: "/m" }], targets: ["the targets"], toggleMark: () => seen.push("mark"),
