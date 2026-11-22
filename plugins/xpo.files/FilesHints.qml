@@ -102,6 +102,7 @@ Item {
             }
 
             Text {
+              textFormat: Text.PlainText
               text: hint.modelData[1]
               color: root.arming ? root.panel.danger : hint.modelData[2] ? Commons.Color.accent : Commons.Color.menu.text
               opacity: root.arming || hint.modelData[2] ? 0.9 : 0.36

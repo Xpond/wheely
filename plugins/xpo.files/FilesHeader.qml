@@ -87,6 +87,7 @@ Item {
                   - (pill.visible ? pill.width + trail.spacing : 0) - count.width - trail.spacing
                   - (facts.visible ? facts.width + trail.spacing : 0)))
             elide: Text.ElideMiddle
+            textFormat: Text.PlainText
             text: crumb.modelData
             color: Commons.Color.menu.text
             // Only the unfinished path segment is active during completion.
@@ -105,6 +106,7 @@ Item {
         Separator {}
 
         Text {
+          textFormat: Text.PlainText
           text: root.panel.typedLeaf
           color: Commons.Color.accent
           font.family: Style.font.menuFamily
@@ -136,6 +138,7 @@ Item {
 
         Text {
           anchors.verticalCenter: parent.verticalCenter
+          textFormat: Text.PlainText
           text: root.panel.naming ? root.panel.renameTo.slice(0, root.panel.renameAt) : root.panel.filter
           color: Commons.Color.accent
           font.family: Style.font.menuFamily
@@ -146,6 +149,7 @@ Item {
 
         Text {
           anchors.verticalCenter: parent.verticalCenter
+          textFormat: Text.PlainText
           text: root.panel.naming ? root.panel.renameTo.slice(root.panel.renameAt) : ""
           color: Commons.Color.accent
           font.family: Style.font.menuFamily
@@ -189,6 +193,7 @@ Item {
         width: facts.noting ? Math.max(0, Math.min(implicitWidth, Math.round(root.width / 2) - (progress.visible ? progress.width : 0)))
                             : implicitWidth
         elide: Text.ElideMiddle
+        textFormat: Text.PlainText
         text: parent.running ? root.panel.fileStatusHead
               : !root.panel.editing ? root.panel.fileNote
               : root.panel.saveError ? "write failed"
@@ -238,6 +243,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: Math.min(implicitWidth, Math.round(root.panel.previewWidth * 0.6))
         elide: Text.ElideMiddle
+        textFormat: Text.PlainText
         text: root.panel.settledSel ? root.panel.settledSel.name : ""
         color: Commons.Color.menu.text
         opacity: 0.9

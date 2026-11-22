@@ -194,6 +194,7 @@ esac
     var apps = menu.context.apps
     if (!apps || apps.map(a => a.id).join() !== "nvim,omawrite" || menu.context.peers.join() !== "laptop")
       return root.fail("the probe gave " + JSON.stringify(menu.probe))
+    if (root.find(c => c.text === "Open" && c.visible)[0].textFormat !== Text.PlainText) return root.fail("the menu reads names as markup")
     root.click(root.at("Open"))
     if (root.calls.join() !== "open c.txt" || menu.open) return root.fail("clicking Open gave " + root.calls.join())
     root.rightClick(40, 350)
@@ -380,10 +381,12 @@ esac
 
     # A long note, then a running job, stand in for the selection's facts beside a path: neither runs over
     # the path, and the job's progress is never the part cut short. A note shows with nothing selected.
+    # Last, a name is text wherever the header and the legend show it, the trash question included.
     run("header-note", '''
   property string note: "copying PrintShop-Tools-Windows-x64-phase1-with-an-even-longer-name.zip"
   property bool job: false
   property bool empty: false
+  property string evil: "<b>invoice.pdf"
   QtObject {
     id: panel
     property var crumbs: ["~", "Downloads", "agent-test-folder"]
@@ -419,6 +422,7 @@ esac
   FloatingWindow {
     visible: true; implicitWidth: 800; implicitHeight: 50
     FilesHeader { id: header; width: 800; panel: panel }
+    FilesHints { id: legend; panel: ({ doomed: root.evil, doomedName: root.evil, danger: "red", changes: {} }) }
   }
   function clear() {
     var trail = header.children.find(c => c.spacing !== undefined && c.anchors.left === header.left)
@@ -444,6 +448,15 @@ esac
   Timer { id: emptied; interval: 200; onTriggered: {
     var note = root.find(header, c => c.text === "trashed 3 items")
     if (!note || !note.visible) return root.fail("a note in an empty folder was hidden")
+    root.note = root.evil; panel.settledSel = { name: root.evil }
+    panel.crumbs = ["~", root.evil]; panel.pathMode = true; panel.typedLeaf = root.evil
+    panel.naming = "rename"; panel.renameTo = root.evil + root.evil; panel.renameAt = root.evil.length
+    named.start()
+  } }
+  Timer { id: named; interval: 200; onTriggered: {
+    var shown = 0, markup = c => c.text !== undefined && String(c.text).indexOf("<b>") >= 0
+                                 && (++shown, c.textFormat !== Text.PlainText)
+    if (root.find(header, markup) || root.find(legend, markup) || shown < 7) return root.fail("names read as markup")
     console.log("PASS"); Qt.quit()
   } }
   function fail(why) { console.error("FAIL", why); Qt.exit(1) }
