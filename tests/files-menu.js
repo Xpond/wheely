@@ -248,6 +248,18 @@ try {
   assert.equal(sh(A.compressCommand(at("-odd dir"), at("-odd dir", "photo.zip"), ["P.JPG"])).status, 0)
   assert.match(sh(["zipinfo", at("-odd dir", "photo.zip")]).stdout, / stor .*P\.JPG/, "an upper-case photo was squeezed again")
   fs.unlinkSync(at("-odd dir", "P.JPG")); fs.unlinkSync(at("-odd dir", "photo.zip"))
+  // Names an archiver reads as its own arguments are the files of those names.
+  for (const ext of [".zip", ".tar.zst"]) {
+    const names = ["-", "-C", "sub", "file.txt", "@other.tar"], dir = at("named" + ext)
+    fs.mkdirSync(path.join(dir, "sub"), { recursive: true }); fs.mkdirSync(path.join(dir, "back"))
+    for (const n of names) if (n !== "sub") fs.writeFileSync(path.join(dir, n), n)
+    assert.equal(sh(["bsdtar", "-cf", path.join(dir, "other.tar"), "-C", at("-odd dir"), "a.txt"]).status, 0)
+    assert.equal(sh(A.compressCommand(dir, path.join(dir, "pack" + ext), names)).status, 0, ext + " refused a name")
+    assert.equal(sh(["bsdtar", "-xf", path.join(dir, "pack" + ext), "-C", path.join(dir, "back")]).status, 0)
+    assert.deepEqual(fs.readdirSync(path.join(dir, "back")).sort(), names.slice().sort(), ext + " packed other files")
+    for (const n of names) if (n !== "sub")
+      assert.equal(fs.readFileSync(path.join(dir, "back", n), "utf8"), n, ext + " packed another file as " + n)
+  }
   fs.mkdirSync(at("out"))
   // An archive of one folder named as it is unwraps; loose files go into a folder named after it.
   fs.renameSync(at("-odd dir.zip"), at("out", "-odd dir.zip"))
