@@ -165,8 +165,8 @@ nothing.
 A browsed `.git` is untrusted: a downloaded archive holding one could make git
 run its fsmonitor hook, filters, hooks or a partial clone's fetch.
 `git-preview.py` turns each off (`GIT_CONFIG_*`, `GIT_NO_LAZY_FETCH`), keeps
-filters from the user's system or global config (git-lfs), and skips submodule
-work trees. `tests/files-git.js` runs each attack.
+filters from the user's system or global config (git-lfs), names the repository
+it reads, and stays out of submodules. `tests/files-git.js` covers these.
 
 `node tests/files-index.js` and `node tests/files-git.js` exercise real Git
 repositories; `python3 tests/runtime.py` also checks cancellation, deleted
