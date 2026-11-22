@@ -348,6 +348,7 @@ Item {
           id: column
           required property string modelData
           required property int index
+          textFormat: Text.PlainText
           text: modelData
           color: Commons.Color.menu.text
           opacity: 0.92

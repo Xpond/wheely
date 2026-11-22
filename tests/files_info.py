@@ -183,6 +183,7 @@ def check(files, base, run, block):
   Timer { interval: 200; running: true; onTriggered: {
     // The last column, nearest the pane's right edge.
     var last = root.dirColumns.length - 1, column = root.find(c => c.text === root.dirColumns[last])[0]
+    if (column.textFormat !== Text.PlainText) return root.fail("a folder's preview reads names as markup")
     root.want = root.previewEntry(last, 3).name
     root.at = column.mapToItem(preview, 10, 3 * 20 + 10)
     pointer.mouseMove(preview, root.at.x, root.at.y, -1, Qt.NoButton, Qt.NoModifier)
