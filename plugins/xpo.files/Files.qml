@@ -661,7 +661,7 @@ Item {
                 link: ["ln -s", "linked as ", "link failed"] }[verb]
     var to = e.path.slice(0, e.path.lastIndexOf("/") + 1) + name
     ops.run(ops.guarded(how[0], e.path, to),
-             { name: name, land: to === ops.inHere(name), done: how[1] + name, fail: how[2] })
+             { name: name, land: to === ops.inHere(name), done: how[1] + name, partial: "duplicate incomplete", fail: how[2] })
   }
 
   // Marks pick several entries for the verbs that take many. They are paths in the folder listed,
