@@ -80,6 +80,9 @@ assert.equal(F.diffNumbers(binary), "\n")
 assert.deepEqual(F.diffStat(binary), [0, 0])
 console.log("ok: diffs read old above new, changes in bold, numbered and counted")
 
+assert.equal(F.styledCode("a\r\r\nb\u2028c\n"), "a&#32;<br>b&#32;c")
+console.log("ok: lone CRs and separators start no row")
+
 // The real git commands on a scratch repository: marks by entry name, folders holding changes, literal names.
 const { execFileSync, spawnSync } = require("node:child_process")
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path")

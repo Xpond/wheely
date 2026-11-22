@@ -111,7 +111,7 @@ Item {
                                    + Style.spacing.lg * 2 + Style.spacing.panelPadding * 2
 
   readonly property int rowHeight: Style.spacing.popupRowHeight + Style.spacing.md
-  // Shared by gutter, body, and keyboard scrolling to keep line numbers aligned.
+  // A folder preview's rows, and the step keyboard scrolling takes.
   readonly property int lineHeight: Math.round(Style.font.subtitle * 1.75)
 
   readonly property int previewLimit: 262144
@@ -143,12 +143,14 @@ Item {
   // Properties stand in for the preview until the selection moves or Esc.
   property bool props: false
   readonly property bool showsProps: root.props && !root.editing && !root.diffMode
+  // They hide the text, so nothing in it stays picked for Esc and Ctrl+C.
+  onShowsPropsChanged: if (root.showsProps) preview.letGo()
   readonly property bool showsMarkdown: !root.showsDiff && !!root.settledSel && !root.settledSel.isDir
                                         && !root.settledSel.missing && FilesIndex.isMarkdown(root.settledSel.name)
   readonly property string previewPath:
     (root.settledSel && !root.settledSel.isDir && !root.settledSel.missing && !root.showsImage && !root.showsVideo
      && root.settledSel.size <= root.previewLimit) ? root.settledSel.path : ""
-  // Keep the full file for safe editing. The preview lays out two screens of its lines,
+  // Keep the full file for safe editing. The preview lays out three screens of folder rows, over two of code,
   // and twice as many whenever scrolling nears their end.
   property string fullText: ""
   property bool utf8: false
@@ -159,9 +161,12 @@ Item {
   readonly property string previewText: FilesIndex.head(root.shownText, root.shownLines)
   readonly property bool previewCut: root.previewText !== root.shownText
   function showAll() { root.shownLines = root.shownText.split("\n").length }
+  // Text picked in the preview, for Ctrl+C; other text lets go of it.
+  readonly property bool textHeld: !!preview.picked
+  onShownTextChanged: preview.letGo()
   onPreviewPathChanged: {
     root.fullText = ""; root.utf8 = false; root.rewrites = false; root.previewHtml = ""; root.saving = root.checking = null
-    root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
+    root.shownLines = 3 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
   }
 
   // Highlight the settled file in Pygments: first twice the lines shown and two more, so head() finds
@@ -302,10 +307,10 @@ Item {
       if (root.settledSel && root.settledSel.isDir && !root.settledSel.missing)
         sizer.start(["du", "-sbxD", "--", root.settledSel.path])
       preview.resetScroll()
-      root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
+      root.diffText = ""
+      root.shownLines = 3 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
     }
     root.settledPath = path
-    root.diffText = ""
     root.readDiff()
     // Read, not cleared: snapshot() drops another folder's rows, while a folder selected again,
     // as when the list reloads around it, keeps a model that never reloads to refill it.
@@ -402,6 +407,7 @@ Item {
   // back to the overlay the same way.
   function popOut() {
     if (!root.shown) return
+    if (root.editing) Qt.callLater(preview.focusEditor)
     if (root.opened) {
       root.windowed = true
       root.opened = false

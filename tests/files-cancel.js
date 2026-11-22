@@ -76,6 +76,11 @@ try {
   const press = keymap("plugins/xpo.files/FilesKeys.js", { editing: false, naming: "", menu: null }, { cancel() { asked++ } }, {})
   assert.ok(press("Key_K", 1 << 26).accepted)
   assert.equal(asked, 1)
+  // Ctrl+T pops out, or pins back, an edit too.
+  let popped = 0
+  const editing = keymap("plugins/xpo.files/FilesKeys.js", { editing: true, popOut() { popped++ } }, {}, {})
+  assert.ok(editing("Key_T", 1 << 26).accepted)
+  assert.equal(popped, 1)
 
   // A second Ctrl+K sends again: a first that landed between commands found nothing to stop.
   let sent = 0

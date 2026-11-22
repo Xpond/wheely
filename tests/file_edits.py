@@ -21,6 +21,7 @@ def check(source, base, run, block):
   property bool rewrites: false
   property int previewLimit: 64
   function showAll() {}
+  function measureEdit() {}
   property var settledSel: ({ size: 0 })
   property bool editing: false
   property bool dirty: false

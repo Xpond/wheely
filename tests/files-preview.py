@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Code previews render pixel for pixel as the rich-text <pre> they replaced."""
+"""Code previews lay out as the editor does: switching between them moves nothing."""
 import json
 import os
 from pathlib import Path
@@ -15,26 +15,6 @@ plugin = repo / "plugins/xpo.files"
 shell = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy")) / "shell"
 LIMIT = 120
 
-# The highlighter as it was: pygments HTML for a rich-text <pre>. The cut's ellipsis now
-# follows the colour rather than going through it, so it is plain here too, and after a
-# blank last line, which pygments' output drops, it takes the next line as everywhere else.
-RICH = """import sys
-from pygments import highlight
-from pygments.lexers import get_lexer_for_filename
-from pygments.lexers.special import TextLexer
-from pygments.formatters import HtmlFormatter
-p = sys.argv[1]
-parts = open(p, errors='replace').read().split('\\n')
-src = '\\n'.join(parts[:%d])
-cut = len(parts) - (parts[-1] == '') > %d
-try:
-    lx = get_lexer_for_filename(p, stripnl=False)
-except Exception:
-    lx = TextLexer()
-out = highlight(src, lx, HtmlFormatter(nowrap=True, noclasses=True, style='one-dark'))
-sys.stdout.write(out + ('\\n' if src.endswith('\\n') else '') + '\u2026' if cut else out)
-""" % (LIMIT, LIMIT)
-
 samples = {
     "lead.txt": "\nfoo\nbar\n", "lead2.py": "\n\nx = 1\n", "only-newlines.txt": "\n\n\n",
     "newline.txt": "\n", "one.txt": "x", "blank.py": "a = 1\n\n\n\nb = 2\n",
@@ -48,6 +28,7 @@ samples = {
     "multiline.js": "/* multi\n   line */\nconst s = `a\nb`\n",
     "bold.py": "def f():\n    '''doc\n    string'''\n    return 1\n# end",
     "italic.rst": "Title\n=====\n\n*emphasis* and **strong**\n",
+    "tabs-wrap.go": "\n".join("\t" * n + "x" * k for n in range(1, 9) for k in range(1, 85, 6)) + "\n",
     "truncated.txt": "\n".join("line %d" % i for i in range(LIMIT + 30)),
     "blank-cut.sh": "x=1\n" * (LIMIT - 1) + "\ny=2\n",
 }
@@ -60,15 +41,13 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
     shutil.copyfile(plugin / "FilesIndex.js", base / "FilesIndex.js")
     shutil.copyfile(plugin / "FilesTip.qml", base / "FilesTip.qml")
     styled = (plugin / "FilesPreview.qml").read_text().replace("Style.font.subtitle", "root.panel.codePx")
-    styled = styled.replace("  id: root", "  id: root\n  readonly property real testBodyX: content.mapToItem(root, content.children[0].width + content.spacing, 0).x")
-    # The code's handler, for the rich text to go without; the rich text in one piece, and the
-    # styled in pieces of three lines, so every case crosses where one piece ends and the next begins.
-    handler = re.compile(r"^( *)onLineLaidOut: function \(line\) \{\n.*?^\1\}\n", re.S | re.M).search(styled, styled.index("id: rendered")).group()
+    styled = styled.replace("  id: root", "  id: root\n  readonly property var testEditor: editor\n  readonly property var testContent: content\n"
+                            "  readonly property var testScroller: scroller\n  readonly property var testRendered: rendered\n"
+                            "  readonly property var testPointer: pointer\n  readonly property var testPlain: plain", 1)
+    # Pieces of three lines, so every case crosses where one piece ends and the next begins.
     size = re.compile(r"pieceLines: \d+")
-    rich = size.sub("pieceLines: 1000000", styled.replace("            textFormat: Text.StyledText\n", "            textFormat: Text.RichText\n"))
-    assert rich.count("Text.RichText") == 1 and "root.measure(piece)" in handler and len(size.findall(styled)) == 1
+    assert len(size.findall(styled)) == 1
     (base / "Styled.qml").write_text(size.sub("pieceLines: 3", styled))
-    (base / "Rich.qml").write_text(rich.replace(handler, ""))
 
     def run(*command):
         return subprocess.run(command, capture_output=True, text=True, check=True).stdout
@@ -86,32 +65,48 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
                 first = run("python3", str(plugin / "highlight.py"), str(path), "6")
                 assert first == "<br>".join(whole.split("<br>")[:6]), (name, repr(newline), lines, first)
 
+    def quick(name, timeout):
+        result = subprocess.run(["quickshell", "--no-color", "-p", str(base / name)], cwd=base, env=env,
+                                capture_output=True, text=True, timeout=timeout)
+        log = result.stdout + result.stderr
+        assert result.returncode == 0 and "PASS" in log, log
+        qslog.check(log)
+        return log
+
     cases = []
     for name, text in list(samples.items()) + [(f.name, f.read_text()) for f in files]:
+        # The first lines of a file, not a cut: the editor shows no closing ellipsis.
+        text = "\n".join(text.split("\n")[:LIMIT])
         path = base / "cases" / name
         path.parent.mkdir(exist_ok=True)
         path.write_text(text, newline="")
-        cases.append({"name": name, "text": text, "rich": run("python3", "-c", RICH, str(path)),
+        cases.append({"name": name, "text": text,
                       "styled": run("python3", str(plugin / "highlight.py"), str(path), str(text.count("\n") + 1))})
     (base / "cases.json").write_text(json.dumps(cases))
 
+    # Each case previewed, then edited, in a pane narrow enough to wrap: plain code must draw the same
+    # pixels, numbers and all; coloured code, whose colours and weights the editor has not, must start
+    # every line at the same height.
     (base / "shell.qml").write_text('''import QtQuick
 import Quickshell
-import qs.Commons
 import "FilesIndex.js" as FilesIndex
 Scope {
-  component Panel: QtObject {
+  QtObject {
+    id: panel
     property int codePx: 13
     property int lineHeight: Math.round(codePx * 1.75)
     property string previewText: ""
+    property string fullText: previewText
     property string previewBody: ""
     property bool showsCode: !!previewText
     property bool editing: false
     property bool dirty: false
+    property bool previewCut: false
     property bool showsMarkdown: false
     property bool showsDir: false
     property bool showsImage: false
     property bool showsVideo: false
+    property bool showsDiff: false
     property var dirColumns: []
     property var settledSel: null
     property string previewNote: ""
@@ -119,42 +114,48 @@ Scope {
     property int dirTopPad: 7
     property color hoverFill: "transparent"
   }
-  Panel { id: before }
-  Panel { id: after }
   Window {
-    width: 3400; height: 3600; visible: true; color: "black"
-    Rich { id: rich; panel: before; width: 1650 }
-    Styled { id: styled; panel: after; x: 1700; width: 1650 }
+    width: 700; height: 600; visible: true; color: "black"
+    Styled { id: view; panel: panel; anchors.fill: parent }
   }
   property var jobs: []
+  property var failed: []
+  // Long enough for Qt to lay out a new case.
+  Timer { id: later; interval: 150; property var then; onTriggered: then() }
+  function after(then) { later.then = then; later.restart() }
+  function grab(name, then) { view.testContent.grabToImage(function (r) { r.saveToFile("out/" + name + ".png"); Qt.callLater(then) }) }
   function next() {
-    if (!jobs.length) { console.log("PASS"); Qt.quit(); return }
+    if (!jobs.length) { console.log(failed.length ? "FAIL " + failed.join("; ") : "PASS"); Qt.quit(); return }
     var j = jobs.shift()
-    var text = FilesIndex.head(j.text, ''' + str(LIMIT) + ''')
-    // Room for every line break either format could draw, so nothing is clipped.
-    var lines = (text.match(/[\\n\\r\\v\\f\\x85\\u2028\\u2029]/g) || []).length + 2
-    rich.height = styled.height = lines * Math.round(j.px * 1.75) + 30
-    before.codePx = after.codePx = j.px
-    before.previewText = after.previewText = text
-    before.previewBody = '<pre style="margin:0; font-family:\\'' + Style.font.menuFamily + '\\'; font-size:'
-      + j.px + 'px">' + (j.stage === "plain"
-        ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : j.rich) + '</pre>'
-    after.previewBody = j.stage === "plain" ? FilesIndex.styledCode(text) : FilesIndex.head(j.styled, ''' + str(LIMIT) + ''', "<br>")
-    Qt.callLater(function () {
-      console.log("BODY", j.file, Math.ceil(styled.testBodyX))
-      rich.grabToImage(function (a) {
-        a.saveToFile("out/" + j.file + "-rich.png")
-        styled.grabToImage(function (b) { b.saveToFile("out/" + j.file + "-styled.png"); Qt.callLater(next) })
+    panel.editing = false
+    panel.codePx = j.px
+    panel.previewText = j.text
+    panel.previewBody = j.stage === "plain" ? FilesIndex.styledCode(j.text) : j.styled
+    after(function () {
+      var tops = view.codeLayout.tops, height = view.testScroller.contentHeight
+      grab(j.file + "-preview", function () {
+        view.editorText = j.text
+        panel.editing = true
+        view.testEditor.cursorVisible = false
+        after(function () {
+          var e = view.testEditor, lines = j.text.split("\\n"), at = 0
+          // The panel never edits text the editor would rewrite.
+          if (e.text !== j.text) { console.log("REWRITES " + j.file); Qt.callLater(next); return }
+          for (var n = 0; n < lines.length; n++) {
+            if (e.positionToRectangle(at).y !== tops[n]) { failed.push(j.file + " line " + (n + 1) + " moves"); break }
+            at += lines[n].length + 1
+          }
+          if (view.testScroller.contentHeight !== height) failed.push(j.file + " height " + height + " to " + view.testScroller.contentHeight)
+          grab(j.file + "-editor", next)
+        })
       })
     })
   }
   Component.onCompleted: {
     var x = new XMLHttpRequest()
     x.open("GET", Qt.resolvedUrl("cases.json"), false); x.send()
-    var cases = JSON.parse(x.responseText)
-    for (var c of cases) for (var px of [11, 13, 16]) for (var stage of ["plain", "coloured"])
-      jobs.push({ text: c.text, rich: c.rich, styled: c.styled, px: px, stage: stage,
-                  file: c.name + "-" + px + "-" + stage })
+    for (var c of JSON.parse(x.responseText)) for (var px of [11, 13, 16]) for (var stage of ["plain", "coloured"])
+      jobs.push({ text: c.text, styled: c.styled, px: px, stage: stage, file: c.name + "-" + px + "-" + stage })
     Qt.callLater(next)
   }
 }
@@ -162,30 +163,22 @@ Scope {
     (base / "out").mkdir()
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QT_QPA_PLATFORMTHEME="generic", QT_FORCE_STDERR_LOGGING="1",
                QML_XHR_ALLOW_FILE_READ="1", XDG_RUNTIME_DIR=str(base / "runtime"), XDG_CACHE_HOME=str(base / "cache"))
-    result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "shell.qml")], cwd=base,
-                            env=env, capture_output=True, text=True, timeout=900)
-    log = result.stdout + result.stderr
-    assert result.returncode == 0 and "PASS" in log, log
-    qslog.check(log)
+    log = quick("shell.qml", 900)
 
-    pairs = sorted(p.name[:-len("-rich.png")] for p in (base / "out").glob("*-rich.png"))
-    assert len(pairs) == len(cases) * 6, len(pairs)
     # compare alone reports 0 for images of different sizes.
     size = lambda p: "%dx%d" % struct.unpack(">II", p.read_bytes()[16:24])
+    rewrites = set(re.findall(r"REWRITES (\S+)", log))
+    plain = sorted(p.name[:-len("-preview.png")] for p in (base / "out").glob("*-plain-preview.png"))
+    plain = [name for name in plain if name not in rewrites]
+    assert len(plain) + sum(name.endswith("-plain") for name in rewrites) == len(cases) * 3, len(plain)
     failed = []
-    body_x = dict(re.findall(r"BODY (\S+) (\d+)", log))
-    for name in pairs:
-        a, b = (base / "out" / (name + suffix) for suffix in ("-rich.png", "-styled.png"))
+    for name in plain:
+        a, b = (base / "out" / (name + suffix) for suffix in ("-preview.png", "-editor.png"))
         # Identical files are identical pixels; only a differing pair needs counting.
         diff = "0" if a.read_bytes() == b.read_bytes() else subprocess.run(
             ["magick", "compare", "-metric", "AE", a, b, "null:"], capture_output=True, text=True).stderr.split()[0]
         if size(a) != size(b) or diff != "0":
             failed.append("%s: %s vs %s, %s pixels differ" % (name, size(a), size(b), diff))
-        if name.startswith(("one.txt-", "markup.js-", "fallback.txt-")):
-            for image in (a, b):
-                ink = subprocess.check_output(["magick", image, "-crop", f"1000x1000+{body_x[name]}+0",
-                                               "-alpha", "extract", "-format", "%[fx:mean]", "info:"])
-                assert float(ink) > 0, name + ": preview text is invisible"
     assert not failed, "\n".join(failed)
 
     # Numbers and code end on the same rows: "line N" and its digits all sit on the baseline.
@@ -195,9 +188,144 @@ Scope {
         inked = [any(raw[y * w + x] > 20 for x in range(x0, x1)) for y in range(h)]
         return [y for y in range(h) if inked[y] and (y + 1 == h or not inked[y + 1])]
     for px in (11, 13, 16):
-        name = "truncated.txt-%d-coloured" % px
-        image = base / "out" / (name + "-styled.png")
-        x = int(body_x[name])
-        assert ink_bottoms(image, 0, x - 4) == ink_bottoms(image, x, x + 200), name + ": numbers off their lines"
-    print("ok: %d code previews, plain and coloured at three sizes, match the rich text pixel for pixel,"
-          " numbers level with their lines" % len(pairs))
+        image = base / "out" / ("truncated.txt-%d-coloured-preview.png" % px)
+        assert ink_bottoms(image, 0, 30) == ink_bottoms(image, 60, 200), "%dpx: numbers off their lines" % px
+
+    # Editing from the end of a preview keeps the view where it was, with the cursor in it; editing a
+    # shorter file after it draws that file as its preview did; a drag over code picks characters, a bare click
+    # picks nothing, and the pick reaches the clipboard.
+    fixture = (base / "shell.qml").read_text()
+    (base / "edit.qml").write_text(fixture[:fixture.index("  Window {")] + '''  Window {
+    width: 500; height: 400; visible: true
+    Styled { id: view; panel: panel; anchors.fill: parent }
+    // Reads back what the preview copied.
+    TextEdit { id: back; visible: false }
+    TextMetrics { id: ruler; font: view.testPlain.font }
+  }
+  property string long: ''' + json.dumps((repo / "plugins/xpo.wheel/Wheel.qml").read_text()) + '''
+  property real end: 0
+  Component.onCompleted: Qt.callLater(function () { panel.previewText = root.long; panel.previewBody = FilesIndex.styledCode(panel.previewText); Qt.callLater(atEnd) })
+  id: root
+  function atEnd() {
+    var s = view.testScroller
+    s.contentY = root.end = s.contentHeight - s.height
+    view.keepPlace(); view.editorText = root.long; panel.editing = true; view.focusEditor()
+    settle.start()
+  }
+  // Where column col of a line of code is drawn, in the pointer's terms.
+  function at(col, line) {
+    ruler.text = panel.previewText.split("\\n")[line].slice(0, col)
+    return view.testRendered.mapToItem(view.testPointer, ruler.advanceWidth, view.codeLayout.tops[line] + 1)
+  }
+  function drag(a, b, extend) { view.pickAt(a.x, a.y, extend); view.pickAt(b.x, b.y, true); return view.picked }
+  property var placed: []
+  // Shorter than the first, so the editor's last view of that lies past all of this.
+  property string other: ''' + json.dumps((repo / "plugins/xpo.files/FilesList.qml").read_text()) + '''
+  function grab(name, then) { view.grabToImage(function (r) { r.saveToFile(name + ".png"); Qt.callLater(then) }) }
+  Timer { id: settle; interval: 200; onTriggered: {
+      var s = view.testScroller, e = view.testEditor, cursor = view.testContent.y + e.cursorRectangle.y
+      root.placed = [s.contentY === root.end, cursor >= s.contentY && cursor + e.cursorRectangle.height <= s.contentY + s.height]
+      panel.editing = false; panel.previewText = root.other; panel.previewBody = FilesIndex.styledCode(panel.previewText)
+      Qt.callLater(function () { s.contentY = (s.contentHeight - s.height) * 0.8; shown.start() })
+  } }
+  Timer { id: shown; interval: 200; onTriggered: grab("again-preview", function () {
+      view.keepPlace(); view.editorText = root.other; panel.editing = true; view.testEditor.cursorVisible = false
+      again.start()
+  }) }
+  Timer { id: again; interval: 200; onTriggered: grab("again-editor", picking) }
+  function picking() {
+      panel.editing = false; panel.previewText = "one two three\\nfour five"; panel.previewBody = FilesIndex.styledCode(panel.previewText)
+      var word = drag(at(4, 0), at(7, 0), false)
+      view.pickAt(at(4, 0).x, at(4, 0).y, false)
+      var click = [view.picked, view.bands.length]
+      var across = drag(at(4, 0), at(4, 1), true), acrossBands = view.bands.length
+      drag(at(4, 0), at(7, 0), false); view.copyPicked(); back.paste()
+      var picks = [root.placed, word, click, across, acrossBands, back.text]
+      if (JSON.stringify(picks) === JSON.stringify([[true, true], "two", ["", 0], "two three\\nfour", 3, "two"]))
+        console.log("PASS")
+      else console.log("FAIL", JSON.stringify(picks))
+      Qt.quit()
+  }
+}
+''')
+    log = quick("edit.qml", 60)
+    again = [base / ("again-%s.png" % mode) for mode in ("preview", "editor")]
+    assert again[0].read_bytes() == again[1].read_bytes() or subprocess.run(
+        ["magick", "compare", "-metric", "AE", *again, "null:"], capture_output=True, text=True).stderr.split()[0] == "0", \
+        "a second edit is not drawn as its preview was"
+
+    # Lines are measured as drawn (CRLF, a diff's header, rows of fallback glyphs), a diff's numbers fit,
+    # and an edit of a partly laid out file moves nothing.
+    head = fixture[:fixture.index("  function grab(")].replace("    property string fullText: previewText\n",
+        "    property string fullText: previewText\n    property string shownText: fullText\n    property int shownLines: 1\n")
+    (base / "faults.qml").write_text(head + '''  property string long: ''' + json.dumps((repo / "plugins/xpo.wheel/Wheel.qml").read_text()) + '''
+  function show(text, body) { panel.previewText = text; panel.previewBody = body || FilesIndex.styledCode(text) }
+  function check(ok, what) { if (!ok) failed.push(what) }
+  function crlf() {
+    show("one\\r\\ntwo\\r\\nthree\\r\\n")
+    after(function () {
+      check(view.codeLayout.rows.every(n => n === 1), "CRLF rows")
+      var p = view.testRendered.mapToItem(view.testPointer, 0, view.codeLayout.row * 1.5)
+      view.pickAt(p.x, p.y, false); view.pickAt(p.x + 300, p.y, true)
+      check(view.picked === "two", "CRLF pick")
+      view.letGo(); breaks()
+    })
+  }
+  function breaks() {
+    show("a\\rb\\u2028c\\ufdd0d\\nline 2\\nline 3\\nline 4\\nline 5")
+    after(function () {
+      var p = view.testRendered.children[1].mapToItem(view.testPointer, 0, 2)
+      view.pickAt(p.x, p.y, false); view.pickAt(p.x + 300, p.y, true)
+      check(view.picked === "line 4", "broken line pick")
+      view.letGo(); cache()
+    })
+  }
+  function cache() {
+    var long = "word ".repeat(20000)
+    for (var i = 0; i < 12; i++) view.layoutOf(long + i)
+    check(Object.keys(view.kept.lines).length < 12, "every version of a line kept")
+    view.layoutOf("\\tone\\n\\t\\ttwo")
+    check(!view.kept.lines["\\tone"], "short tabbed lines measured")
+    emoji()
+  }
+  function emoji() {
+    show("\\ud83d\\ude00\\ud83d\\ude80\\u2728\\ud83d\\udd25".repeat(120) + "\\nnext")
+    after(function () {
+      var piece = view.testRendered.children[0], rows = view.codeLayout.rows[0]
+      check(piece.lineCount === rows + 1, "emoji rows")
+      // The last wrapped row ends where the next line starts, less what its line break adds above it.
+      check(piece.rows[rows - 1] < piece.rows[rows - 2] + view.codeLayout.tops[1] / rows, "emoji last row")
+      diff()
+    })
+  }
+  function diff() {
+    var text = "@@ -1200,3 +1200,3 @@ " + "x".repeat(72) + "\\n a\\n-b\\n+c\\n"
+    panel.showsDiff = true; panel.shownText = text; panel.fullText = ""
+    show(text, FilesIndex.styledDiff(text))
+    after(function () {
+      var gutter = view.testContent.children[0]
+      check(view.codeLayout.rows[0] === 1, "diff header rows")
+      check(gutter.contentWidth <= gutter.width + 0.5, "diff numbers clipped")
+      cut()
+    })
+  }
+  function cut() {
+    panel.showsDiff = false; panel.shownText = panel.fullText = long
+    panel.previewCut = true
+    show(FilesIndex.head(long, 150))
+    after(function () {
+      view.testScroller.contentY = 600
+      view.keepPlace(); view.editorText = long; panel.previewCut = false; panel.editing = true
+      after(function () {
+        check(view.testScroller.contentY === 600, "cut edit moves")
+        console.log(failed.length ? "FAIL " + failed.join("; ") : "PASS"); Qt.quit()
+      })
+    })
+  }
+  Component.onCompleted: Qt.callLater(crlf)
+}
+''')
+    log = quick("faults.qml", 60)
+
+    print("ok: %d code previews at three sizes lay out as the editor does, plain ones pixel for pixel;"
+          " editing keeps the view, shows the cursor and draws a second file" % len(cases))
