@@ -62,7 +62,10 @@ rest. `Ctrl+D` shows a changed file's diff instead of its contents.
   leaves nothing half-made: a move to another drive copies everything before it removes
   the original. Paste a cancelled move again to finish it. A failed file copy or move removes
   what it made, so it can be pasted again. A folder that copies only in part keeps that part
-  and says the copy is incomplete. One file job runs at a time.
+  and says the copy is incomplete. A move to another drive takes read-only folders along. It
+  leaves alone what sits in a folder you cannot write, and says `kept the copy; original not
+  fully removed` when some of the original would not go: that copy is then the only whole one.
+  One file job runs at a time.
 
 ## Marking several
 
