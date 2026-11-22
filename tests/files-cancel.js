@@ -87,6 +87,12 @@ try {
     if (status === 19) { fs.chmodSync(path.join(to, "ro"), 0o755); fs.rmSync(to, { recursive: true }) }
   }
 
+  // Cancelled while the original is being removed, a move is past cancelling: it finishes and says so.
+  fs.writeFileSync(at("bin", "cp"), '#!/bin/sh\nexec /usr/bin/cp "$@"\n', { mode: 0o755 })
+  fs.writeFileSync(at("bin", "rm"), `#!/bin/sh\n[ -e "${at("removing")}" ] && exec /usr/bin/rm "$@"\n: > "${at("removing")}"\nexec sleep 30\n`, { mode: 0o755 })
+  assert.equal(cancelled(pasteCommand(true, at("to"), [from]), () => fs.existsSync(at("removing"))), 0, "a finished move read as cancelled")
+  assert.deepEqual([fs.existsSync(from), fs.readdirSync(at("to"))], [false, ["one"]], "a move cancelled late did not finish")
+
   // Ctrl+K cancels; it is no one else's key outside naming and editing.
   let asked = 0
   const press = keymap("plugins/xpo.files/FilesKeys.js", { editing: false, naming: "", menu: null }, { cancel() { asked++ } }, {})

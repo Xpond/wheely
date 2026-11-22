@@ -16,7 +16,7 @@ try {
   const root = { panel: { listedDir: at("dest") }, note(text) { this.message = text } }
   const exited = new Function("root", "gauge", "totaller", "exitCode", opsSource.match(/onExited: function \(exitCode\) \{([\s\S]*?)\n    \}/)[1])
   for (const name of ["pasteCommand", "paste"]) root[name] = method(opsSource, name, { root })
-  root.run = (command, about) => { root.op = about; root.status = run(command).status; exited(root, {}, { cancel() {} }, root.status) }
+  root.run = (command, about) => { root.op = about; root.status = run(command, root.env).status; exited(root, {}, { cancel() {} }, root.status) }
   const hold = (names, move = true) => ({ items: names.map(name => ({ name, path: at(name) })), move, name: names.length + " items" })
 
   // Nothing moved: preserve the hold so the failure can be corrected and retried.
@@ -78,6 +78,27 @@ try {
   root.op = { spend: hold(["whole.txt"], false) }; root.held = later
   exited(root, {}, { cancel() {} }, 0)
   assert.equal(root.held, later, "a paste dropped a hold taken while it ran")
+  // To another drive (stat says so) a read-only folder goes with its original. An original whose parent
+  // can't be written is left whole; one that can't all go leaves a whole copy, and says so.
+  fs.mkdirSync(at("drive"))
+  fs.writeFileSync(at("drive", "stat"), "#!/bin/sh\necho $$\n", { mode: 0o755 })
+  fs.writeFileSync(at("drive", "rm"), '#!/bin/sh\ncase "$*" in *stuck*) exit 1;; esac\nexec /usr/bin/rm "$@"\n', { mode: 0o755 })
+  root.env = { ...process.env, PATH: at("drive") + ":" + process.env.PATH }
+  for (const [from, status, note] of [["sealed", 0, "moved 1 items"], ["shut/inner", 1, "move failed"],
+                                     ["stuck", 20, "kept the copy; original not fully removed"]]) {
+    const copy = at("dest", path.basename(from))
+    fs.mkdirSync(at(from, "ro"), { recursive: true })
+    for (const file of ["top", "ro/k"]) fs.writeFileSync(at(from, file), "move me")
+    fs.chmodSync(at(from, "ro"), 0o555)
+    if (status === 1) fs.chmodSync(at("shut"), 0o555)
+    root.held = hold([from])
+    root.cancelling = status === 20 // Which a cancel doesn't hide.
+    root.paste()
+    assert.deepEqual([root.status, root.message, !!root.held], [status, note, status === 1], from)
+    assert.equal(fs.existsSync(at(from, "top")), status !== 0, from + ": the original")
+    assert.equal(fs.existsSync(path.join(copy, "ro", "k")), status !== 1, from + ": the copy")
+  }
+  delete root.env; root.cancelling = false
   console.log("ok: partial moves clear stale holds, total failures retain them, and collisions report the whole batch")
 
   // Real extraction, with only its final rename forced to fail. Both archive layouts clean up.
@@ -108,6 +129,7 @@ try {
   }
   console.log("ok: probes query MIME apps only for one entry and Taildrop only for files")
 } finally {
+  spawnSync("chmod", ["-R", "u+rwX", base]) // Read-only folders are among the cases.
   fs.rmSync(base, { recursive: true, force: true })
 }
 

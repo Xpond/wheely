@@ -96,18 +96,20 @@ Item {
   // Each into the folder in turn, past a name already taken, its own name included: 17 when every
   // name was taken, 18 when some were, 19 on partial failure, 1 on total failure. A move to another
   // filesystem is a whole copy before the source goes, so its failure, like any cancel, removes only
-  // the unfinished copy, read-only folders too; a cancel stops before the next. A failed copy keeps a
-  // folder holding what did copy, which counts as partial.
+  // the unfinished copy; a cancel stops before the next. A failed copy keeps a folder holding what did
+  // copy, which counts as partial. rm empties a folder before it finds that it can't remove it: so a
+  // move needs the source's parent writable first, drop opens read-only folders, and 20 says a source
+  // still would not all go, leaving the copy the only whole one.
   function pasteCommand(move, dir, paths) {
-    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; trap "k=1" TERM; [ "$v" = mv ] && e=$(stat -c %d -- "$d"); put() { '
+    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0 r=; trap "k=1" TERM; [ "$v" = mv ] && e=$(stat -c %d -- "$d"); '
+      + 'drop() { rm -rf -- "$1" 2>/dev/null || { find "$1" -type d -exec chmod u+rwx {} +; rm -rf -- "$1"; }; }; put() { '
       + 'if [ "$v" = mv ] && [ "$(stat -c %d -- "$1")" = "$e" ]; then mv -- "$1" "$2"; return; fi; '
-      + 'if [ "$v" = mv ]; then o=-a; else o=-r; fi; '
-      + 'if ! cp $o -- "$1" "$2"; then if [ -n "$k" ] || [ "$v" = mv ]; '
-      + 'then find "$2" -type d -exec chmod u+rwx {} + 2>/dev/null; rm -rf -- "$2"; '
-      + 'else rm -df -- "$2" 2>/dev/null; [ ! -d "$2" ] || p=1; fi; return 1; fi; [ "$v" = cp ] || rm -rf -- "$1"; }; '
-      + 'for f do [ -z "$k" ] || break; t="$d/${f##*/}"; '
+      + 'if [ "$v" = mv ]; then [ -w "${1%/*}/" ] || return 1; o=-a; else o=-r; fi; '
+      + 'if ! cp $o -- "$1" "$2"; then if [ -n "$k" ] || [ "$v" = mv ]; then drop "$2"; '
+      + 'else rm -df -- "$2" 2>/dev/null; [ ! -d "$2" ] || p=1; fi; return 1; fi; [ "$v" = cp ] || drop "$1" || r=1; }; '
+      + 'for f do [ -z "$k" ] || { s=1; break; }; t="$d/${f##*/}"; '
       + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif put "$f" "$t"; then p=1; else s=1; fi; done; '
-      + '[ -z "$k" ] || exit 130; if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',
+      + '[ -z "$r" ] || exit 20; [ -n "$k" ] && [ "$s" = 1 ] && exit 130; if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',
       "files", move ? "mv" : "cp", dir].concat(paths)
   }
 
@@ -121,6 +123,7 @@ Item {
                occupied: h.items.length > 1 ? "all " + h.items.length + " names are already here" : "a " + h.name + " is already here",
                taken: "some names were already here; the rest " + (h.move ? "moved" : "copied"),
                partial: !h.move && h.items.length === 1 ? "copy incomplete" : "some items " + (h.move ? "moved" : "copied") + "; others could not be " + (h.move ? "moved" : "copied"),
+               kept: "kept the copy; original not fully removed",
                done: (h.move ? "moved " : "copied ") + h.name + (into ? " into " + into.slice(into.lastIndexOf("/") + 1) : ""),
                fail: (h.move ? "move" : "copy") + " failed" })
   }
@@ -140,15 +143,16 @@ Item {
       gauge.running = false
       totaller.cancel()
       if (!o) return
-      if (root.cancelling && exitCode !== 0) {
+      if (root.cancelling && exitCode !== 0 && exitCode !== 20) {
         root.note(o.doing.replace(/^\S+ /, "") + " cancelled")
         return
       }
       if (exitCode !== 0) {
         root.note(exitCode === 17 ? o.occupied || "a " + o.name + " is already here"
-                  : exitCode === 18 && o.taken ? o.taken : exitCode === 19 && o.partial ? o.partial : o.fail)
-        // Some of many went, so the hold no longer names what is there to move.
-        if ((exitCode === 18 || exitCode === 19) && o.spend && o.spend === root.held && o.spend.move) root.held = null
+                  : exitCode === 18 && o.taken ? o.taken : exitCode === 19 && o.partial ? o.partial
+                  : exitCode === 20 && o.kept ? o.kept : o.fail)
+        // Some or part went, so the hold no longer names what is there to move.
+        if (exitCode >= 18 && exitCode <= 20 && o.spend && o.spend === root.held && o.spend.move) root.held = null
         return
       }
       if (o.land) root.panel.pending = o.name
