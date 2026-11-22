@@ -77,3 +77,15 @@ Your settings stay, so a reinstall starts where you left off:
 - your picks in `~/.local/state/omarchy/wheel-uses.json`
 - `[wheely] panels` and `[menu] scrim-alpha` in `~/.config/omarchy/shell.toml`. Omarchy's own
   menus keep using `scrim-alpha`, so delete that line to get the theme's back.
+
+## Removing the themes
+
+`revert.sh` leaves Tidal and Wheelie. To remove one, switch to another theme first:
+
+```bash
+omarchy theme set tokyo-night
+omarchy theme remove tidal    # or wheelie
+```
+
+That deletes the theme's folder. Its two hooks then remove themselves and the animation in
+`~/.local/share/wheely/themes/`, one at the next theme change and the other at the next boot.

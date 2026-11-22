@@ -51,6 +51,7 @@ reports any conflict. What the install changes, and why it needs `sudo`:
 Puts back Omarchy's original files and removes the plugins, keybinds, helpers and hook.
 Your settings are kept for a reinstall ([what stays](docs/install.md#what-stays-after-revert)).
 It also works from a TTY or over SSH.
+The themes are installed separately and are [removed separately](docs/install.md#removing-the-themes).
 
 ## Also in this repo
 
