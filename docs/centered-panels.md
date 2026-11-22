@@ -12,8 +12,9 @@ blurred desktop, instead of beside their widget on the bar. Switching panels wit
 - **Centered panels** in the wheel (type `wheely settings`) switches between centered
   panels and Omarchy's own placement beside the bar.
 - **Backdrop** sets how much the backdrop blurs and dims; 0% turns the blur off.
-- For a different blur strength, set `decoration.blur` after wheely's block in your
-  Hyprland config; `passes` has the most effect.
+- If your config already turns blur on, the backdrop uses its strength. Otherwise, for a
+  different strength, set `decoration.blur` after wheely's block in your Hyprland config;
+  `passes` has the most effect.
 
 ## Known limits
 
