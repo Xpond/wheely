@@ -55,7 +55,7 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     config = home / ".config/wheely"
     config.mkdir(parents=True)
     (config / "lock-design").write_text("mycelium\n")
-    # logger too, so the simulated lock's events stay out of the journal wake diagnostics read.
+    # logger too, so the simulated lock's events stay out of the real journal.
     for name in ["omarchy-hyprland-session-locked", "fprintd-list", "omarchy-system-wake",
                  "omarchy-brightness-display", "omarchy-brightness-keyboard", "logger"]:
         # A wake leaves its file until it finishes, so one killed with its worker stays behind.

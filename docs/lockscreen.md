@@ -18,7 +18,7 @@ locking. The next lock uses it; nothing needs reinstalling.
 
 A design that fails to load leaves a plain background, and the password field still
 unlocks. The display blanks after five seconds without input, and after waking stays on
-at least ten seconds so the monitor can recover.
+at least ten seconds so the monitor can recover, or a minute after a suspend.
 
 ## Known limits
 

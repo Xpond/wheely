@@ -315,6 +315,8 @@ Item {
   }
 
   function armBlankTimer(delayMs) {
+    // Only a resume passes a delay: a floor that the wake and the keys after it don't shorten.
+    if (delayMs) wakeUntil = Date.now() + delayMs
     // Every design uses the same idle countdown, regardless of its animation.
     // Armed while blanked too: a resume can light the panel with no input to wake the lock.
     if (!lockRequested || waking || unlocking || authenticatingPassword) {
@@ -338,7 +340,7 @@ Item {
     waking = false
     if (blanked) {
       logEvent("display: wake")
-      wakeUntil = Date.now() + 10000
+      wakeUntil = Math.max(wakeUntil, Date.now() + 10000)
       blanked = false
     }
     if (lockRequested) armBlankTimer()

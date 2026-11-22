@@ -70,6 +70,18 @@ now = blankAt + 10000
 vm.runInContext(trigger, scope)
 assert.equal(scope.blanked, false, "resuming from suspend blanked immediately")
 assert.equal(blankAt - now, 60000, "resume did not give the panel a minute to light")
+const resumeEnds = blankAt
+scope.blanked = true // A suspend waits for the blank, so the first key wakes one.
+for (const at of [9000, 20000, 50000]) {
+  now = resumeEnds - 60000 + at
+  scope.wakeOnInput()
+  exit(scope.wakeProcess, wakeExit)
+  assert.equal(blankAt, resumeEnds, "a key cut the minute after a resume short")
+}
+now = resumeEnds - 1000
+scope.wakeOnInput()
+exit(scope.wakeProcess, wakeExit)
+assert.equal(blankAt - now, 5000, "the minute after a resume outlived itself")
 scope.authenticatingPassword = true
 now = blankAt
 vm.runInContext(trigger, scope)
