@@ -194,6 +194,7 @@ esac
     var apps = menu.context.apps
     if (!apps || apps.map(a => a.id).join() !== "nvim,omawrite" || menu.context.peers.join() !== "laptop")
       return root.fail("the probe gave " + JSON.stringify(menu.probe))
+    if (root.find(c => c.text === "Open" && c.visible)[0].textFormat !== Text.PlainText) return root.fail("the menu reads names as markup")
     root.click(root.at("Open"))
     if (root.calls.join() !== "open c.txt" || menu.open) return root.fail("clicking Open gave " + root.calls.join())
     root.rightClick(40, 350)
@@ -447,6 +448,72 @@ esac
     console.log("PASS"); Qt.quit()
   } }
   function fail(why) { console.error("FAIL", why); Qt.exit(1) }
+''', expected=(r"does not support setting window masks",))
+
+    # A name is text wherever the header and the legend show it, the trash question included.
+    run("literal-names", '''
+  property string evil: "<b>invoice.pdf"
+  QtObject {
+    id: panel
+    property var crumbs: ["~", root.evil]
+    property bool pathMode: true
+    property string typedLeaf: root.evil
+    property string naming: "rename"
+    property string filter: ""
+    property string renameTo: root.evil + root.evil
+    property int renameAt: root.evil.length
+    property bool editing: false
+    property var settledSel: ({ name: root.evil })
+    property string fileNote: "trashed " + root.evil
+    property string fileStatusHead: ""
+    property string fileStatusTail: ""
+    property string filePercent: ""
+    property real fileProgress: -1
+    property string diffText: ""
+    property real previewWidth: 480
+    property string metaLine: "1 B"
+    property var rows: [1]
+    property var listedEntries: [1]
+    property string query: ""
+    property bool showHidden: false
+    property string order: "name"
+    property var marks: []
+    property int hiddenMarks: 0
+    property bool shown: true
+    property bool saveError: false
+    property bool justSaved: false
+    property bool dirty: false
+    property bool listShown: true
+    property bool diffMode: false
+    property var changes: ({})
+    property bool showsVideo: false
+    property var held: null
+    property var host: null
+    property bool windowed: false
+    property string doomed: "/t/" + root.evil
+    property string doomedName: root.evil
+    property color danger: "red"
+    property var menu: ({ open: false })
+  }
+  FloatingWindow {
+    visible: true; implicitWidth: 900; implicitHeight: 100
+    Column {
+      FilesHeader { id: header; width: 900; panel: panel }
+      FilesHints { id: legend; width: 900; panel: panel }
+    }
+  }
+  Timer { interval: 200; running: true; onTriggered: {
+    var shown = [], loose = [], walk = item => {
+      if (item.text !== undefined && String(item.text).indexOf("<b>") >= 0) {
+        shown.push(item.text)
+        if (item.textFormat !== Text.PlainText) loose.push(item.text)
+      }
+      for (var i = 0; i < item.children.length; i++) walk(item.children[i])
+    }
+    walk(header); walk(legend)
+    if (shown.length < 7 || loose.length) { console.error("FAIL names read as markup", loose, shown.length); Qt.exit(1) }
+    else { console.log("PASS"); Qt.quit() }
+  } }
 ''', expected=(r"does not support setting window masks",))
 
     # Qt's FolderListModel lists the parent for "#archive" and "50%25off", and a fresh one the working directory

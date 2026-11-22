@@ -116,6 +116,7 @@ BorderSurface {
             anchors.right: hint.left
             anchors.rightMargin: Style.spacing.md
             elide: Text.ElideMiddle
+            textFormat: Text.PlainText
             text: line.modelData.label || ""
             color: line.modelData.danger ? card.menu.panel.danger
                    : line.lit ? Commons.Color.menu.selectedText : Commons.Color.menu.text
