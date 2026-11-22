@@ -49,6 +49,11 @@ runs only when a file actually needs changing. Everything else stays in your hom
 The `shell.qml` patch sets two environment variables for the whole shell: a threaded render loop,
 and software decoding for video previews.
 
+The lock screen also runs code from this checkout. Omarchy's lock is all root-owned; with wheely
+the worker that takes your password loads `lock-session/` and the designs in `lock/` from here,
+which your user can write. Anything able to write here can change what the lock screen does, so
+keep the checkout writable only by you.
+
 ## Omarchy updates
 
 Because the package owns the patched files, `omarchy update` overwrites them. The hook then
