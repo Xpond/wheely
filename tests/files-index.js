@@ -42,6 +42,13 @@ console.log("ok: line counts")
 const shown = F.escapeTags(F.flattenLinks("![a][r]\n\n![a [b]](http://x/n.png)\n\n![c](http://x/i.png)\n\n" +
   "[r]: http://x/r.png\n\n`![k][r]`\n\n```\n![f][r]\n```\n\npara\n    ![l][r]\n\n``![u][r]`\n"))
 assert.equal(shown.includes("!["), false, shown)
+// Nor a tag: an indented fence inside HTML opened no code, though it read as one.
+for (const doc of ['<div>\n\n    ```\n\n<img src="http://x/i.png"></div>\n', '`<img src="http://x/i.png">`\n',
+                   '```\r<img src="http://x/i.png">\r', '- item\n\n    <img src="http://x/i.png">\n']) {
+  const parted = F.escapeTags(doc)
+  assert.doesNotMatch(parted, /<(?!\u200b)/, parted)
+  assert.equal(parted.replace(/\u200b/g, ""), doc, "parting changed what is shown")
+}
 console.log("ok: Markdown previews load no image")
 
 // git's header goes once a hunk follows; a "\ No newline" note marks its line. Each old line sits above the most
