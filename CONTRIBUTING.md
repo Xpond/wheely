@@ -2,6 +2,8 @@
 
 ## Reporting a bug
 
+Report a security problem privately instead: see [SECURITY.md](SECURITY.md).
+
 Open an [issue](https://github.com/Xpond/wheely/issues) with what you did, what happened,
 your GPU, and the output of:
 
