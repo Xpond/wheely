@@ -2,6 +2,10 @@ const assert = require("node:assert/strict")
 const { read, method } = require("./qml.js")
 const { M, wheelSource, binding } = require("./wheel-source.js")
 
+// Trailing commas go, a comma inside a string stays, as in a picked file's path.
+assert.deepEqual(JSON.parse(JSON.stringify(M.parse('// note\n{ "file:/h/a, }.txt": 2, "q\\", ]": [1, 2,], "end\\\\": {"x": 1,}, }'))),
+  { "file:/h/a, }.txt": 2, 'q", ]': [1, 2], "end\\": { x: 1 } })
+
 // "lock" locks first until the designs row is picked more; the designs show only in its submenu.
 const lockMenu = M.merge({ system: { label: "System" }, "system.lock": { label: "Lock", action: "omarchy-system-lock" },
   style: { label: "Style" } }, M.lockItems(["rally", "wallpaper"]))
