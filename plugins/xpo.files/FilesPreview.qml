@@ -24,37 +24,95 @@ Item {
     : root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
     : root.panel.showsMarkdown ? "" : FilesIndex.numbers(root.panel.previewText)
 
-  // StyledText sets each line's baseline at its ascent. The rich text it replaced
-  // set it 4/5 down a fixed-height line whatever the fonts; keep that placement,
-  // which the gutter's numbers share.
-  function baselineIn(lineHeight) { return Math.floor(lineHeight * 256 / 5) / 64 }
-  // Measured as each layout starts: a binding could still hold the previous font.
-  property real codeBaseline: 0
-  property real codeAscent: 0
-  // Text lays out only once its implicit size is wanted, and baselineOffset needs the layout.
-  Text {
-    id: probe
-    visible: false
-    width: implicitWidth
-    textFormat: Text.StyledText
-    renderType: Text.NativeRendering
+  // Code is laid out as the editor lays it out, previewed or edited: wrapped at one width, each row
+  // as tall as its glyphs. The gutter is as wide as the file's last number in both.
+  readonly property bool numbered: root.panel.editing || root.panel.showsCode
+  readonly property int lastNumber: root.panel.showsDiff
+    ? FilesIndex.diffNumbers(root.panel.shownText).split("\n").reduce((most, n) => Math.max(most, n), 1)
+    : String((root.panel.editing ? editor.text : root.panel.fullText) || "").split("\n").length
+  TextMetrics { id: numberWidth; font: gutter.font; text: String(root.lastNumber) }
+  readonly property real codeWidth: scroller.width - (root.numbered ? numberWidth.advanceWidth + root.panel.gutterGap : 0)
+  // Where each line of code starts, its rows, and its first baseline, measured as the editor lays the
+  // line out. Printable ASCII and tabs sure to fit the pane are one plain row; other lines are laid out
+  // once and kept, by line, for the width and font they were measured at, until 1 MB of them: an edit
+  // adds a copy of its line on every key. Measuring lays text out, so it
+  // runs on the changes that call for it rather than in a binding.
+  // An object, not a Map: V4 searches a Map key by key, so each keystroke took a big file's lines squared.
+  readonly property var kept: ({ width: 0, font: "", size: 0, lines: Object.create(null) })
+  function layoutOf(text) {
+    // Measured at the code's width and in the editor's font as they are now, whichever bindings
+    // have caught up with them.
+    var kept = root.kept, width = root.codeWidth, font = editor.font
+    plain.font = font
+    plain.width = width
+    if (kept.width !== width || kept.font !== String(font) || kept.size > 1 << 20) {
+      kept.lines = Object.create(null); kept.size = 0; kept.width = width; kept.font = String(font)
+    }
+    plain.text = "0"
+    var row = plain.positionToRectangle(0).height, base = plain.baselineOffset
+    var fits = Math.floor(width / plain.contentWidth) - 1
+    var tab = Math.ceil(plain.tabStopDistance / plain.contentWidth) - 1, tops = [0], rows = [], baselines = []
+    String(text || "").split("\n").forEach((line, i) => {
+      var size = [row, 1, base]
+      if (line.length + (line.lastIndexOf("\t") + 1) * tab > fits || /[^\t\x20-\x7e]/.test(line)) {
+        if (!kept.lines[line]) {
+          plain.text = line
+          var last = plain.positionToRectangle(plain.length)
+          kept.lines[line] = [last.y + last.height, plain.lineCount, plain.baselineOffset]
+          kept.size += line.length
+        }
+        size = kept.lines[line]
+      }
+      tops.push(tops[i] + size[0])
+      rows.push(size[1])
+      baselines.push(size[2])
+    })
+    return { tops: tops, rows: rows, baselines: baselines, base: base, row: row }
   }
-
-  function measure(piece) {
-    root.codeBaseline = root.baselineIn(piece.lineHeight)
-    probe.font = piece.font
-    probe.text = "x"
-    root.codeAscent = probe.baselineOffset
+  // Where the top of each row of styled text goes, from the first line's, for its glyphs to sit as the
+  // editor's do: a line's last row also holds the code font's line break, which the editor has not, so
+  // one of shorter glyphs goes higher by the difference.
+  function rowsIn(first, count) {
+    var l = root.codeLayout, out = []
+    for (var i = first; i < Math.min(first + count, l.rows.length); i++)
+      for (var k = 0, h = (l.tops[i + 1] - l.tops[i]) / l.rows[i]; k < l.rows[i]; k++) {
+        var broken = k === l.rows[i] - 1 && i < first + count - 1
+        out.push(l.tops[i] - l.tops[first] + k * h + (broken ? Math.min(0, l.baselines[i] - l.base) : 0))
+      }
+    return out
   }
-
-  // Printable ASCII is drawn in the code font; anything else may fall back to another.
-  // Every line but a piece's last also ends in a line separator drawn in the code font.
-  function ascentOf(lines, n) {
-    var markup = lines[n]
-    if (!/[^\x20-\x7e]|&#(?!(?:32|9|39);)/.test(markup)) return root.codeAscent
-    probe.text = markup
-    return n < lines.length - 1 ? Math.max(root.codeAscent, probe.baselineOffset)
-                                : probe.baselineOffset
+  property var codeLayout: ({ tops: [0], rows: [], baselines: [], base: 0, row: 0 })
+  property var editLayout: root.codeLayout
+  // The code as drawn, to measure, hit and copy: a diff's @@ lines are drawn shorter.
+  readonly property string codeText: !root.panel.showsCode ? ""
+    : FilesIndex.drawnText(root.panel.showsDiff ? FilesIndex.shownDiff(root.panel.previewText) : root.panel.previewText)
+  onCodeTextChanged: root.measureCode()
+  function measureCode() { root.codeLayout = root.layoutOf(root.codeText) }
+  function measureEdit() { if (root.panel.editing) root.editLayout = root.layoutOf(editor.text) }
+  function measureAll() { root.measureCode(); root.measureEdit() }
+  onCodeWidthChanged: root.measureAll()
+  Component.onCompleted: root.measureAll()
+  Connections {
+    target: root.panel
+    // Qt leaves a hidden TextEdit blank when it is given new text over text it drew before, so an
+    // edit that ends empties the editor for the next to start from. Preview and edit lay code out
+    // alike, so a switch may change no height to place the view by: place it now.
+    function onEditingChanged() {
+      if (!root.panel.editing) editor.text = ""
+      root.measureEdit()
+      Qt.callLater(root.takePlace)
+    }
+  }
+  readonly property var shownLayout: root.panel.editing ? root.editLayout : root.codeLayout
+  // The numbers are placed as the gutter lays out, which may come before the lines are measured: once
+  // settled, place them again if what they were placed by differs. A keystroke mostly moves no line.
+  property var placedBy: null
+  onShownLayoutChanged: Qt.callLater(root.placeNumbers)
+  function placeNumbers() {
+    var now = root.shownLayout, was = root.placedBy
+    if (was && now.tops.length === was.tops.length && now.tops.every((t, i) => t === was.tops[i])
+        && now.baselines.every((b, i) => b === was.baselines[i])) return
+    gutter.forceLayout()
   }
 
   function scrollBy(dy) {
@@ -83,23 +141,120 @@ Item {
     scroller.contentX = 0
   }
 
-  // Preserve relative scroll position while rendered and editable heights change.
+  // Code keeps its offset, laid out alike previewed or edited. Markdown and a diff keep their share.
   property real pendingAt: -1
+  property real pendingY: -1
   function keepPlace() {
+    root.pendingY = root.panel.showsMarkdown || root.panel.showsDiff ? -1 : scroller.contentY
     var at = Util.clamp(scroller.contentY / Math.max(1, scroller.contentHeight - scroller.height), 0, 1)
     // A partly laid out file is only its share of the text.
     root.pendingAt = root.panel.previewCut ? at * root.panel.previewText.length / root.panel.shownText.length : at
   }
   function takePlace() {
     if (root.pendingAt < 0) return
-    scroller.contentY = root.pendingAt * Math.max(0, scroller.contentHeight - scroller.height)
+    var most = Math.max(0, scroller.contentHeight - scroller.height)
+    scroller.contentY = root.pendingY >= 0 && !root.panel.showsDiff ? Math.min(root.pendingY, most) : root.pendingAt * most
     scroller.contentX = 0
-    root.pendingAt = -1
-    if (root.panel.editing)
-      editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - root.panel.dirTopPad + 2))
+    root.pendingAt = root.pendingY = -1
+    if (!root.panel.editing) return
+    // On the first row wholly in view, not one the top edge cuts.
+    editor.cursorPosition = editor.positionAt(0, Math.max(0, scroller.contentY - root.panel.dirTopPad + root.editLayout.row - 1))
+    // Qt draws a TextEdit's cursor only where it last saw the view, and an edit laid out as its preview
+    // moves nothing: move the view a pixel and back for the editor to see where it is.
+    scroller.contentY += 1
+    scroller.contentY -= 1
   }
 
   function focusEditor() { editor.forceActiveFocus() }
+
+  // Where a drag over the text began and where it is, in characters of the code or the Markdown.
+  // Ctrl+C copies what lies between. Qt's own selection smeared Markdown's tables and dropped text.
+  property int from: -1
+  property int to: -1
+  // Its first and last, or null; read from both ends at once, as letting go sets one before the other.
+  function span() { return root.from < 0 || root.to < 0 ? null : [Math.min(root.from, root.to), Math.max(root.from, root.to)] }
+  readonly property string picked: {
+    var s = root.span()
+    // Without the zero-width space escapeTags() parts each "![" with, which is only there to draw.
+    return !s ? "" : root.panel.showsMarkdown
+      ? markdownView.getText(s[0], s[1]).replace(/\u200b(?=\[|$)/g, "")
+      : root.codeText.slice(s[0], s[1])
+  }
+  function letGo() { root.from = root.to = -1 }
+  function pickAt(x, y, extend) {
+    var p = pointer.mapToItem(root.panel.showsMarkdown ? markdownView : rendered, x, y)
+    var at = root.panel.showsMarkdown ? markdownView.positionAt(p.x, p.y) : root.codeAt(p)
+    if (!extend || root.from < 0) root.from = at
+    root.to = at
+  }
+
+  // Where each line of the previewed code starts; the cut's closing ellipsis is no line of the file.
+  readonly property var codeStarts: {
+    var s = [0], lines = root.codeText.split("\n")
+    for (var i = 0; i < lines.length - (root.panel.previewCut ? 1 : 0); i++) s.push(s[i] + lines[i].length + 1)
+    return s
+  }
+  // Hidden plain text, at the code's width and font as layoutOf last set them: a line of code laid out
+  // in it says where a point falls. Copies go through it too, as the editor's do: no argument limit on
+  // what Qt's clipboard holds.
+  TextEdit {
+    id: plain
+    visible: false
+    wrapMode: TextEdit.Wrap
+    textFormat: TextEdit.PlainText
+    renderType: Text.NativeRendering
+  }
+  function copyPicked() { plain.text = root.picked; plain.selectAll(); plain.copy(); plain.text = "" }
+  function layLine(n) { plain.text = root.codeText.slice(root.codeStarts[n], root.codeStarts[n + 1] - 1) }
+  function codeAt(p) {
+    var tops = root.codeLayout.tops, n = 0
+    while (n < root.codeStarts.length - 2 && tops[n + 1] <= p.y) n++
+    root.layLine(n)
+    return root.codeStarts[n] + plain.positionAt(p.x, Math.max(0, p.y - tops[n]))
+  }
+  // Where a character of the code is drawn, from the text's corner, and its row's height.
+  function codePoint(at) {
+    var n = 0
+    while (root.codeStarts[n + 1] <= at) n++
+    root.layLine(n)
+    var r = plain.positionToRectangle(at - root.codeStarts[n])
+    return { x: r.x, y: root.codeLayout.tops[n] + r.y, h: r.height }
+  }
+
+  // Bands behind the pick, from the text's corner: its first row of code from where it starts, the
+  // rows between whole, and its last up to where it ends; or each line of Markdown it covers.
+  readonly property var bands: {
+    var s = root.span()
+    // Other text comes before the pick of the last lets go; laid out again, Markdown's lines move.
+    if (!s || s[0] === s[1] || s[1] > (root.panel.showsMarkdown ? markdownView.length : root.codeText.length)) return []
+    if (root.panel.showsMarkdown) return markdownView.width > 0 && markdownView.contentHeight > 0 ? root.markdownBands(s[0], s[1]) : []
+    var a = root.codePoint(s[0]), b = root.codePoint(s[1]), w = root.codeWidth
+    return a.y === b.y ? [{ x: a.x, y: a.y, w: b.x - a.x, h: a.h }]
+      : [{ x: a.x, y: a.y, w: w - a.x, h: a.h }, { x: 0, y: a.y + a.h, w: w, h: b.y - a.y - a.h }, { x: 0, y: b.y, w: b.x, h: b.h }]
+  }
+  // A band for each row of each block picked; a table's cells are blocks. A block's rows only go down,
+  // so a row's last character is found by halving, where asking the pane's edge found another cell's.
+  function markdownBands(from, to) {
+    var bands = [], p = from, at = n => markdownView.positionToRectangle(n)
+    for (var block of markdownView.getText(from, to).split(/[\n\u2029\ufdd0\ufdd1]/)) {
+      var end = p + block.length
+      while (p < end) {
+        var a = at(p), last = p, high = end
+        while (last < high) {
+          var middle = Math.ceil((last + high) / 2)
+          if (at(middle).y === a.y) last = middle
+          else high = middle - 1
+        }
+        var right = at(last).x
+        // Wrapped, the row's last character reaches past where it starts, as far as the one before it.
+        if (last < end) right += last > p ? right - at(last - 1).x : a.height / 2
+        if (right > a.x) bands.push({ x: a.x, y: a.y, w: right - a.x, h: a.height })
+        p = last < end ? last + 1 : end
+      }
+      p = end + 1
+    }
+    return bands
+  }
 
   // Lay out more of a long file once the view comes within a screen of its end.
   function fill() {
@@ -114,12 +269,7 @@ Item {
     if (top < scroller.contentY) root.scrollBy(top - scroller.contentY)
     else if (top + r.height > scroller.contentY + scroller.height)
       root.scrollBy(top + r.height - scroller.contentY - scroller.height)
-    var left = editor.x + r.x
-    if (left < scroller.contentX) root.scrollAcross(left - scroller.contentX - Style.space(40))
-    else if (left + r.width > scroller.contentX + scroller.width)
-      root.scrollAcross(left + r.width - scroller.contentX - scroller.width + Style.space(40))
   }
-  // Keep code unwrapped so line numbers stay aligned.
   Flickable {
     id: scroller
     // Isolate Markdown batches to avoid the Qt 6.12 scrolling crash.
@@ -157,6 +307,21 @@ Item {
       height: root.panel.lineHeight
       radius: height / 2
       color: root.panel.hoverFill
+    }
+
+    // The text picked to copy, behind it.
+    Item {
+      visible: !root.panel.editing
+      x: content.x + (root.panel.showsMarkdown ? markdownView.x : rendered.x)
+      y: content.y
+      Repeater {
+        model: root.bands
+        Rectangle {
+          required property var modelData
+          x: modelData.x; y: modelData.y; width: modelData.w; height: modelData.h
+          color: Util.alpha(Commons.Color.accent, 0.35)
+        }
+      }
     }
 
     Row {
@@ -215,21 +380,21 @@ Item {
 
       Text {
         id: gutter
-        visible: root.lineNumbers.length > 0
+        visible: root.numbered
+        width: numberWidth.advanceWidth
         text: root.lineNumbers
         horizontalAlignment: Text.AlignRight
         color: Commons.Color.menu.text
         opacity: 0.32
         font.family: Style.font.menuFamily
-        // Match the gutter rhythm to editable text or fixed-height preview code.
-        font.pixelSize: root.panel.editing ? Style.font.subtitle : Style.font.bodySmall
+        font.pixelSize: Style.font.bodySmall
         renderType: Text.NativeRendering
-        lineHeightMode: root.panel.editing ? Text.ProportionalHeight : Text.FixedHeight
-        lineHeight: root.panel.editing ? 1.0 : root.panel.lineHeight
-        // Left to Qt, the smaller numbers sat above the code's baseline; share it instead.
+        height: root.shownLayout.tops[root.shownLayout.tops.length - 1]
+        // Each number on its line's first baseline, as the editor has it.
         onLineLaidOut: function (line) {
-          if (!root.panel.editing)
-            line.y = line.number * lineHeight + root.baselineIn(lineHeight) - gutterMetrics.ascent
+          var layout = root.shownLayout, n = Math.min(line.number, layout.baselines.length - 1)
+          if (line.number === 0) root.placedBy = layout
+          line.y = layout.tops[n] + layout.baselines[n] - gutterMetrics.ascent
         }
       }
       FontMetrics { id: gutterMetrics; font: gutter.font }
@@ -243,21 +408,27 @@ Item {
         selectedTextColor: Commons.Color.menu.text
         persistentSelection: true
         textFormat: TextEdit.PlainText
+        width: root.codeWidth
+        wrapMode: TextEdit.Wrap
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.subtitle
         renderType: Text.NativeRendering
-        onTextChanged: if (root.panel.editing) root.panel.dirty = true
+        onTextChanged: { if (root.panel.editing) root.panel.dirty = true; root.measureEdit() }
+        onFontChanged: root.measureAll()
         onCursorRectangleChanged: root.revealCursor()
       }
 
-      // Markdown has its own Text: a line height that switched with the format, or a handler
-      // per line, made Qt lay out its tables many times slower.
-      Text {
+      // Markdown has its own view: a line height that switched with the format, or a handler
+      // per line, made Qt lay out its tables many times slower. A TextEdit, for where a point falls.
+      TextEdit {
+        id: markdownView
         visible: !root.panel.editing && root.panel.showsMarkdown
         width: scroller.width
         text: root.panel.showsMarkdown ? root.panel.previewBody : ""
-        wrapMode: Text.Wrap
-        textFormat: Text.MarkdownText
+        wrapMode: TextEdit.Wrap
+        textFormat: TextEdit.MarkdownText
+        readOnly: true
+        activeFocusOnPress: false
         color: Commons.Color.menu.text
         opacity: 0.92
         font.family: Style.font.menuFamily
@@ -282,9 +453,19 @@ Item {
           delegate: Text {
             id: piece
             required property string markup
+            required property int index
             readonly property var lines: markup.split("<br>")
+            readonly property int first: piece.index * root.pieceLines
+            readonly property var rows: root.rowsIn(piece.first, piece.lines.length)
+            // Its rows are placed as it lays out, which may come before the lines are measured: once
+            // settled, place them again if they moved.
+            property string placedBy: ""
+            onRowsChanged: Qt.callLater(function () { if (JSON.stringify(piece.rows) !== piece.placedBy) piece.forceLayout() })
             // A piece ending on a blank line still counts it, which StyledText would drop.
-            height: piece.lines.length * lineHeight
+            height: root.codeLayout.tops[Math.min(piece.first + piece.lines.length, root.codeLayout.tops.length - 1)]
+                    - root.codeLayout.tops[piece.first]
+            width: root.codeWidth
+            wrapMode: Text.Wrap
             text: markup
             color: Commons.Color.menu.text
             opacity: 0.92
@@ -292,12 +473,10 @@ Item {
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.subtitle
             renderType: Text.NativeRendering
-            lineHeightMode: Text.FixedHeight
-            lineHeight: root.panel.lineHeight
             onLineLaidOut: function (line) {
-              if (line.number === 0) root.measure(piece)
-              // Absolute: Text has already lowered the line to the foot of its fixed height.
-              line.y = line.number * lineHeight + root.codeBaseline - root.ascentOf(piece.lines, line.number)
+              if (line.number === 0) piece.placedBy = JSON.stringify(piece.rows)
+              var top = piece.rows[line.number]
+              if (top !== undefined) line.y = top
             }
           }
         }
@@ -372,12 +551,17 @@ Item {
   }
 
   // A click picks the folder entry under it and a double click opens the pick. Over the scroller
-  // rather than in it, so the second click counts whatever the pane shows by then.
+  // rather than in it, so the second click counts whatever the pane shows by then. Over text, a drag
+  // picks what to copy, and Shift+click extends it.
   MouseArea {
     id: pointer
+    readonly property bool overText: root.panel.showsCode || root.panel.showsMarkdown
     anchors.fill: scroller
     enabled: !root.panel.editing && !root.panel.showsVideo
     hoverEnabled: true
+    cursorShape: overText ? Qt.IBeamCursor : Qt.ArrowCursor
+    onPressed: mouse => { if (overText) root.pickAt(mouse.x, mouse.y, mouse.modifiers & Qt.ShiftModifier) }
+    onPositionChanged: mouse => { if (pressed && overText) root.pickAt(mouse.x, mouse.y, true) }
     onClicked: root.panel.pickPreview(hovered.column ? hovered.column.index : -1, hovered.line)
     onDoubleClicked: root.panel.openPicked()
   }

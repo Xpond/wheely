@@ -28,6 +28,7 @@ function menuKey(menu, event) {
 function onKey(panel, ops, preview, event) {
   if (panel.editing) {
     if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_S) { panel.save(); event.accepted = true; return }
+    if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_T) { panel.popOut(); event.accepted = true; return }
     if (event.key === Qt.Key_Escape) { panel.leaveEdit(); event.accepted = true }
     return
   }
@@ -70,8 +71,11 @@ function onKey(panel, ops, preview, event) {
   if (event.modifiers & Qt.ControlModifier) {
     switch (event.key) {
     case Qt.Key_E: panel.edit(); event.accepted = true; return
-    // The marks when there are any, the selection otherwise.
-    case Qt.Key_C: ops.hold(panel.targets, false); event.accepted = true; return
+    // Text picked in the preview first; then the marks when there are any, the selection otherwise.
+    case Qt.Key_C:
+      if (preview.picked) { preview.copyPicked(); ops.note("copied") }
+      else ops.hold(panel.targets, false)
+      event.accepted = true; return
     case Qt.Key_X: ops.hold(panel.targets, true); event.accepted = true; return
     case Qt.Key_V: ops.paste(); event.accepted = true; return
     case Qt.Key_H: panel.showHidden = !panel.showHidden; event.accepted = true; return
@@ -120,7 +124,8 @@ function onKey(panel, ops, preview, event) {
   }
   switch (event.key) {
   case Qt.Key_Escape:
-    if (panel.showsProps) panel.props = false
+    if (preview.picked) preview.letGo()
+    else if (panel.showsProps) panel.props = false
     else if (panel.marks && panel.marks.length) panel.unmarkAll()
     else if (panel.filter) panel.filter = ""
     else if (panel.host) panel.toWheel()

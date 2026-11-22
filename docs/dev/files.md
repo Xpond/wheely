@@ -134,17 +134,15 @@ After that, each change to the folder's count would snapshot and sort it whole, 
 changes are read at most every 150 ms, and not at all while the panel is hidden: it
 reads the folder once when it shows (`relistDue`).
 
-Only what is near the view is **laid out**. A selection lays out two screens of
-lines; scrolling within a screen of their end doubles that, and `End` lays out
+Only what is near the view is **laid out**. A selection lays out three screens of
+lines at a folder row's height, over two of code; being within a screen of their end doubles that, and `End` lays out
 the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
 Laying out is the cost, and one Text lays out its lines in time growing with their
 square, so code is laid out in pieces of 250 lines (`pieces()`). The pieces stay
 from one change to the next, so one whose markup is unchanged keeps its layout and a
 longer preview lays out only what it adds. Pygments closes its tags at every
-newline, so each piece draws on its own; a line separator (U+2028) inside a
-coloured token is the exception, and past a piece's edge the rest of that token is
-plain. Each piece measures its own lines for `onLineLaidOut` and is as tall as its
+newline, so each piece draws on its own. Each piece takes its rows from `rowsIn()` for `onLineLaidOut` and is as tall as its
 lines, since StyledText drops a blank last one. `tests/files-preview.py` lays its
 cases out in pieces of three, so every one crosses an edge.
 
@@ -274,13 +272,12 @@ file gone, unreadable or grown past 256 KiB is not saved over. `close()` routes 
 `leaveEdit()` while there are unsaved changes, so a click outside arms the discard
 rather than throwing the edit away.
 
-**Your place is kept, as a fraction.** The editor sets its lines at the font's
-own leading and the rendered preview does not, so a Markdown file is a wholly
-different height in the two modes and the offset cannot be carried across —
-`contentY` alone lands you somewhere unrelated in the document, which is what
-made an edit at the foot of a file come back to the middle of it. `keepPlace()`
-stores the fraction of the way down, `takePlace()` applies it when the scroller
-re-measures (at the moment the mode flips, `contentHeight` is still the other
+**Your place is kept.** Code lays out alike previewed and edited, so it keeps its
+`contentY`: a share of a partly laid out file is another line of the whole one.
+Markdown and a diff are a wholly different height from the editor, where
+`contentY` alone lands you somewhere unrelated in the document, so for those
+`keepPlace()` stores the fraction of the way down. `takePlace()` applies either once the
+switch settles or the scroller re-measures (at the moment the mode flips, `contentHeight` is still the other
 mode's), and the caret lands on the line you were reading.
 
 ## The menu
@@ -402,19 +399,19 @@ Swapping a plain-text item for a marked-up one steps the whole file down the
 page the instant the highlighter answers; rendering both states through one
 path makes the arrival of colour nothing but a change of colour.
 
-**That markup is StyledText, drawn exactly as a rich-text `<pre>` drew it.**
-StyledText lays out far faster than the `<pre>` it replaced. `styledCode()` and `highlight.py` keep the
-`<pre>` rules: no newline straight after the opening tag or before the closing
-one, no `\r`, every other whitespace character kept, as entities StyledText
-cannot collapse. Rich text put each baseline 4/5 down its fixed-height line
-whatever the fonts; StyledText puts it at the line's ascent, so `onLineLaidOut`
-moves every line back, measuring with a hidden probe any line that leaves
-printable ASCII. NEL goes in as U+0080, another glyphless control, because Qt
-reads `&#133;` as an ellipsis. `tests/files-preview.py` holds all of it to the
-old rendering pixel for pixel.
+**That markup is StyledText, drawn where the editor draws the same text.**
+StyledText lays out far faster than rich text. `styledCode()` and `highlight.py`
+keep the text as written: no last newline, a row a line of the file
+(`drawnText()`, which also feeds measuring and picking, so a CRLF is one break and
+a lone `\r` or U+2028 a space), every other whitespace character kept, as entities StyledText
+cannot collapse. `layoutOf()` measures each line in a plain TextEdit and
+`rowsIn()` puts each row there; a line's last row also holds the code font's line
+break, so one of shorter glyphs, as emoji, goes higher by the difference.
+NEL goes in as U+0080, another glyphless control, because Qt
+reads `&#133;` as an ellipsis. `tests/files-preview.py` holds plain code to the
+editor's drawing pixel for pixel.
 
-`highlight.py` colours the file's first lines, split at `\n` alone as Qt splits
-them: first `2 × shownLines + 2`, so a preview doubled before the rest lands stays
+`highlight.py` colours the file's first lines, split at `\n` alone: first `2 × shownLines + 2`, so a preview doubled before the rest lands stays
 coloured and still ends in `head()`'s `…` (a blank last line would read as the end),
 then the whole file, so scrolling on and `End` find it coloured. The lexer sees the
 whole source, including closing delimiters past the cut; token consumption and
@@ -438,7 +435,7 @@ blank line with a paragraph holding a single non-breaking space, which
 CommonMark counts as content rather than as more blank. Fenced blocks are left
 exactly as written.
 
-**Markdown has a `Text` of its own.** When one `Text` served both, its line
+**Markdown has a `TextEdit` of its own.** When one `Text` served both, its line
 height switched with the format and it carried the code's per-line handler, and
 Qt then laid out Markdown tables many times slower. Do not fold the two back
 together.
@@ -519,14 +516,6 @@ read that is finishing, so the save's pre-write check (`checking` against
 `editBase`, refusing undecoded a file grown past `previewLimit`) defers its
 write with `Qt.callLater`. A failed read-back ends the save as failed
 (`onLoadFailed`), or every later save would wait on it.
-
-**`TextEdit` has no `lineHeight`.** It is a `Text` property, not a
-`QQuickTextEdit` one, so an edited file is set at the font's own leading rather
-than the preview's 1.75 rhythm, and edit mode is unavoidably denser. The gutter
-has to follow it twice over: `ProportionalHeight` *and* the body's font size,
-because a font's leading follows its size — under the fixed rhythm the numbers
-can be smaller, since there the rhythm is what aligns them, but at natural
-leading a smaller gutter drifts off its own lines down the page.
 
 **Reopening where you already are announces nothing.** `enter()` sets the same
 `dir`, `FolderListModel` reloads nothing, `rows` is the same array — so
