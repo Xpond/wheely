@@ -46,6 +46,11 @@ native mpv, which Omarchy includes.
 The eight patched files live in `/usr/share/omarchy/shell`, owned by the Omarchy package.
 Copying them in (install) and restoring them (revert) are the only `sudo` calls, and each
 runs only when a file actually needs changing. Everything else stays in your home directory.
+
+That includes code the lock screen runs. Omarchy's lock is all root-owned; with wheely the worker
+that takes your password also loads `lock-session/` and the designs in `lock/` from this checkout,
+which your user can write. Anything able to write there as you can change what the lock screen
+does, so keep the checkout as private as your dotfiles.
 The `shell.qml` patch sets two environment variables for the whole shell: a threaded render loop,
 and software decoding for video previews.
 
