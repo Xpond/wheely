@@ -13,23 +13,30 @@ function menuKey(menu, event) {
   case Qt.Key_End:  menu.step(Infinity); return true
   case Qt.Key_N: if (ctrl) menu.step(1); return !!ctrl
   case Qt.Key_P: if (ctrl) menu.step(-1); return !!ctrl
-  case Qt.Key_Return: case Qt.Key_Enter: menu.fire(); return true
+  case Qt.Key_Return: case Qt.Key_Enter: if (!event.isAutoRepeat) menu.fire(); return true
   case Qt.Key_Right: menu.fire(null, true); return true
   case Qt.Key_Left: case Qt.Key_Backspace: menu.back(); return true
   case Qt.Key_Escape: case Qt.Key_Menu: menu.close(); return true
   case Qt.Key_F10: if (event.modifiers & Qt.ShiftModifier) menu.close(); return !!(event.modifiers & Qt.ShiftModifier)
   // The menu's own Trash, asked twice as it is, never the selection's.
-  case Qt.Key_Delete: menu.trash(); return true
+  case Qt.Key_Delete: if (!event.isAutoRepeat) menu.trash(); return true
   }
   return false
 }
 
 // Keep the key map pure enough to exercise without a running shell.
 function onKey(panel, ops, preview, event) {
+  // What asks twice takes two presses: a held key's repeats confirm nothing.
   if (panel.editing) {
-    if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_S) { panel.save(); event.accepted = true; return }
+    if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_S) {
+      if (!event.isAutoRepeat) panel.save()
+      event.accepted = true; return
+    }
     if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_T) { panel.popOut(); event.accepted = true; return }
-    if (event.key === Qt.Key_Escape) { panel.leaveEdit(); event.accepted = true }
+    if (event.key === Qt.Key_Escape) {
+      if (!event.isAutoRepeat) panel.leaveEdit()
+      event.accepted = true
+    }
     return
   }
   var menu = panel.menu
@@ -147,7 +154,9 @@ function onKey(panel, ops, preview, event) {
   case Qt.Key_End:   panel.goTo(panel.rows.length - 1); event.accepted = true; return
   case Qt.Key_F1:    panel.allKeys = !panel.allKeys; event.accepted = true; return
   case Qt.Key_F2:    panel.beginRename(); event.accepted = true; return
-  case Qt.Key_Delete: ops.remove(panel.targets); event.accepted = true; return
+  case Qt.Key_Delete:
+    if (!event.isAutoRepeat) ops.remove(panel.targets)
+    event.accepted = true; return
   // Only Enter opens a file; → just steps into folders.
   case Qt.Key_Right:
     if (panel.sel && panel.sel.isDir) ops.activate(panel.sel)

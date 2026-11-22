@@ -197,6 +197,18 @@ const { M, wheelSource, binding, derive } = require("./wheel-source.js")
     assert.equal(editingKey(key).accepted, true, key + " escaped the shortcut row")
   assert.equal(recorded.length, 5)
 
+  // Held, the key that asked never answers: picks and the custom ring need a second press.
+  for (const [state, key, modifiers] of [[{ editing: "forget" }, "Key_Return", 0],
+                                          [{ editing: "", editingRing: true }, "Key_R", 1 << 26]]) {
+    let answered = 0
+    const asked = keymap("plugins/xpo.wheel/MenuKeys.js",
+      { ...state, forgetPicks: () => answered++, resetRing: () => answered++ })
+    assert.equal(asked(key, modifiers, "", true).accepted, true, "a held " + key + " escaped")
+    assert.equal(answered, 0, "a held " + key + " confirmed")
+    asked(key, modifiers)
+    assert.equal(answered, 1, "a pressed " + key + " did not confirm")
+  }
+
   // Enter on a setting row starts changing it; the wheel stays up.
   const setRow = { opened: true, countUse() {}, dismiss() { throw new Error("a setting row closed the wheel") },
                    slices: [], edited: "", edit(e) { this.edited = e.setting } }
