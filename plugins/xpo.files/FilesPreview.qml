@@ -21,9 +21,8 @@ Item {
   property alias editorText: editor.text
   readonly property string lineNumbers:
     root.panel.editing ? FilesIndex.numbers(editor.text)
-    : root.panel.showsMarkdown ? ""
-    : FilesIndex.drawnNumbers(root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
-                                                   : FilesIndex.numbers(root.panel.previewText), root.sourceText)
+    : root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
+    : root.panel.showsMarkdown ? "" : FilesIndex.numbers(root.panel.previewText)
 
   // Code is laid out as the editor lays it out, previewed or edited: wrapped at one width, each row
   // as tall as its glyphs. The gutter is as wide as the file's last number in both.
@@ -85,8 +84,8 @@ Item {
   property var codeLayout: ({ tops: [0], rows: [], baselines: [], base: 0, row: 0 })
   property var editLayout: root.codeLayout
   // The code as drawn, to measure, hit and copy: a diff's @@ lines are drawn shorter.
-  readonly property string sourceText: root.panel.showsDiff ? FilesIndex.shownDiff(root.panel.previewText) : root.panel.previewText
-  readonly property string codeText: root.panel.showsCode ? FilesIndex.drawnText(root.sourceText) : ""
+  readonly property string codeText: !root.panel.showsCode ? ""
+    : FilesIndex.drawnText(root.panel.showsDiff ? FilesIndex.shownDiff(root.panel.previewText) : root.panel.previewText)
   onCodeTextChanged: root.measureCode()
   function measureCode() { root.codeLayout = root.layoutOf(root.codeText) }
   function measureEdit() { if (root.panel.editing) root.editLayout = root.layoutOf(editor.text) }
@@ -226,9 +225,9 @@ Item {
   // rows between whole, and its last up to where it ends; or each line of Markdown it covers.
   readonly property var bands: {
     var s = root.span()
-    if (!s || s[0] === s[1]) return []
-    // Laid out again at another width, Markdown's lines move.
-    if (root.panel.showsMarkdown) return markdownView.width > 0 ? root.markdownBands(s[0], s[1]) : []
+    // Other text comes before the pick of the last lets go; laid out again, Markdown's lines move.
+    if (!s || s[0] === s[1] || s[1] > (root.panel.showsMarkdown ? markdownView.length : root.codeText.length)) return []
+    if (root.panel.showsMarkdown) return markdownView.width > 0 && markdownView.contentHeight > 0 ? root.markdownBands(s[0], s[1]) : []
     var a = root.codePoint(s[0]), b = root.codePoint(s[1]), w = root.codeWidth
     return a.y === b.y ? [{ x: a.x, y: a.y, w: b.x - a.x, h: a.h }]
       : [{ x: a.x, y: a.y, w: w - a.x, h: a.h }, { x: 0, y: a.y + a.h, w: w, h: b.y - a.y - a.h }, { x: 0, y: b.y, w: b.x, h: b.h }]

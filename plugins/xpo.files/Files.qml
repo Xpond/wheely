@@ -150,7 +150,7 @@ Item {
   readonly property string previewPath:
     (root.settledSel && !root.settledSel.isDir && !root.settledSel.missing && !root.showsImage && !root.showsVideo
      && root.settledSel.size <= root.previewLimit) ? root.settledSel.path : ""
-  // Keep the full file for safe editing. The preview lays out two screens of its lines,
+  // Keep the full file for safe editing. The preview lays out three screens of folder rows, over two of code,
   // and twice as many whenever scrolling nears their end.
   property string fullText: ""
   property bool utf8: false
@@ -166,7 +166,7 @@ Item {
   onShownTextChanged: preview.letGo()
   onPreviewPathChanged: {
     root.fullText = ""; root.utf8 = false; root.rewrites = false; root.previewHtml = ""; root.saving = root.checking = null
-    root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
+    root.shownLines = 3 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
   }
 
   // Highlight the settled file in Pygments: first twice the lines shown and two more, so head() finds
@@ -289,11 +289,8 @@ Item {
   readonly property string previewBody:
     root.showsMarkdown ? FilesIndex.airOut(FilesIndex.escapeTags(FilesIndex.flattenLinks(root.previewText)))
     : root.showsDiff ? FilesIndex.styledDiff(root.previewText)
-    : root.showsCode ? (root.previewHtml && root.htmlLines >= root.shownLines
-        // Its lines are the drawn ones, which can outnumber the file's.
-        ? (root.previewCut ? FilesIndex.head(root.previewHtml, FilesIndex.drawnText(root.previewText).split("\n").length - 1, "<br>")
-                           : root.previewHtml)
-        : FilesIndex.styledCode(root.previewText))
+    : root.showsCode ? (root.previewHtml && root.htmlLines >= root.shownLines ? FilesIndex.head(root.previewHtml, root.shownLines, "<br>")
+                                         : FilesIndex.styledCode(root.previewText))
       : ""
   onSelChanged: { if (root.shown) settle.restart(); ops.doomed = "" }
   // Saving rewrites the file and the folder answers with a new row for it, so only a new path
@@ -310,10 +307,10 @@ Item {
       if (root.settledSel && root.settledSel.isDir && !root.settledSel.missing)
         sizer.start(["du", "-sbxD", "--", root.settledSel.path])
       preview.resetScroll()
-      root.shownLines = 2 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
+      root.diffText = ""
+      root.shownLines = 3 * Math.max(1, Math.ceil(preview.paneHeight / root.lineHeight))
     }
     root.settledPath = path
-    root.diffText = ""
     root.readDiff()
     // Read, not cleared: snapshot() drops another folder's rows, while a folder selected again,
     // as when the list reloads around it, keeps a model that never reloads to refill it.

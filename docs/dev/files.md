@@ -134,17 +134,15 @@ After that, each change to the folder's count would snapshot and sort it whole, 
 changes are read at most every 150 ms, and not at all while the panel is hidden: it
 reads the folder once when it shows (`relistDue`).
 
-Only what is near the view is **laid out**. A selection lays out two screens of
-lines at a folder row's height; being within a screen of their end doubles that, and `End` lays out
+Only what is near the view is **laid out**. A selection lays out three screens of
+lines at a folder row's height, over two of code; being within a screen of their end doubles that, and `End` lays out
 the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
 Laying out is the cost, and one Text lays out its lines in time growing with their
 square, so code is laid out in pieces of 250 lines (`pieces()`). The pieces stay
 from one change to the next, so one whose markup is unchanged keeps its layout and a
 longer preview lays out only what it adds. Pygments closes its tags at every
-newline, so each piece draws on its own; a line separator (U+2028) inside a
-coloured token is the exception, and past a piece's edge the rest of that token is
-plain. Each piece takes its rows from `rowsIn()` for `onLineLaidOut` and is as tall as its
+newline, so each piece draws on its own. Each piece takes its rows from `rowsIn()` for `onLineLaidOut` and is as tall as its
 lines, since StyledText drops a blank last one. `tests/files-preview.py` lays its
 cases out in pieces of three, so every one crosses an edge.
 
@@ -403,9 +401,9 @@ path makes the arrival of colour nothing but a change of colour.
 
 **That markup is StyledText, drawn where the editor draws the same text.**
 StyledText lays out far faster than rich text. `styledCode()` and `highlight.py`
-keep the text as written: no last newline, a break wherever a TextEdit makes one
-(`drawnText()`, which also feeds measuring, picking and the numbers, so a CRLF is
-one break and a lone `\r` or U+2028 a row without a number), every other whitespace character kept, as entities StyledText
+keep the text as written: no last newline, a row a line of the file
+(`drawnText()`, which also feeds measuring and picking, so a CRLF is one break and
+a lone `\r` or U+2028 a space), every other whitespace character kept, as entities StyledText
 cannot collapse. `layoutOf()` measures each line in a plain TextEdit and
 `rowsIn()` puts each row there; a line's last row also holds the code font's line
 break, so one of shorter glyphs, as emoji, goes higher by the difference.
@@ -413,8 +411,7 @@ NEL goes in as U+0080, another glyphless control, because Qt
 reads `&#133;` as an ellipsis. `tests/files-preview.py` holds plain code to the
 editor's drawing pixel for pixel.
 
-`highlight.py` colours the file's first lines, split at `\n` alone as Qt splits
-them: first `2 × shownLines + 2`, so a preview doubled before the rest lands stays
+`highlight.py` colours the file's first lines, split at `\n` alone: first `2 × shownLines + 2`, so a preview doubled before the rest lands stays
 coloured and still ends in `head()`'s `…` (a blank last line would read as the end),
 then the whole file, so scrolling on and `End` find it coloured. The lexer sees the
 whole source, including closing delimiters past the cut; token consumption and

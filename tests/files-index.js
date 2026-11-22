@@ -80,11 +80,8 @@ assert.equal(F.diffNumbers(binary), "\n")
 assert.deepEqual(F.diffStat(binary), [0, 0])
 console.log("ok: diffs read old above new, changes in bold, numbered and counted")
 
-// Code, its layout and its numbers break at the same places; \r\r\n is a lone \r and then a CRLF.
-assert.equal(F.styledCode("a\r\r\nb\u2028c\n"), "a<br><br>b<br>c")
-assert.equal(F.drawnText("a\r\r\nb\u2028c"), "a\n\nb\nc")
-assert.equal(F.drawnNumbers("1\n2", "a\r\r\nb\u2028c"), "1\n\n2\n")
-console.log("ok: lone CRs and separators break code, layout and numbers alike")
+assert.equal(F.styledCode("a\r\r\nb\u2028c\n"), "a&#32;<br>b&#32;c")
+console.log("ok: lone CRs and separators start no row")
 
 // The real git commands on a scratch repository: marks by entry name, folders holding changes, literal names.
 const { execFileSync, spawnSync } = require("node:child_process")

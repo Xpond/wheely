@@ -10,9 +10,9 @@ from pygments.lexers import find_lexer_class, get_lexer_for_filename
 from pygments.lexers._mapping import LEXERS
 from pygments.lexers.special import TextLexer
 
-# Lines split as Qt splits them, at \n alone; Pygments reads a lone \r as a line end itself.
 path, lines = sys.argv[1], int(sys.argv[2])
-src = open(path, errors="replace", newline="").read()
+# A row a line, as FilesIndex.drawnText() has it.
+src = re.sub("[\r\u2028\u2029\ufdd0\ufdd1]", " ", open(path, errors="replace", newline="").read().replace("\r\n", "\n"))
 
 
 # Pygments' own choice by file name, without compiling all of its ~900 name patterns: a plain
@@ -28,12 +28,11 @@ def lexer_for(name):
 
 def first_tokens(lexer):
     # Keep lookahead past the cut for comments and heredocs; stop consuming tokens at the cut.
-    # Match Pygments' CR/BOM normalization without treating lone CRs as Qt line boundaries.
     # The cut keeps the break after its last line, for the strip below to take rather than a blank line.
     body = src.removeprefix("\ufeff")
     parts = body.split("\n", lines)
     prefix = "\n".join(parts[:lines]) + "\n" * (len(parts) > lines)
-    left = len(prefix.replace("\r\n", "\n").replace("\r", "\n"))
+    left = len(prefix)
     for token, text in lexer.get_tokens(src):
         yield token, text[:left]
         left -= len(text)
@@ -66,7 +65,7 @@ def styled(piece):
                 opened, closer = opened + "<%s>" % tag, "</%s>" % tag + closer
         closers.append(closer)
         return opened
-    piece = re.sub("[\n\u2028\u2029\ufdd0\ufdd1]", "<br>", piece)
+    piece = piece.replace("\n", "<br>")
     # Qt reads &#133; as an ellipsis; another glyphless control keeps NEL's box.
     piece = piece.replace("\x85", "\x80")
     return space.sub(lambda m: "&#%d;" % ord(m.group()), piece)

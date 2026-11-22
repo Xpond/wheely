@@ -160,8 +160,8 @@ var VIDEO = { mp4: 1, m4v: 1, mkv: 1, webm: 1, mov: 1, avi: 1, mpg: 1, mpeg: 1,
 // last newline, break lines as drawnText() does, and keep other whitespace as written,
 // through entities StyledText cannot collapse. highlight.py applies the same rules.
 function styledCode(text) {
-  var written = String(text || ""), t = drawnText(written)
-  if (written.charAt(written.length - 1) === "\n") t = t.slice(0, -1)
+  var t = drawnText(String(text || ""))
+  if (t.charAt(t.length - 1) === "\n") t = t.slice(0, -1)
   return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/\n/g, "<br>").replace(/ /g, "&#32;").replace(/\t/g, "&#9;")
     // Qt reads &#133; as an ellipsis; another glyphless control keeps NEL's box.
@@ -275,18 +275,8 @@ function shownLine(line) {
 }
 function shownDiff(text) { return text.split("\n").map(shownLine).join("\n") }
 
-// A line as drawn also ends where a TextEdit ends one: at a lone \r, a separator, U+FDD0 or U+FDD1.
-// The file counts none of those, so only the first of such rows has the line's number.
-var BREAK = /[\r\u2028\u2029\ufdd0\ufdd1]/g
-function drawnText(text) { return text.replace(/\r\n/g, "\n").replace(BREAK, "\n") }
-function drawnNumbers(numbers, text) {
-  var t = text.replace(/\r\n/g, "\n")
-  if (t.search(BREAK) < 0) return numbers
-  var each = numbers.split("\n")
-  return t.split("\n").map(function (line, i) {
-    return (each[i] || "") + "\n".repeat((line.match(BREAK) || []).length)
-  }).join("\n")
-}
+// A row a line of the file: what else a TextEdit would break at is a space. Such text is preview only, see rewritten().
+function drawnText(text) { return text.replace(/\r\n/g, "\n").replace(/[\r\u2028\u2029\ufdd0\ufdd1]/g, " ") }
 
 // Each line's number in the file as it is now, the numbers its plain preview shows.
 // A removed line is no longer in the file, so it has none.
