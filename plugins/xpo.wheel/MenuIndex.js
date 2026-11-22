@@ -5,7 +5,7 @@ function parse(raw) {
   try {
     return JSON.parse(String(raw || "")
       .replace(/^\s*\/\/[^\n]*(\n|$)/gm, "")
-      .replace(/,(\s*[}\]])/g, "$1")) || {}
+      .replace(/("[^"\\]*(?:\\.[^"\\]*)*")|,(?=\s*[}\]])/g, "$1")) || {}
   } catch (e) {
     return {}
   }
