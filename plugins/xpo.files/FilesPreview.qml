@@ -175,9 +175,9 @@ Item {
   function span() { return root.from < 0 || root.to < 0 ? null : [Math.min(root.from, root.to), Math.max(root.from, root.to)] }
   readonly property string picked: {
     var s = root.span()
-    // Without the zero-width space escapeTags() parts each "![" with, which is only there to draw.
+    // Without the zero-width spaces escapeTags() parts "<" and "![" with, which are only there to draw.
     return !s ? "" : root.panel.showsMarkdown
-      ? markdownView.getText(s[0], s[1]).replace(/\u200b(?=\[|$)/g, "")
+      ? markdownView.getText(s[0], s[1]).replace(/(^|<)\u200b|\u200b(?=\[|$)/g, "$1")
       : root.codeText.slice(s[0], s[1])
   }
   function letGo() { root.from = root.to = -1 }
