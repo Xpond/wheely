@@ -66,7 +66,7 @@ def styled(piece):
                 opened, closer = opened + "<%s>" % tag, "</%s>" % tag + closer
         closers.append(closer)
         return opened
-    piece = re.sub("[\n\u2028\u2029]", "<br>", piece)
+    piece = re.sub("[\n\u2028\u2029\ufdd0\ufdd1]", "<br>", piece)
     # Qt reads &#133; as an ellipsis; another glyphless control keeps NEL's box.
     piece = piece.replace("\x85", "\x80")
     return space.sub(lambda m: "&#%d;" % ord(m.group()), piece)

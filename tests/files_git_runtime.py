@@ -80,7 +80,7 @@ if name == 'old.txt':
   property string previewHtml: ''
   function childEntries() { return [] }
   function readDiff() { diffText = '@@ -1 +1 @@\\n-old\\n+new\\n' }
-  QtObject { id: preview; property string picked: ""; function letGo() {} property int paneHeight: 600; function resetScroll() {} }
+  QtObject { id: preview; function letGo() {} property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
   property bool props: false
   property string folderSize: ""
@@ -121,7 +121,7 @@ if name == 'old.txt':
   property string previewHtml: ''
   property var seen: []
   function childEntries() { return [] }
-  QtObject { id: preview; property string picked: ""; function letGo() {} property int paneHeight: 600; function resetScroll() {} }
+  QtObject { id: preview; function letGo() {} property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} }
   property bool props: false
   property string folderSize: ""
@@ -293,7 +293,7 @@ if name == 'old.txt':
   property string gitScript: 'git-preview.py'
   property var events: []
   function childEntries() { return [] }
-  QtObject { id: preview; property string picked: ""; function letGo() {} property int paneHeight: 600; function resetScroll() {} }
+  QtObject { id: preview; property int paneHeight: 600; function resetScroll() {} }
   QtObject { id: measurer; function cancel() {} function start(argv) { root.events.push('measure ' + argv[argv.length - 1]) } }
   property bool props: false
   property string folderSize: ""

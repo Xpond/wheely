@@ -28,6 +28,7 @@ samples = {
     "multiline.js": "/* multi\n   line */\nconst s = `a\nb`\n",
     "bold.py": "def f():\n    '''doc\n    string'''\n    return 1\n# end",
     "italic.rst": "Title\n=====\n\n*emphasis* and **strong**\n",
+    "tabs-wrap.go": "\n".join("\t" * n + "x" * k for n in range(1, 9) for k in range(1, 85, 6)) + "\n",
     "truncated.txt": "\n".join("line %d" % i for i in range(LIMIT + 30)),
     "blank-cut.sh": "x=1\n" * (LIMIT - 1) + "\ny=2\n",
 }
@@ -63,6 +64,14 @@ with tempfile.TemporaryDirectory(prefix="omarchy-preview-") as temporary:
                 whole = run("python3", str(plugin / "highlight.py"), str(path), "100")
                 first = run("python3", str(plugin / "highlight.py"), str(path), "6")
                 assert first == "<br>".join(whole.split("<br>")[:6]), (name, repr(newline), lines, first)
+
+    def quick(name, timeout):
+        result = subprocess.run(["quickshell", "--no-color", "-p", str(base / name)], cwd=base, env=env,
+                                capture_output=True, text=True, timeout=timeout)
+        log = result.stdout + result.stderr
+        assert result.returncode == 0 and "PASS" in log, log
+        qslog.check(log)
+        return log
 
     cases = []
     for name, text in list(samples.items()) + [(f.name, f.read_text()) for f in files]:
@@ -154,11 +163,7 @@ Scope {
     (base / "out").mkdir()
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QT_QPA_PLATFORMTHEME="generic", QT_FORCE_STDERR_LOGGING="1",
                QML_XHR_ALLOW_FILE_READ="1", XDG_RUNTIME_DIR=str(base / "runtime"), XDG_CACHE_HOME=str(base / "cache"))
-    result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "shell.qml")], cwd=base,
-                            env=env, capture_output=True, text=True, timeout=900)
-    log = result.stdout + result.stderr
-    assert result.returncode == 0 and "PASS" in log, log
-    qslog.check(log)
+    log = quick("shell.qml", 900)
 
     # compare alone reports 0 for images of different sizes.
     size = lambda p: "%dx%d" % struct.unpack(">II", p.read_bytes()[16:24])
@@ -243,11 +248,7 @@ Scope {
   }
 }
 ''')
-    result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "edit.qml")], cwd=base,
-                            env=env, capture_output=True, text=True, timeout=60)
-    log = result.stdout + result.stderr
-    assert result.returncode == 0 and "PASS" in log, log
-    qslog.check(log)
+    log = quick("edit.qml", 60)
     again = [base / ("again-%s.png" % mode) for mode in ("preview", "editor")]
     assert again[0].read_bytes() == again[1].read_bytes() or subprocess.run(
         ["magick", "compare", "-metric", "AE", *again, "null:"], capture_output=True, text=True).stderr.split()[0] == "0", \
@@ -267,8 +268,27 @@ Scope {
       var p = view.testRendered.mapToItem(view.testPointer, 0, view.codeLayout.row * 1.5)
       view.pickAt(p.x, p.y, false); view.pickAt(p.x + 300, p.y, true)
       check(view.picked === "two", "CRLF pick")
-      view.letGo(); emoji()
+      view.letGo(); breaks()
     })
+  }
+  function breaks() {
+    show("a\\rb\\u2028c\\ufdd0d\\nline 2\\nline 3\\nline 4\\nline 5")
+    after(function () {
+      check(view.lineNumbers === "1\\n\\n\\n\\n2\\n3\\n4\\n5", "broken line numbers")
+      // The third piece of three starts at the row after "line 3".
+      var p = view.testRendered.children[2].mapToItem(view.testPointer, 0, 2)
+      view.pickAt(p.x, p.y, false); view.pickAt(p.x + 300, p.y, true)
+      check(view.picked === "line 4", "broken line pick")
+      view.letGo(); cache()
+    })
+  }
+  function cache() {
+    var long = "word ".repeat(20000)
+    for (var i = 0; i < 12; i++) view.layoutOf(long + i)
+    check(Object.keys(view.kept.lines).length < 12, "every version of a line kept")
+    view.layoutOf("\\tone\\n\\t\\ttwo")
+    check(!view.kept.lines["\\tone"], "short tabbed lines measured")
+    emoji()
   }
   function emoji() {
     show("\\ud83d\\ude00\\ud83d\\ude80\\u2728\\ud83d\\udd25".repeat(120) + "\\nnext")
@@ -314,11 +334,7 @@ Scope {
   Component.onCompleted: Qt.callLater(crlf)
 }
 ''')
-    result = subprocess.run(["quickshell", "--no-color", "-p", str(base / "faults.qml")], cwd=base,
-                            env=env, capture_output=True, text=True, timeout=60)
-    log = result.stdout + result.stderr
-    assert result.returncode == 0 and "PASS" in log, log
-    qslog.check(log)
+    log = quick("faults.qml", 60)
 
     print("ok: %d code previews at three sizes lay out as the editor does, plain ones pixel for pixel;"
           " editing keeps the view, shows the cursor and draws a second file" % len(cases))

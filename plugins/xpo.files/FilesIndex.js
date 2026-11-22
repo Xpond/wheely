@@ -157,13 +157,13 @@ var VIDEO = { mp4: 1, m4v: 1, mkv: 1, webm: 1, mov: 1, avi: 1, mpg: 1, mpeg: 1,
               ogv: 1, wmv: 1, flv: 1, "3gp": 1, "3g2": 1, m2ts: 1, vob: 1 }
 
 // StyledText lays code out an order of magnitude faster than rich text. Drop the
-// last newline and \r, and keep other whitespace as written, through entities
-// StyledText cannot collapse. highlight.py applies the same rules.
+// last newline, break lines as drawnText() does, and keep other whitespace as written,
+// through entities StyledText cannot collapse. highlight.py applies the same rules.
 function styledCode(text) {
-  var t = String(text || "")
-  if (t.charAt(t.length - 1) === "\n") t = t.slice(0, -1)
-  return t.replace(/\r/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/[\n\u2028\u2029]/g, "<br>").replace(/ /g, "&#32;").replace(/\t/g, "&#9;")
+  var written = String(text || ""), t = drawnText(written)
+  if (written.charAt(written.length - 1) === "\n") t = t.slice(0, -1)
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>").replace(/ /g, "&#32;").replace(/\t/g, "&#9;")
     // Qt reads &#133; as an ellipsis; another glyphless control keeps NEL's box.
     .replace(/\x85/g, "\x80")
     .replace(/[\v\f\xa0\u1680\u2000-\u200a\u202f\u205f\u3000]/g,
@@ -255,7 +255,7 @@ function emboldened(line, other) {
 function styledDiff(text) {
   // Nothing yet while a diff is on its way.
   if (!text) return ""
-  var lines = String(text).replace(/\n$/, "").split("\n"), header = lines[0].slice(0, 2) !== "@@"
+  var lines = String(text).replace(/\r\n/g, "\n").replace(/\n$/, "").split("\n"), header = lines[0].slice(0, 2) !== "@@"
   return lines.map(function (line, i) {
     line = shownLine(line)
     var lead = line.charAt(0)
@@ -274,6 +274,19 @@ function shownLine(line) {
   return line.slice(0, 2) === "@@" ? ("⋯ " + line.replace(/^@@[^@]*@@ ?/, "")).trim() : line
 }
 function shownDiff(text) { return text.split("\n").map(shownLine).join("\n") }
+
+// A line as drawn also ends where a TextEdit ends one: at a lone \r, a separator, U+FDD0 or U+FDD1.
+// The file counts none of those, so only the first of such rows has the line's number.
+var BREAK = /[\r\u2028\u2029\ufdd0\ufdd1]/g
+function drawnText(text) { return text.replace(/\r\n/g, "\n").replace(BREAK, "\n") }
+function drawnNumbers(numbers, text) {
+  var t = text.replace(/\r\n/g, "\n")
+  if (t.search(BREAK) < 0) return numbers
+  var each = numbers.split("\n")
+  return t.split("\n").map(function (line, i) {
+    return (each[i] || "") + "\n".repeat((line.match(BREAK) || []).length)
+  }).join("\n")
+}
 
 // Each line's number in the file as it is now, the numbers its plain preview shows.
 // A removed line is no longer in the file, so it has none.

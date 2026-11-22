@@ -289,8 +289,11 @@ Item {
   readonly property string previewBody:
     root.showsMarkdown ? FilesIndex.airOut(FilesIndex.escapeTags(FilesIndex.flattenLinks(root.previewText)))
     : root.showsDiff ? FilesIndex.styledDiff(root.previewText)
-    : root.showsCode ? (root.previewHtml && root.htmlLines >= root.shownLines ? FilesIndex.head(root.previewHtml, root.shownLines, "<br>")
-                                         : FilesIndex.styledCode(root.previewText))
+    : root.showsCode ? (root.previewHtml && root.htmlLines >= root.shownLines
+        // Its lines are the drawn ones, which can outnumber the file's.
+        ? (root.previewCut ? FilesIndex.head(root.previewHtml, FilesIndex.drawnText(root.previewText).split("\n").length - 1, "<br>")
+                           : root.previewHtml)
+        : FilesIndex.styledCode(root.previewText))
       : ""
   onSelChanged: { if (root.shown) settle.restart(); ops.doomed = "" }
   // Saving rewrites the file and the folder answers with a new row for it, so only a new path

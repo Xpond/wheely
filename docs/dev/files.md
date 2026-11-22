@@ -135,7 +135,7 @@ changes are read at most every 150 ms, and not at all while the panel is hidden:
 reads the folder once when it shows (`relistDue`).
 
 Only what is near the view is **laid out**. A selection lays out two screens of
-lines; scrolling within a screen of their end doubles that, and `End` lays out
+lines at a folder row's height; being within a screen of their end doubles that, and `End` lays out
 the rest first, so the whole file is there to scroll through. The file is still
 read whole: reading costs well under a millisecond, and editing needs it.
 Laying out is the cost, and one Text lays out its lines in time growing with their
@@ -278,8 +278,8 @@ rather than throwing the edit away.
 `contentY`: a share of a partly laid out file is another line of the whole one.
 Markdown and a diff are a wholly different height from the editor, where
 `contentY` alone lands you somewhere unrelated in the document, so for those
-`keepPlace()` stores the fraction of the way down. `takePlace()` applies either when the scroller
-re-measures (at the moment the mode flips, `contentHeight` is still the other
+`keepPlace()` stores the fraction of the way down. `takePlace()` applies either once the
+switch settles or the scroller re-measures (at the moment the mode flips, `contentHeight` is still the other
 mode's), and the caret lands on the line you were reading.
 
 ## The menu
@@ -403,8 +403,9 @@ path makes the arrival of colour nothing but a change of colour.
 
 **That markup is StyledText, drawn where the editor draws the same text.**
 StyledText lays out far faster than rich text. `styledCode()` and `highlight.py`
-keep the text as written: no last newline, no `\r` (so `drawn()` measures a CRLF
-line without it), every other whitespace character kept, as entities StyledText
+keep the text as written: no last newline, a break wherever a TextEdit makes one
+(`drawnText()`, which also feeds measuring, picking and the numbers, so a CRLF is
+one break and a lone `\r` or U+2028 a row without a number), every other whitespace character kept, as entities StyledText
 cannot collapse. `layoutOf()` measures each line in a plain TextEdit and
 `rowsIn()` puts each row there; a line's last row also holds the code font's line
 break, so one of shorter glyphs, as emoji, goes higher by the difference.
@@ -437,7 +438,7 @@ blank line with a paragraph holding a single non-breaking space, which
 CommonMark counts as content rather than as more blank. Fenced blocks are left
 exactly as written.
 
-**Markdown has a `Text` of its own.** When one `Text` served both, its line
+**Markdown has a `TextEdit` of its own.** When one `Text` served both, its line
 height switched with the format and it carried the code's per-line handler, and
 Qt then laid out Markdown tables many times slower. Do not fold the two back
 together.

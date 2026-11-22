@@ -21,8 +21,9 @@ Item {
   property alias editorText: editor.text
   readonly property string lineNumbers:
     root.panel.editing ? FilesIndex.numbers(editor.text)
-    : root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
-    : root.panel.showsMarkdown ? "" : FilesIndex.numbers(root.panel.previewText)
+    : root.panel.showsMarkdown ? ""
+    : FilesIndex.drawnNumbers(root.panel.showsDiff ? FilesIndex.diffNumbers(root.panel.previewText)
+                                                   : FilesIndex.numbers(root.panel.previewText), root.sourceText)
 
   // Code is laid out as the editor lays it out, previewed or edited: wrapped at one width, each row
   // as tall as its glyphs. The gutter is as wide as the file's last number in both.
@@ -33,30 +34,33 @@ Item {
   TextMetrics { id: numberWidth; font: gutter.font; text: String(root.lastNumber) }
   readonly property real codeWidth: scroller.width - (root.numbered ? numberWidth.advanceWidth + root.panel.gutterGap : 0)
   // Where each line of code starts, its rows, and its first baseline, measured as the editor lays the
-  // line out. Printable ASCII narrower than the pane is one plain row; other lines are laid out once
-  // and kept, by line, for the width and font they were measured at. Measuring lays text out, so it
+  // line out. Printable ASCII and tabs sure to fit the pane are one plain row; other lines are laid out
+  // once and kept, by line, for the width and font they were measured at, until 1 MB of them: an edit
+  // adds a copy of its line on every key. Measuring lays text out, so it
   // runs on the changes that call for it rather than in a binding.
   // An object, not a Map: V4 searches a Map key by key, so each keystroke took a big file's lines squared.
-  readonly property var kept: ({ width: 0, font: "", lines: Object.create(null) })
-  // A line as drawn: the \r of a CRLF is no break of its own, as a TextEdit would take it.
-  function drawn(line) { return line.replace(/\r$/, "") }
+  readonly property var kept: ({ width: 0, font: "", size: 0, lines: Object.create(null) })
   function layoutOf(text) {
     // Measured at the code's width and in the editor's font as they are now, whichever bindings
     // have caught up with them.
     var kept = root.kept, width = root.codeWidth, font = editor.font
     plain.font = font
     plain.width = width
-    if (kept.width !== width || kept.font !== String(font)) { kept.lines = Object.create(null); kept.width = width; kept.font = String(font) }
+    if (kept.width !== width || kept.font !== String(font) || kept.size > 1 << 20) {
+      kept.lines = Object.create(null); kept.size = 0; kept.width = width; kept.font = String(font)
+    }
     plain.text = "0"
     var row = plain.positionToRectangle(0).height, base = plain.baselineOffset
-    var fits = Math.floor(width / plain.contentWidth) - 1, tops = [0], rows = [], baselines = []
+    var fits = Math.floor(width / plain.contentWidth) - 1
+    var tab = Math.ceil(plain.tabStopDistance / plain.contentWidth) - 1, tops = [0], rows = [], baselines = []
     String(text || "").split("\n").forEach((line, i) => {
       var size = [row, 1, base]
-      if (line.length > fits || /[^\x20-\x7e]/.test(line)) {
+      if (line.length + (line.lastIndexOf("\t") + 1) * tab > fits || /[^\t\x20-\x7e]/.test(line)) {
         if (!kept.lines[line]) {
-          plain.text = root.drawn(line)
+          plain.text = line
           var last = plain.positionToRectangle(plain.length)
           kept.lines[line] = [last.y + last.height, plain.lineCount, plain.baselineOffset]
+          kept.size += line.length
         }
         size = kept.lines[line]
       }
@@ -81,16 +85,16 @@ Item {
   property var codeLayout: ({ tops: [0], rows: [], baselines: [], base: 0, row: 0 })
   property var editLayout: root.codeLayout
   // The code as drawn, to measure, hit and copy: a diff's @@ lines are drawn shorter.
-  readonly property string codeText: root.panel.showsDiff ? FilesIndex.shownDiff(root.panel.previewText) : root.panel.previewText
+  readonly property string sourceText: root.panel.showsDiff ? FilesIndex.shownDiff(root.panel.previewText) : root.panel.previewText
+  readonly property string codeText: root.panel.showsCode ? FilesIndex.drawnText(root.sourceText) : ""
   onCodeTextChanged: root.measureCode()
-  function measureCode() { root.codeLayout = root.layoutOf(root.panel.showsCode ? root.codeText : "") }
+  function measureCode() { root.codeLayout = root.layoutOf(root.codeText) }
   function measureEdit() { if (root.panel.editing) root.editLayout = root.layoutOf(editor.text) }
   function measureAll() { root.measureCode(); root.measureEdit() }
   onCodeWidthChanged: root.measureAll()
   Component.onCompleted: root.measureAll()
   Connections {
     target: root.panel
-    function onShowsCodeChanged() { root.measureCode() }
     // Qt leaves a hidden TextEdit blank when it is given new text over text it drew before, so an
     // edit that ends empties the editor for the next to start from. Preview and edit lay code out
     // alike, so a switch may change no height to place the view by: place it now.
@@ -191,7 +195,6 @@ Item {
     for (var i = 0; i < lines.length - (root.panel.previewCut ? 1 : 0); i++) s.push(s[i] + lines[i].length + 1)
     return s
   }
-  function lineOf(at) { var n = 0; while (root.codeStarts[n + 1] <= at) n++; return n }
   // Hidden plain text, at the code's width and font as layoutOf last set them: a line of code laid out
   // in it says where a point falls. Copies go through it too, as the editor's do: no argument limit on
   // what Qt's clipboard holds.
@@ -203,7 +206,7 @@ Item {
     renderType: Text.NativeRendering
   }
   function copyPicked() { plain.text = root.picked; plain.selectAll(); plain.copy(); plain.text = "" }
-  function layLine(n) { plain.text = root.drawn(root.codeText.slice(root.codeStarts[n], root.codeStarts[n + 1] - 1)) }
+  function layLine(n) { plain.text = root.codeText.slice(root.codeStarts[n], root.codeStarts[n + 1] - 1) }
   function codeAt(p) {
     var tops = root.codeLayout.tops, n = 0
     while (n < root.codeStarts.length - 2 && tops[n + 1] <= p.y) n++
@@ -212,7 +215,8 @@ Item {
   }
   // Where a character of the code is drawn, from the text's corner, and its row's height.
   function codePoint(at) {
-    var n = root.lineOf(at)
+    var n = 0
+    while (root.codeStarts[n + 1] <= at) n++
     root.layLine(n)
     var r = plain.positionToRectangle(at - root.codeStarts[n])
     return { x: r.x, y: root.codeLayout.tops[n] + r.y, h: r.height }
@@ -267,7 +271,6 @@ Item {
     else if (top + r.height > scroller.contentY + scroller.height)
       root.scrollBy(top + r.height - scroller.contentY - scroller.height)
   }
-  // Code wraps to the pane, previewed or edited alike.
   Flickable {
     id: scroller
     // Isolate Markdown batches to avoid the Qt 6.12 scrolling crash.
