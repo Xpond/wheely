@@ -11,8 +11,10 @@ function onKey(wheel, event) {
     else if (event.key === Qt.Key_Escape || back || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) wheel.editing = ""
     event.accepted = true; return
   }
-  // Forgetting picks asks again: Enter forgets them, Esc or Backspace keeps them.
+  // Forgetting picks asks again: Enter forgets them, Esc or Backspace keeps them. The Enter that
+  // asked, still held, does not answer.
   if (wheel.editing === "forget") {
+    if (event.isAutoRepeat) { event.accepted = true; return }
     var enter = event.key === Qt.Key_Return || event.key === Qt.Key_Enter
     if (enter) wheel.forgetPicks()
     if (enter || event.key === Qt.Key_Escape || back) wheel.editing = ""
@@ -25,7 +27,10 @@ function onKey(wheel, event) {
   if (wheel.editingRing) {
     var again = (event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_R
     if (!again && shortcutOf(event) !== null) wheel.resetAsked = false
-    if (again) { wheel.resetRing(); event.accepted = true; return }
+    if (again) {
+      if (!event.isAutoRepeat) wheel.resetRing()
+      event.accepted = true; return
+    }
     if (!wheel.query && (event.key === Qt.Key_Escape || back)) {
       wheel.editingRing = false; event.accepted = true; return
     }
