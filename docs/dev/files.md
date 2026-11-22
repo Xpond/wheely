@@ -540,12 +540,12 @@ hands anything tag-shaped to a sub-parser, and an unclosed tag swallows every
 block after it — only code spans come through, because those arrive as their own
 typed spans rather than as text. One `<dir>` written inside a sentence in
 `docs/wheel.md` cut the preview from 17907 rendered characters to 7477, and the
-tail of the file read as a column of empty bullets. `escapeTags()` escapes every
-angle bracket outside code, so a tag is shown as it was written; code spans and
-fenced and indented blocks are left alone, where `&lt;` would be four literal
-characters rather than one. It also parts every `![` with a zero-width space,
-code included, since Qt fetches images (remote ones too) and does not always
-agree on what is code. Window titles, ring labels, file names and Properties
+tail of the file read as a column of empty bullets. `escapeTags()` parts every
+`<` and `![` with a zero-width space, code included, so a tag is shown as it was
+written and no image loads: Qt fetches them, remote ones too. It does not try to
+tell code apart, as it once did to write `&lt;` outside it: where it and Qt
+disagreed, a tag got through or `&lt;` showed as four characters. A copy drops
+those spaces. Window titles, ring labels, file names and Properties
 are `Text.PlainText` for the same reason.
 
 **Both `FolderListModel` handlers are gated on `Ready`.** A load raises `count`

@@ -187,12 +187,12 @@ Scope {
       if (root.tick === 55) root.shot("deselected")
       // Every cell picked is marked, and a copy has none of what was only there to draw.
       if (root.tick === 62) {
-        panel.showAll(); root.documents = ["| a | b |\\n|---|---|\\n| left | right |\\n| two | second |\\n\\n```\\nvec![1]\\n```\\n"]
+        panel.showAll(); root.documents = ["| a | b |\\n|---|---|\\n| left | right |\\n| two | second |\\n\\n```\\nvec![1]<u8>\\n```\\n"]
       }
       if (root.tick === 66) { preview.from = 0; preview.to = md.length }
       if (root.tick === 70) {
         console.log(root.captures !== 3 ? "FAIL captures" : preview.bands.length < 7 ? "FAIL table bands"
-          : preview.picked.indexOf("vec![1]") < 0 ? "FAIL copied marks" : "PASS")
+          : preview.picked.indexOf("vec![1]<u8>") < 0 ? "FAIL copied marks" : "PASS")
         Qt.quit()
       }
     }
