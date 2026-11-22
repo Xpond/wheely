@@ -64,11 +64,11 @@ try {
 
 // A folder's own .git may be anyone's: the fsmonitor hook and clean filters its config names, a
 // submodule's filters, a partial clone's fetch and its hooks never run while Files reads it. A filter
-// from the user's own config still does.
+// from the user's own config still does, though not what the repository hands it to run.
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-git-hostile-"))
   const top = path.join(dir, "repo"), sub = path.join(dir, "sub"), ran = path.join(dir, "ran")
-  const env = { ...process.env, HOME: dir, GIT_CONFIG_NOSYSTEM: "1" }
+  const env = { ...process.env, HOME: dir, GIT_CONFIG_GLOBAL: path.join(dir, ".gitconfig"), GIT_CONFIG_NOSYSTEM: "1", LC_ALL: "C.UTF-8" }
   const at = (where, ...args) => {
     const r = spawnSync("git", ["-C", where, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false",
                                 "-c", "protocol.file.allow=always", ...args], { encoding: "utf8", env })
@@ -76,7 +76,12 @@ try {
   }
   const hostile = "sh -c 'touch \"$0\"; cat' " + JSON.stringify(ran)
   try {
-    fs.writeFileSync(path.join(dir, ".gitconfig"), '[filter "upper"]\n\tclean = tr a-z A-Z\n')
+    // "lfs" stands in for git-lfs: from the first line git gives as the top, it asks for the extensions to run.
+    fs.writeFileSync(path.join(dir, "lfs.sh"), 'cd "$(git rev-parse --show-toplevel | head -n 1)"\n'
+      + "git config --name-only --get-regexp '^lfs[.]extension[.].*[.]clean$' |\n"
+      + '  while read -r key; do sh -c "$(git config "$key")" < /dev/null > /dev/null; done\ncat\n')
+    fs.writeFileSync(env.GIT_CONFIG_GLOBAL, '[filter "upper"]\n\tclean = tr a-z A-Z\n'
+      + '[filter "lfs"]\n\tclean = sh \\"$HOME/lfs.sh\\"\n')
     for (const where of [top, sub]) {
       fs.mkdirSync(where)
       at(where, "init", "-q")
@@ -86,6 +91,7 @@ try {
     fs.writeFileSync(path.join(top, "b.up"), "abc\n")
     at(sub, "add", "."); at(sub, "commit", "-qm", "sub")
     at(top, "submodule", "-q", "add", sub, "sub"); at(top, "add", "."); at(top, "commit", "-qm", "top")
+    at(top, "fetch", "-q", sub) // Holding sub's commit too, top has its diff look inside sub.
     // Staged, then written back: a diff that finds a.txt unchanged rewrites the index, which has a hook.
     fs.writeFileSync(path.join(top, "a.txt"), "b\n"); at(top, "add", "a.txt")
     fs.writeFileSync(path.join(top, "a.txt"), "a\n")
@@ -104,11 +110,79 @@ try {
     const read = argv => spawnSync(argv[0], argv.slice(1), { encoding: "utf8", env })
     const marks = F.readStatus(read(F.statusCommand(top, script)).stdout, "").marks
     read(F.diffCommand(top, "a.txt", script))
+    read(F.diffCommand(top, "sub", script))
     read(F.diffCommand(partial, "a.txt", script))
     assert.equal(fs.existsSync(ran), false, "a command from the repository's own config ran")
     assert.equal(marks["b.up"], undefined, "the user's own filter no longer ran")
+
+    // The less direct routes (#105), each in a folder of its own: [the folder listed, the file selected].
+    const make = (where, filter, file = "file") => {
+      fs.mkdirSync(path.join(where, path.dirname(file)), { recursive: true })
+      at(where, "init", "-q")
+      fs.writeFileSync(path.join(where, ".gitattributes"), Buffer.from("* filter=" + filter + "\n", "latin1"))
+      fs.writeFileSync(path.join(where, file), "one\n")
+      at(where, "add", "."); at(where, "commit", "-qm", "base")
+      fs.utimesSync(path.join(where, file), later, later)
+      return where
+    }
+    // sub's own .git names the folder above as its work tree, where git finds project's config instead.
+    const misplaced = base => {
+      const project = make(path.join(base, "project"), "x", "sub/file"), listed = path.join(project, "sub")
+      at(project, "config", "filter.x.clean", hostile)
+      at(listed, "init", "-q"); at(listed, "config", "core.worktree", "../..")
+      return [listed, "file"]
+    }
+    const routes = {
+      "a repository found again from the top": misplaced,
+      "a repository found again by the user's filter"(base) {
+        const other = make(path.join(base, "lib"), "lfs"), where = make(path.join(base, "lib\nx"), "lfs")
+        at(other, "config", "lfs.extension.x.clean", hostile)
+        return [where, "file"]
+      },
+      "a command handed to the user's filter"(base) {
+        const where = make(base, "lfs")
+        at(where, "config", "lfs.extension.x.clean", hostile)
+        return [where, "file"]
+      },
+      "a line break in the repository's name"(base) {
+        at(make(path.join(base, "lib"), "x", "x/file"), "config", "filter.x.clean", hostile)
+        fs.mkdirSync(path.join(base, "lib\nx")); at(path.join(base, "lib\nx"), "init", "-q")
+        return [path.join(base, "lib\nx"), "file"]
+      },
+      "a filter's name that is not text"(base) {
+        const where = make(base, "\xff")
+        fs.appendFileSync(path.join(where, ".git/config"),
+          Buffer.from('[filter "\xff"]\n\tclean = ' + JSON.stringify(hostile) + "\n", "latin1"))
+        return [where, "file"]
+      },
+      "a hook from config"(base) { // git 2.54 on
+        const where = make(base, "none")
+        fs.writeFileSync(path.join(where, "file"), "two\n"); at(where, "add", "file")
+        fs.writeFileSync(path.join(where, "file"), "one\n")
+        at(where, "config", "hook.h.command", hostile); at(where, "config", "hook.h.event", "post-index-change")
+        return [where, "file"]
+      },
+      "a submodule's diff"(base) {
+        const where = make(path.join(base, "top"), "none"), mod = path.join(where, "mod")
+        const source = make(path.join(base, "source"), "none", "other")
+        at(where, "submodule", "-q", "add", source, "mod"); at(where, "commit", "-qm", "mod"); at(where, "fetch", "-q", source)
+        at(where, "config", "diff.submodule", "diff"); at(mod, "config", "diff.external", hostile)
+        at(dir, "config", "--file", path.join(where, ".git/modules/mod/config"), "--unset", "core.worktree")
+        fs.rmSync(mod, { recursive: true })
+        return [where, "mod"]
+      },
+    }
+    for (const [route, build] of Object.entries(routes)) {
+      const [listed, file] = build(fs.mkdtempSync(path.join(dir, "route-")))
+      fs.rmSync(ran, { force: true })
+      read(F.statusCommand(listed, script)); read(F.diffCommand(listed, file, script))
+      assert.equal(fs.existsSync(ran), false, route + " ran a command")
+    }
+    const broken = path.join(make(path.join(dir, "broken"), "none", "a\nb/file"), "a\nb")
+    fs.writeFileSync(path.join(broken, "file"), "two\n")
+    assert.equal(F.readStatus(read(F.statusCommand(broken, script)).stdout, "").marks.file, "M", "a line break hid a folder's marks")
   } finally { fs.rmSync(dir, { recursive: true, force: true }) }
-  console.log("ok: a repository's own fsmonitor, filters, fetch and hooks never run; the user's own filters do")
+  console.log("ok: a repository's own fsmonitor, filters, fetch, hooks and indirect routes never run; the user's own filters do")
 }
 
 // Deleted rows arrive with git's status, when a selection may already rest on a live row; they must not move it.
