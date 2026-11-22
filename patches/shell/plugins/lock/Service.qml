@@ -324,7 +324,7 @@ Item {
       idleBlankTimer.stop()
       return
     }
-    // DPMS returns before the monitor shows a picture (~4.2s later on this display).
+    // DPMS returns before the monitor shows a picture (about 4.2 s later on one 4K display tested).
     idleBlankTimer.interval = Math.max(delayMs || idleBlankTimer.idleMs, wakeUntil - Date.now())
     idleBlankTimer.armedAt = Date.now()
     idleBlankTimer.restart()
@@ -387,7 +387,7 @@ Item {
       armBlankTimer()
     }
     if (!lockRequested || !fingerprintPaused) return
-    // logind holds a suspend for its inhibitor delay, at most 15 seconds here.
+    // logind holds a suspend for its inhibitor delay, 15 seconds as Omarchy sets it.
     fingerprintResumeTimer.ticksLeft = 20
     fingerprintResumeTimer.lastTickMs = Date.now()
     fingerprintResumeTimer.restart()
@@ -943,7 +943,7 @@ Item {
     // A resume reaches this as soon as the kernel thaws, seconds before the
     // panel lights (on NVIDIA it waits out a VT switch and a modeset), so the
     // idle run-up blanked the lock just as it appeared.
-    // 60 s, not upstream's 15: after hours asleep this panel lit with only seconds of it left.
+    // 60 s, not upstream's 15: after hours asleep a monitor can light with only seconds of that left.
     readonly property int resumeMs: 60000
     interval: idleMs
     repeat: false
