@@ -126,9 +126,12 @@ Item {
   property bool editingRing: false
   // Ctrl+R asks twice before the ring is reset to the bar's.
   property bool resetAsked: false
-  readonly property string ringHint: root.searching ? "enter adds to the ring"
+  readonly property string ringHint: root.settingsBroken ? root.brokenHint : root.searching ? "enter adds to the ring"
     : root.resetAsked ? "ctrl+r again resets the ring\nany other key cancels"
     : "del removes · shift+←→ reorders\n" + (root.ringIds ? "ctrl+r resets · " : "") + "esc done"
+  // Until wheel.json is mended the ring and lists refuse changes.
+  property bool settingsBroken: false
+  readonly property string brokenHint: "wheel.json has a syntax error\nfix it to change this"
   // The list a setting row shows in the results; typing suggests what to add to it.
   property string listing: ""
   readonly property var listed: root.listing === "skipped" ? root.skipped : root.listing === "folders" ? root.folders : []
@@ -662,6 +665,7 @@ Item {
 
   // An empty ring follows the bar, as an empty list in the file does.
   function saveRing(keys) {
+    if (root.settingsBroken) return
     root.ringIds = keys && keys.length ? keys : null
     ringFile.setText(MenuIndex.withList(ringFile.text(), "slices", root.ringIds))
   }
@@ -683,6 +687,7 @@ Item {
 
   // An emptied list is its default again, as an emptied ring follows the bar.
   function saveList(list) {
+    if (root.settingsBroken) return
     var kept = list.length ? list : null
     if (root.listing === "folders") root.savedFolders = kept
     else root.savedSkipped = kept
@@ -1038,12 +1043,13 @@ Item {
     id: ringFile
     name: "wheel.json"
     onLoaded: {
+      root.settingsBroken = MenuIndex.isBroken(text())
       root.ringIds = MenuIndex.listIn(text(), "slices")
       root.savedFolders = MenuIndex.listIn(text(), "folders")
       root.savedSkipped = MenuIndex.listIn(text(), "skipped")
     }
     // Deleting wheel.json restores the defaults.
-    onLoadFailed: { root.ringIds = null; root.savedFolders = null; root.savedSkipped = null }
+    onLoadFailed: { root.settingsBroken = false; root.ringIds = null; root.savedFolders = null; root.savedSkipped = null }
   }
 
   // The launch and pause keys and the backdrop's blur are data the Hyprland block reads on reload; Hyprland
@@ -1265,7 +1271,7 @@ Item {
           elide: Text.ElideLeft
           // A submenu's crumb, or what the ring editor's keys do.
           text: root.editingRing ? root.ringHint : root.listing === "history" ? "esc done"
-            : root.listing ? "del removes · esc done" : "‹  " + root.crumb
+            : root.listing ? (root.settingsBroken ? root.brokenHint : "del removes · esc done") : "‹  " + root.crumb
           color: Commons.Color.menu.text
           opacity: root.editingRing || root.listing && !root.query || root.path.length && !root.searching ? 0.7 : 0
           Behavior on opacity { NumberAnimation { duration: root.fadeDuration } }

@@ -1,13 +1,13 @@
 // Also loaded by WorkerScript so file indexing and ranking stay off the UI thread.
 
 // Match the shell's JSONC parsing; malformed input leaves the wheel usable.
-function parse(raw) {
+function parse(raw, unreadable) {
   try {
     return JSON.parse(String(raw || "")
       .replace(/^\s*\/\/[^\n]*(\n|$)/gm, "")
       .replace(/("[^"\\]*(?:\\.[^"\\]*)*")|,(?=\s*[}\]])/g, "$1")) || {}
   } catch (e) {
-    return {}
+    return unreadable || {}
   }
 }
 
@@ -360,6 +360,12 @@ function historyRows(index, uses, home) {
   return Object.keys(uses).reverse().map(function (k) {
     return k.indexOf("file:") === 0 ? fileRow(k.slice(5), home) : byKey[k]
   }).filter(Boolean)
+}
+
+// A file with more than comments that does not parse: saving over it would keep only the list saved.
+function isBroken(raw) {
+  var none = {}
+  return !!String(raw || "").replace(/^\s*\/\/[^\n]*(\n|$)/gm, "").trim() && parse(raw, none) === none
 }
 
 // wheel.json with one list replaced, or gone back to its default; anything else in it stays.
