@@ -98,6 +98,7 @@ def check(wheel, base, env, run, block, line):
   property var ringIds: "unset"
   property var savedFolders: "unset"
   property var savedSkipped: "unset"
+  property bool settingsBroken: false
   property int stage: 0
   property int waits: 0
   Process { id: edit; property string text; command: ["sh", "-c", "printf %s \\"$1\\" > $HOME/.config/omarchy/wheel.json", "sh", text] }
@@ -129,10 +130,23 @@ def check(wheel, base, env, run, block, line):
       root.check(JSON.stringify([root.savedFolders, root.savedSkipped]) === '[["/x"],null]', "the lists were misread")
       root.saveRing(["system"]); break
     case 4:
+      edit.text = '{ "folders": ["/x"] "other": 1 }'; edit.running = true; break
+    case 5:
+      if (!root.settled(root.settingsBroken)) break
+      root.check(root.settingsBroken, "a syntax error went unnoticed")
+      root.saveRing(["omarchy.audio"]); break
+    case 6:
+      root.check(ringFile.text() === edit.text, "a save wrote over a file it could not read: " + ringFile.text())
+      edit.text = '{ "folders": ["/x"], "skipped": [], "other": 1 }'; edit.running = true; break
+    case 7:
+      if (!root.settled(!root.settingsBroken)) break
+      root.check(!root.settingsBroken, "a mended file still refused changes")
+      root.saveRing(["system"]); break
+    case 8:
       console.log("PASS"); Qt.quit()
     }
   } }
 ''', {"HOME": str(home)})
     assert json.loads((home / ".config/omarchy/wheel.json").read_text()) == {"folders": ["/x"], "skipped": [], "other": 1,
                                                                              "slices": ["system"]}
-    print("ok: the ring saves on every change, a burst ends on its last ring, and the rest of wheel.json stays")
+    print("ok: the ring saves on every change, a burst ends on its last ring, the rest of wheel.json stays, and a broken one is left alone")
