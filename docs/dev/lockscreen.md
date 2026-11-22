@@ -69,7 +69,7 @@ The service blanks the display after five seconds of inactivity, starting on loc
 restarting on input. After waking a blank display, a ten-second minimum lets the physical
 monitor recover (one 4K display took about 4.2 seconds to show a picture after DPMS
 returned); input never shortens it, and afterwards the normal five seconds apply. A display
-lit by a resume with no input is blanked again after five seconds, fifteen after a
+lit by a resume with no input is blanked again after five seconds, sixty after a
 suspend. These rules hold for every design, whatever its animation is doing. One wake
 starts the animation. A suspend gets the same five seconds: `status` reports `secure` only once
 this lock has blanked, and `omarchy-system-sleep-lock` holds the suspend until it does, so the
