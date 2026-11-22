@@ -10,7 +10,8 @@ https://github.com/user-attachments/assets/a4d568f9-beee-4808-9bde-b6b9480ac79a
 > with Quickshell 0.3.2.r7, one NVIDIA GPU and one monitor (a second screen only as a virtual
 > display), without fingerprint unlock. It patches Omarchy's shell files with `sudo`, so
 > `omarchy plugin add` cannot install it. It takes over `SUPER+A` and `SUPER+W`, and
-> `Ctrl+Space` while Tidal or Wheelie is the active theme. The lock screen is a work in progress.
+> `Ctrl+Space` while Tidal or Wheelie is the active theme. The lock screen is a work in progress,
+> and edge builds from r8178 on keep Omarchy's own lock, without the designs.
 
 ## Features
 
