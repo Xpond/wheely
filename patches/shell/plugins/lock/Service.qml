@@ -91,8 +91,11 @@ Item {
   property bool blanked: false
   // Once this lock has turned the display off. A suspend waits for that (status reports secure only
   // then), so the design's entrance is seen before the machine sleeps, and the first key after it
-  // wakes finds a blanked lock, whose wake plays the design again.
+  // wakes finds a blanked lock, whose wake plays the design again. Input puts the blank off, so
+  // settleTimer sets it too, while omarchy-system-sleep-lock is still listening.
   property bool settled: false
+  // logind's inhibitor delay, its default until read.
+  property int sleepWindowMs: 5000
   property bool waking: false
   property double wakeUntil: 0
   property double lastInput: 0
@@ -738,6 +741,31 @@ Item {
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       cache: true
+    }
+  }
+
+  // The sleep hook gives up after four fifths of logind's window, twelve seconds at most. This ends
+  // two seconds sooner, and by seven, which a lock left alone beats by blanking first.
+  Timer {
+    id: settleTimer
+    readonly property int waitMs: Math.min(7000, root.sleepWindowMs * 0.8 - 2000)
+    property double since: 0
+    // The wall clock, as a heavy design's frames run QML's timers late.
+    interval: 100
+    repeat: true
+    running: sessionLock.secure && !root.settled
+    onRunningChanged: since = Date.now()
+    onTriggered: if (Date.now() - since >= waitMs) root.settled = true
+  }
+  Process {
+    running: true
+    command: ["busctl", "--timeout=1s", "get-property", "org.freedesktop.login1", "/org/freedesktop/login1",
+              "org.freedesktop.login1.Manager", "InhibitDelayMaxUSec"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var usec = parseInt(text.slice(2))
+        if (usec > 0) root.sleepWindowMs = usec / 1000
+      }
     }
   }
 

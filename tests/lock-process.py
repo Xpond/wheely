@@ -65,6 +65,9 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
         path = stubs / name
         path.write_text("#!/bin/sh\n" + command + "\n")
         path.chmod(0o755)
+    logind = stubs / "busctl"
+    logind.write_text("#!/bin/sh\necho t 15000000\n")
+    logind.chmod(0o755)
     source = (lock / "Service.qml").read_text()
     source = source.replace("import QtQuick\n", "import QtQuick\nimport QtQuick.Window as QW\n")
     source = re.sub(r"  function realScreenCount\(\) \{.*?\n  }", "  function realScreenCount() { return 1 }", source, flags=re.S)
@@ -216,6 +219,16 @@ ShellRoot { Lock.Service {} }
         until(lambda: not child_pid(), "unlock retained its worker")
         until(lambda: not list(home.glob("wake.*")), "worker exited before its wake command finished", timeout=3)
         print("ok: shell restart/crash reconnects, worker crash recovers, unlock/wake retires", flush=True)
+
+        # At logind's own 5 s the sleep hook gives up after 4: secure is reported before that, and
+        # without waiting for a blank, which input can put off for as long as it lasts.
+        logind.write_text("#!/bin/sh\necho t 5000000\n")
+        assert ipc("lock") == "ok"
+        until(lambda: status().get("secure"), "a short logind delay read as a lock that never secured", timeout=4)
+        assert status()["lastEvent"] != "display: blank", status()
+        assert ipc("authenticated", child=True) == "ok"
+        until(lambda: not child_pid(), "unlock retained its worker")
+        print("ok: the suspend's wait ends inside a short logind delay", flush=True)
 
         # A worker that cannot start, then a missing bridge: the shell locks in-process instead.
         entry = worker / "shell.qml"

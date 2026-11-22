@@ -73,7 +73,10 @@ lit by a resume with no input is blanked again after five seconds, fifteen after
 suspend. These rules hold for every design, whatever its animation is doing. One wake
 starts the animation. A suspend gets the same five seconds: `status` reports `secure` only once
 this lock has blanked, and `omarchy-system-sleep-lock` holds the suspend until it does, so the
-entrance is seen before the machine sleeps and the first key after it wakes a blank. A resume
+entrance is seen before the machine sleeps and the first key after it wakes a blank. Input puts
+the blank off, so the wait also ends seven seconds after the lock is secure, or sooner under a
+shorter logind delay (two seconds inside the hook's budget, so after two seconds at logind's
+5 s default): past the budget the hook would report a locked session as unsecured. A resume
 met while blanked lights the display by itself (a 1 s watch sees the wall clock jump), so that
 first key plays the design on a lit panel instead of waiting out the monitor in the dark. The
 countdown pauses while the wake command runs, and an in-flight blank finishes before a
