@@ -13,10 +13,22 @@ while not directory.is_dir() and directory != directory.parent:
 relative = os.path.relpath(folder, directory)
 git = ["git", "--no-optional-locks", "--literal-pathspecs", "-C", str(directory)]
 
+
+def located(option):
+    said = subprocess.run(git + ["rev-parse", option], capture_output=True)
+    return None if said.returncode else said.stdout[:-1]
+
+
+# Named before any config is read, so all of git, and a filter that asks git again from another
+# folder (git-lfs does), reads the repository whose config is checked below.
+top, prefix, gitdir = map(located, ("--show-toplevel", "--show-prefix", "--absolute-git-dir"))
+if top is not None:
+    os.environb[b"GIT_DIR"], os.environb[b"GIT_WORK_TREE"] = gitdir, top
+
 # Any folder listed is read, whoever wrote its .git, and git runs commands found there: an fsmonitor
 # hook and clean filters its config names, and its hooks (a diff can rewrite the index). None runs
-# here; filters from the user's own config still do (git-lfs). Set through the environment, which no
-# name in it can break out of.
+# here; filters from the user's own config still do (git-lfs), their extensions from the repository's
+# as a plain cat. Set through the environment, which no name in it can break out of.
 listing = subprocess.run(git + ["config", "--list", "-z", "--show-scope", "--name-only"], capture_output=True)
 if listing.returncode:
     sys.exit(0)
@@ -25,8 +37,11 @@ config = [(b"core.fsmonitor", b"false"), (b"core.hooksPath", b"/dev/null")]
 # Matched as bytes: a name need not be text in this locale.
 for scope, key in zip(named[::2], named[1::2]):
     base, _, last = key.rpartition(b".")
-    if key.startswith(b"filter.") and last in (b"clean", b"process") and scope not in (b"system", b"global"):
+    theirs = scope not in (b"system", b"global")
+    if theirs and key.startswith(b"filter.") and last in (b"clean", b"process"):
         config.append((key, b""))
+    elif theirs and key.startswith(b"lfs.extension.") and last in (b"clean", b"smudge"):
+        config.append((key, b"cat"))
     elif key.startswith(b"hook.") and last == b"command":
         config.append((base + b".enabled", b"false"))
 os.environb[b"GIT_CONFIG_COUNT"] = str(len(config)).encode()
@@ -37,12 +52,8 @@ for i, (key, value) in enumerate(config):
 os.environb[b"GIT_NO_LAZY_FETCH"] = b"1"
 
 if mode == "status":
-    def located(option):
-        said = subprocess.run(git + ["rev-parse", option], capture_output=True)
-        if said.returncode:
-            sys.exit(0)
-        return said.stdout[:-1]
-    top, prefix, gitdir = map(located, ("--show-toplevel", "--show-prefix", "--absolute-git-dir"))
+    if top is None:
+        sys.exit(0)
     listed = prefix + os.fsencode("" if relative == "." else relative + "/")
     # git reports an untracked folder as one entry rather than walk it, however large. A path inside
     # the listed folder opens it, so its own entries are marked, but only beside the folder's name
@@ -51,9 +62,7 @@ if mode == "status":
     # Stopped, this script stops git too: the exit runs the kill below.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(1))
     # A submodule's own work tree is never read: its config is its own, and could name a filter.
-    # The repository is named, so git reads the one whose config was read above.
-    status = subprocess.Popen(git + ["-C", top, "--git-dir", gitdir, "--work-tree", top,
-                                     "status", "--porcelain", "-z", "--no-renames", "--ignore-submodules=dirty",
+    status = subprocess.Popen(git + ["-C", top, "status", "--porcelain", "-z", "--no-renames", "--ignore-submodules=dirty",
                                      "--untracked-files=normal", "--", path, path + b"/-"],
                               stdout=subprocess.PIPE)
     try:
