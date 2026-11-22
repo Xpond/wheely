@@ -83,9 +83,11 @@ Item {
   }
   function showProgress() { if (root.total > 0) root.progress = Math.min(1, gauge.done / root.total) }
 
-  // Pass paths as arguments to preserve shell metacharacters.
+  // Pass paths as arguments to preserve shell metacharacters. A failed copy takes what it made with
+  // it; a rename or link makes nothing when it fails.
   function guarded(verb, src, dst) {
-    return ["sh", "-c", 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; exec ' + verb + ' -- "$1" "$2"',
+    var undo = verb === "cp -r" ? ' || { rm -rf -- "$2"; exit 1; }' : ""
+    return ["sh", "-c", 'if [ -e "$2" ] || [ -L "$2" ]; then exit 17; fi; ' + verb + ' -- "$1" "$2"' + undo,
             "files", src, dst]
   }
 
@@ -93,13 +95,13 @@ Item {
 
   // Each into the folder in turn, past a name already taken, its own name included: 17 when every
   // name was taken, 18 when some were, 19 on partial failure, 1 on total failure. A move to another
-  // filesystem is a whole copy before the source goes, so a cancel removes only an unfinished copy
-  // and stops before the next.
+  // filesystem is a whole copy before the source goes, so a failure or cancel removes only the
+  // unfinished copy, and a cancel stops before the next.
   function pasteCommand(move, dir, paths) {
     return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0; trap "k=1" TERM; [ "$v" = mv ] && e=$(stat -c %d -- "$d"); put() { '
       + 'if [ "$v" = mv ] && [ "$(stat -c %d -- "$1")" = "$e" ]; then mv -- "$1" "$2"; return; fi; '
       + 'if [ "$v" = mv ]; then o=-a; else o=-r; fi; '
-      + 'if ! cp $o -- "$1" "$2"; then [ -z "$k" ] || rm -rf -- "$2"; return 1; fi; [ "$v" = cp ] || rm -rf -- "$1"; }; '
+      + 'if ! cp $o -- "$1" "$2"; then rm -rf -- "$2"; return 1; fi; [ "$v" = cp ] || rm -rf -- "$1"; }; '
       + 'for f do [ -z "$k" ] || break; t="$d/${f##*/}"; '
       + 'if [ -e "$t" ] || [ -L "$t" ]; then [ "$s" = 1 ] || s=17; elif put "$f" "$t"; then p=1; else s=1; fi; done; '
       + '[ -z "$k" ] || exit 130; if [ "$p" = 1 ]; then [ "$s" = 17 ] && s=18; [ "$s" = 1 ] && s=19; fi; exit $s',

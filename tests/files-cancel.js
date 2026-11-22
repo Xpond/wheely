@@ -71,6 +71,18 @@ try {
     assert.deepEqual(fs.readdirSync(at("from")).sort(), ["one", "two"], "a cancelled paste lost a source")
   }
 
+  // A copy that fails partway goes too, so a retry does not find its name taken: paste, a move to
+  // another filesystem, and Duplicate. Their sources stay.
+  fs.writeFileSync(at("bin", "cp"), '#!/bin/sh\nmkdir "$4"; printf half > "$4/half"; exit 1\n', { mode: 0o755 })
+  const guarded = method(opsSource, "guarded", {})
+  for (const [what, command] of [["paste", pasteCommand(false, at("to"), [at("from", "one")])],
+                                  ["move", pasteCommand(true, at("to"), [at("from", "one")])],
+                                  ["duplicate", guarded("cp -r", at("from", "one"), at("to", "one"))]]) {
+    assert.equal(spawnSync(command[0], command.slice(1), { env }).status, 1, what)
+    assert.deepEqual(fs.readdirSync(at("to")), [], "a failed " + what + " left a partial copy")
+    assert.ok(fs.existsSync(at("from", "one")), "a failed " + what + " lost its source")
+  }
+
   // Ctrl+K cancels; it is no one else's key outside naming and editing.
   let asked = 0
   const press = keymap("plugins/xpo.files/FilesKeys.js", { editing: false, naming: "", menu: null }, { cancel() { asked++ } }, {})
@@ -91,4 +103,4 @@ try {
 } finally {
   fs.rmSync(base, { recursive: true, force: true })
 }
-console.log("ok: cancelled extract, compress, copy and move leave nothing behind; the gauge reads what a job has read")
+console.log("ok: cancelled extract, compress, copy and move, and failed copies, leave nothing behind; the gauge reads what a job has read")
