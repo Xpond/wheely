@@ -52,7 +52,7 @@ switcher.
 The static scenes show the same rider and livery in wide landscapes. Ridge and night camp have a
 baked black bottom vignette for the bar; the highlands' black sand is already dark there. The
 smooth fade runs from 72% to 98% of the image height, starting up to 6% earlier at the corners.
-Every static background ships resized to 4K (3840 × 2162) at JPEG quality 90.
+Every static background ships resized to 4K (3840 × 2160) at JPEG quality 90.
 
 | Background | Scene |
 |---|---|
@@ -123,7 +123,8 @@ scripts/build-shaders.sh themes/wheelie/scene/*.{frag,vert}
 - Wheel sprites, rim finish, and chain material: OpenAI's gpt-image.
 - Static backgrounds: 5456×3072 outputs from `black-forest-labs/flux-3-image`, 4K, 16:9, from a
   composition draft and the scene's rider as references. Stray lettering was removed in small
-  `google/gemini-3-pro-image` patches; then the bottom vignette, then resized like the others.
+  `google/gemini-3-pro-image` patches. FLUX stretched the 3:2 drafts to 16:9, so each was narrowed back
+  (by 9–18%) and trimmed top and bottom; then the bottom vignette, then resized like the others.
 
 Contact shadows and lighting are code-defined. All of the images are AI-generated, and each
 static background's metadata says so (IPTC `trainedAlgorithmicMedia`) and names the model.
