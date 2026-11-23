@@ -55,7 +55,10 @@ const browsers = M.childrenOf(defaults, "setup.browser", answered)
 assert.deepEqual(browsers.map(e => e.label), ["Brave ✓", "Zen"])
 assert.equal(browsers[1].iconFont, "omarchy")
 const marked = M.menuRows(defaults, answered)
-assert.deepEqual(M.search(marked, "brave", 40, {}).map(r => r.label), ["Brave ✓"])
+assert.deepEqual(M.search(marked, "brave", 40, {}).map(r => r.label), ["Brave ✓", "Zen"],
+  "the current choice did not bring the other choices, which are its way off")
+assert.deepEqual(M.search(marked, "zen", 40, {}).map(r => r.label), ["Zen"], "an unticked choice brought its group")
+assert.deepEqual(M.search(marked, "brave", 1, {}).map(r => r.label), ["Brave ✓"], "the limit was exceeded")
 for (const delegate of ["WheelResults.qml", "WheelRing.qml"])
   assert.match(read("plugins/xpo.wheel/" + delegate), /font\.family: \w+\.modelData\.iconFont \|\| Style\.font\.menuFamily/,
     delegate + " draws every icon in the menu font")
