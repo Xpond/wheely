@@ -78,10 +78,10 @@ try {
   root.op = { spend: hold(["whole.txt"], false) }; root.held = later
   exited(root, {}, { cancel() {} }, 0)
   assert.equal(root.held, later, "a paste dropped a hold taken while it ran")
-  // To another drive (stat says so) a read-only folder goes with its original. An original whose parent
+  // To another drive (no rename) a read-only folder goes with its original. An original whose parent
   // can't be written is left whole; one that can't all go leaves a whole copy, and says so.
   fs.mkdirSync(at("drive"))
-  fs.writeFileSync(at("drive", "stat"), "#!/bin/sh\necho $$\n", { mode: 0o755 })
+  fs.writeFileSync(at("drive", "mv"), "#!/bin/sh\nexit 1\n", { mode: 0o755 })
   fs.writeFileSync(at("drive", "rm"), '#!/bin/sh\ncase "$*" in *stuck*) exit 1;; esac\nexec /usr/bin/rm "$@"\n', { mode: 0o755 })
   root.env = { ...process.env, PATH: at("drive") + ":" + process.env.PATH }
   for (const [from, status, note] of [["sealed", 0, "moved 1 items"], ["shut/inner", 1, "move failed"],
