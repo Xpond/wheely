@@ -54,11 +54,12 @@ Your settings are kept for a reinstall ([what stays](docs/install.md#what-stays-
 It also works from a TTY or over SSH.
 The themes are installed separately and are [removed separately](docs/install.md#removing-the-themes).
 
-## Also in this repo
+## Themes
 
-Two light Omarchy themes with animated wallpapers, installed separately:
-[Tidal](themes/tidal/README.md), an animated coast, and [Wheelie](themes/wheelie/README.md),
-a desert rider in a building sandstorm.
+Wheely comes with two Omarchy themes with animated wallpapers: [Tidal](themes/tidal/README.md),
+a light theme with a moving coast, and [Wheelie](themes/wheelie/README.md), a dark one with a
+rider in Omarchy colours holding a wheelie in a building sandstorm. Each installs on its own,
+with or without Wheely: `./themes/tidal/tidal install` or `./themes/wheelie/wheelie install`.
 
 ## Bugs and contributing
 

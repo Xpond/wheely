@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Every animated theme's theme-set and post-boot hook: themes/<name>/hooks/<name>-wallpaper links here.
+set -euo pipefail
+
+name=$(basename -- "$0" -wallpaper)
+theme="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/$name"
+code="${XDG_DATA_HOME:-$HOME/.local/share}/wheely/themes/$name"
+# Omarchy's theme removal deletes only the folder, so this hook and what it runs leave too.
+if [[ ! -d $theme && $0 == "$HOME"/.config/omarchy/hooks/* ]]; then rm -rf -- "$code" "$0"; exit 0; fi
+if [[ "$(cat "$HOME/.local/state/omarchy/current/theme.name")" == "$name" ]]; then
+  # Never from the theme's folder: another theme installed under this name is not ours to run.
+  exec "$code/$name" watch
+fi
