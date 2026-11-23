@@ -30,6 +30,6 @@ layout(binding = 1) uniform sampler2D source;
 
 void main() {
     vec4 color = texture(source, uv) * tint;
-    if (light > 0.5) color = daylightSand(color, place, false);
+    if (light > 0.5) color = daylightDust(color);
     fragColor = sceneLight(color, place, light) * (fade * qt_Opacity);
 }

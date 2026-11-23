@@ -8,7 +8,6 @@ ShaderEffect {
   property vector4d sceneRect: Qt.vector4d(-rect.x / rect.z, -rect.y / rect.w, 1 / rect.z, 1 / rect.w)
   property vector4d crop: Qt.vector4d(0, 0, 1, 1)
   property real light: 0 // 1 grades the daylight variant.
-  property real sandFrom: 2 // The scene row, as a share of its height, below which daylight recolours sand.
   property var source: Image { id: picture; visible: false; smooth: true; cache: false }
   fragmentShader: Qt.resolvedUrl("scene-light.frag.qsb")
 }
