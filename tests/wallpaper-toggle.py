@@ -14,6 +14,9 @@ with tempfile.TemporaryDirectory(prefix="wallpaper-toggle-") as temporary:
     for name in ("tidal", "wheelie"):
         (themes / name).mkdir(parents=True)
         shutil.copy2(repo / "themes" / name / name, themes / name / name)
+        # Installed as install does: Wheelie's scene is a file, Tidal's a folder.
+        (themes / name / "animated").mkdir()
+        if name == "wheelie": (themes / name / "animated/wallpaper.qml").touch()
         # A file of that name in the theme's own folder, which another theme may replace, never runs.
         theirs = config / "omarchy/themes" / name / name
         theirs.parent.mkdir(parents=True)
