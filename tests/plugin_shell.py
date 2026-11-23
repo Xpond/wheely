@@ -96,7 +96,7 @@ def check(repo, base, run, block):
     source = (repo / "patches/shell/shell.qml").read_text()
     methods = ["manifestHasKind", "pluginHasVisualCapabilities", "pluginHasBarCapabilities",
                "pluginShellCapabilityProfile", "createScopedPluginShell", "pluginShellFor",
-               "publicPluginManifest", "setPluginSurfaceVisible", "barHasPluginPopouts",
+               "publicPluginManifest", "setPluginSurfaceVisible", "barSharesBackdrop", "barHasPluginPopouts",
                "isBarWidgetPanelPlugin", "menuPluginMayControl", "summonablePanels",
                "syncPanelEntries", "computePanelEntries"]
     production = "\n".join(block(source, "  function " + name + r"\(") for name in methods)
@@ -110,14 +110,19 @@ def check(repo, base, run, block):
                                 "omarchy": {"clonedFrom": "omarchy.audio"}}
     manifests["third.radar"] = {"kinds": ["bar-widget", "panel"], "id": "third.radar",
                                 "name": "Radar"}
+    manifests["omarchy.image-picker"] = {"kinds": ["overlay"], "id": "omarchy.image-picker", "name": "Picker",
+                                          "__isFirstParty": True}
     (base / "Panel.qml").write_text('''import QtQuick
 Item {
   property var shell: null
   property var manifest: null
   property bool opened: false
+  property color scrim: "black"
   onOpenedChanged: shell.panelSurfaceVisible(opened)
 }
 ''')
+    # Omarchy's picker draws no backdrop and asks for none.
+    (base / "Picker.qml").write_text("import QtQuick\nItem { property bool opened: false; property color scrim: \"black\" }\n")
 
     run("plugin-loader-capabilities", '''
   property var shell: root
@@ -125,12 +130,13 @@ Item {
   property var _pluginShellApiDescriptors: ({})
   property var _pluginSurfaceStates: ({})
   property var panelLoaders: ({})
-  property var openPanelIds: ({"xpo.wheel": true, "xpo.files": true, "third.radar": true})
+  property var openPanelIds: ({"xpo.wheel": true, "xpo.files": true, "third.radar": true, "omarchy.image-picker": true})
+  readonly property var backdropOverlays: ["omarchy.image-picker"]
   ListModel { id: panelEntryModel }
   Component.onCompleted: syncPanelEntries()
   property var pluginRegistry: QtObject {
     property var installedPlugins: ''' + json.dumps(manifests) + '''
-    function entryPointUrl(manifest, kind) { return Qt.resolvedUrl("Panel.qml") }
+    function entryPointUrl(manifest, kind) { return Qt.resolvedUrl(manifest.id === "omarchy.image-picker" ? "Picker.qml" : "Panel.qml") }
     function resolveEnabledId(id) { return id }
     function isEnabled(id) { return true }
   }
@@ -176,11 +182,21 @@ Item {
       check(root.bar.visiblePanelSurfaces === 1, "handoff dropped Files backdrop")
       files.opened = false
       check(root.bar.visiblePanelSurfaces === 0, "backdrop retained after close")
+      // Omarchy's overlays take the shared backdrop in place of their own, across a handoff from the wheel.
+      var picker = root.panelLoaders["omarchy.image-picker"].item
+      check(Qt.colorEqual(picker.scrim, "transparent") && Qt.colorEqual(files.scrim, "black"), "overlay kept its own scrim")
+      wheel.opened = true
+      picker.opened = true
+      wheel.opened = false
+      check(root.bar.visiblePanelSurfaces === 1, "handoff to the picker dropped the backdrop")
+      picker.opened = false
+      check(root.bar.visiblePanelSurfaces === 0, "picker held the backdrop after close")
       var bareBar = root.bar
       check(!wheel.shell.claimPopout(wheel), "claimed a popout the bar cannot own")
       var loaded = "third.radar:Radar:third.radar,xpo.files:Files:xpo.files"
       check(listed() === loaded, "loader panels " + listed())
       root.bar = root.popoutBar
+      check(Qt.colorEqual(picker.scrim, Commons.Color.menu.scrim), "a bar without the shared backdrop left the picker undimmed")
       check(wheel.shell.claimPopout(wheel), "built-in bar refused the popout")
       check(listed() === "alice.audio:Alice Audio:omarchy.audio,omarchy.weather:Weather:omarchy.weather,"
             + loaded, "live panels " + listed())
@@ -190,4 +206,4 @@ Item {
       console.log("PASS"); Qt.quit()
     } catch (error) { console.error(String(error)); Qt.exit(1) }
   } }
-''')
+''', imports='import "Commons" as Commons')

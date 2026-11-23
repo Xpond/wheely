@@ -207,8 +207,8 @@ but QML components are cached, so changed code keeps running the old version.
 Use `omarchy restart shell`.
 
 **The wheel does not own its backdrop.** The wash and the blur behind the ring
-are one scrim surface owned by the bar, which the centered panels, the browser
-and the clipboard hold a count on too. The wheel takes that count when it opens
+are one scrim surface owned by the bar, which the centered panels, the browser,
+the clipboard and Omarchy's overlays hold a count on too. The wheel takes that count when it opens
 and drops it as its fade starts (`panelSurfaceVisible`), so the bar's 150 ms
 hold outlasts the 130 ms fade by 20 ms. Drawing a scrim on the
 wheel instead unmaps the blur along with the wheel, and the desktop snaps sharp
