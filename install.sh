@@ -209,7 +209,8 @@ else
 fi
 if (( ${#untested[@]} )); then
   echo "Lock screen left as Omarchy's: wheely is not yet updated for Omarchy $VERSION. Later: git pull && ./install.sh"
-  command -v notify-send >/dev/null && notify-send "wheely" "Lock screen left as Omarchy's until wheely supports Omarchy $VERSION"
+  # Critical: only those outlive the shell restart below.
+  command -v notify-send >/dev/null && notify-send -u critical "wheely" "Lock screen left as Omarchy's until wheely supports Omarchy $VERSION"
 fi
 
 omarchy restart shell || { alert "Could not restart Omarchy shell"; exit 1; }
