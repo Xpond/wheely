@@ -11,22 +11,12 @@ vec3 hslToRgb(vec3 hsl) {
     return hsl.z - hsl.y * min(hsl.z, 1.0 - hsl.z) * clamp(min(k - 3.0, 9.0 - k), -1.0, 1.0);
 }
 
-// Daylight sand, for a premultiplied colour at uv in scene coordinates: the tan dunes and dust and the
-// grey ground turn the theme's peach, or the storm pale cream. Saturated paint, whites, and dark rubber
-// keep their colour.
-vec4 daylightSand(vec4 premultiplied, vec2 uv, bool storm) {
-    vec3 color = premultiplied.rgb / max(premultiplied.a, 0.0001);
-    vec3 hsl = rgbToHsl(color);
-    float hue = hsl.x * 360.0;
-    float tan = smoothstep(0.0, 12.0, hue) * (1.0 - smoothstep(48.0, 62.0, hue))
-                * smoothstep(0.10, 0.18, hsl.y) * (1.0 - smoothstep(0.50, 0.65, hsl.y));
-    float ground = smoothstep(0.64, 0.68, uv.y) * (1.0 - smoothstep(0.20, 0.30, hsl.y))
-                   * (1.0 - smoothstep(0.75, 0.85, hsl.z));
-    float lit = pow(hsl.z, 0.55);
-    vec3 sand = storm ? hslToRgb(vec3(36.0 / 360.0, max(0.85 * hsl.y, 0.22), lit))
-                      : hslToRgb(vec3(22.0 / 360.0, 0.35, lit));
-    float amount = max(tan, ground) * smoothstep(0.12, 0.25, hsl.z);
-    return vec4(mix(color, sand, amount) * premultiplied.a, premultiplied.a);
+// Daylight dust, for a premultiplied colour: the storm and the dust in the air turn a sandy haze.
+// The ground keeps the plate's own colours.
+vec4 daylightDust(vec4 premultiplied) {
+    vec3 hsl = rgbToHsl(premultiplied.rgb / max(premultiplied.a, 0.0001));
+    vec3 haze = hslToRgb(vec3(38.0 / 360.0, 0.6 * hsl.y + 0.06, pow(hsl.z, 0.85)));
+    return vec4(haze * premultiplied.a, premultiplied.a);
 }
 
 // The scene's grade, for a premultiplied colour at uv in scene coordinates; light 1 grades the daylight variant.

@@ -57,7 +57,6 @@ Item {
                                                    scene.height * scene.scale / view.height)
           property vector4d crop: Qt.vector4d(0, 0, 1, 1)
           property real light: root.light
-          property real sandFrom: 2 // Its parts recolour themselves.
           fragmentShader: Qt.resolvedUrl("scene-light.frag.qsb")
         }
 
@@ -75,13 +74,12 @@ Item {
           // A rectangle as shares of the scene, which is how a moving part finds its lighting.
           function rect(x, y, w, h) { return Qt.vector4d(x / width, y / height, w / width, h / height) }
 
-          // In daylight, these two recolour their sky prints and sand before the grade.
+          // In daylight, the base recolours its sky prints before the grade.
           ShaderEffect {
             width: parent.width; height: parent.height
             property real light: root.light
-            property vector4d rect: Qt.vector4d(0, 0, 1, 1)
             property vector3d rows: Qt.vector3d(root.layout.prints[1] / height, root.layout.prints[2] / height,
-                                                root.layout.horizon / height)
+                                                root.layout.prints[3] / height)
             property var source: Image {
               source: "base.jpg"; smooth: true; cache: false; visible: false
               sourceSize: Qt.size(Math.ceil(scene.width * scene.decode), Math.ceil(scene.height * scene.decode))
@@ -93,12 +91,12 @@ Item {
             width: parent.width; height: parent.height; horizon: root.layout.horizon || 0
             decode: scene.decode; seconds: root.stormSeconds; light: root.light
           }
-          // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
+          // A white band across each sky print edge but the last, over the storm.
           Item {
             width: parent.width; height: root.layout.horizon || 0
             clip: true
             Repeater {
-              model: root.layout.prints || []
+              model: (root.layout.prints || []).slice(0, -1)
               Rectangle {
                 required property int modelData
                 y: modelData - root.layout.printBorder
@@ -107,18 +105,12 @@ Item {
               }
             }
           }
-          // Everything but the sky, redrawn over the storm.
-          ShaderEffect {
+          // The rider, bike, rocks and shrubs, redrawn over the storm.
+          Image {
             x: root.layout.cutout[0]; y: root.layout.cutout[1]
             width: root.layout.cutout[2]; height: root.layout.cutout[3]
-            property real light: root.light
-            property vector4d rect: scene.rect(x, y, width, height)
-            property vector3d rows: Qt.vector3d(0, 0, 0)
-            property var source: Image {
-              source: "cutout.png"; smooth: true; cache: false; visible: false
-              sourceSize: Qt.size(Math.ceil(root.layout.cutout[2] * scene.decode), Math.ceil(root.layout.cutout[3] * scene.decode))
-            }
-            fragmentShader: Qt.resolvedUrl("daylight.frag.qsb")
+            source: "cutout.png"; smooth: true; cache: false
+            sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
           }
         }
       }
@@ -175,8 +167,6 @@ Item {
               decoded: Qt.size(axle.decoded, axle.decoded)
               rect: scene.rect(axle.wheel.box[0], axle.wheel.box[1], width, height)
               light: root.light
-              // The rear cover's ground strip, below its swingarm.
-              sandFrom: axle.wheel.contactY ? (axle.wheel.contactY - axle.wheel.radius / 4) / scene.height : 2
             }
           }
         }

@@ -162,7 +162,7 @@ ShellRoot { Lock.Service {} }
         # versioned file: an unversioned URL on the way costs a second decode before the wallpaper shows.
         state = home / ".local/state/omarchy/current"
         state.mkdir(parents=True)
-        (state / "background").symlink_to(repo / "themes/wheelie/backgrounds/02-night-track.jpg")
+        (state / "background").symlink_to(repo / "themes/wheelie/backgrounds/02-highlands.jpg")
         (config / "lock-design").write_text("wallpaper\n")
         assert ipc("preview") == "ok"
         until(lambda: "WALLPAPER_READY" in logs(), "wallpaper design never drew its wallpaper")

@@ -48,5 +48,5 @@ void main() {
                0.018 * (noise(p + drift + vec2(5.2, 1.7)) - 0.5));
     st = clamp(st, vec2(0.0), vec2(1.0));
     vec4 dust = texture(storm, vec2(st.x, st.y / kept));
-    fragColor = (light > 0.5 ? daylightSand(dust, vec2(0.0), true) : dust) * qt_Opacity;
+    fragColor = (light > 0.5 ? daylightDust(dust) : dust) * qt_Opacity;
 }
