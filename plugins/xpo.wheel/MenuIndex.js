@@ -407,6 +407,8 @@ function menuRows(items, cond) {
     var row = entryOf(id, e, cond)
     row.trail = trail.join(" › ")
     row.kind = KIND.menu
+    // A checked row is one choice of its submenu; picking it again cannot turn it off.
+    if (e.checked) { row.choice = id.slice(0, id.lastIndexOf(".")); row.ticked = !!cond.checked[id] }
     row.keywords = [e.label, trail.join(" "), String(id).replace(/[.]/g, " "),
                     [].concat(e.aliases || []).join(" "), e.description || ""]
                    .join(" ").toLowerCase()
@@ -721,9 +723,17 @@ function search(index, query, limit, uses) {
         || (a.entry.recency || 0) - (b.entry.recency || 0)
         || a.len - b.len
   })
-  var out = []
-  for (var j = 0; j < hits.length && j < limit; j++) out.push(hits[j].entry)
-  return out
+  // The current choice brings the other choices of its submenu, unless they matched on their own.
+  var out = [], found
+  for (var j = 0; j < hits.length && out.length < limit; j++) {
+    var e = hits[j].entry
+    out.push(e)
+    if (!e.ticked) continue
+    found = found || new Set(hits.map(function (h) { return h.entry }))
+    for (var k = 0; k < index.length; k++)
+      if (index[k].choice === e.choice && !found.has(index[k])) out.push(index[k])
+  }
+  return out.slice(0, limit)
 }
 
 // Leading sigils select a search source.
