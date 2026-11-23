@@ -27,6 +27,8 @@ What the checks cover, what they need and how to run them is in
 - `patches/orig/` holds the stock Omarchy shell files a patch was made against, and
   `patches/shell/` the patched ones. Keep a patch to its feature: every unrelated line makes
   the next Omarchy release harder to rebase onto.
+- The lock is never merged, only installed over a stock pair it was tested on. Its patch follows
+  stable's lock; `patches/edge/` holds edge's newer pair until stable ships it.
 - Shaders are committed both as GLSL and as `.qsb`; rebuild with `scripts/build-shaders.sh`
   after editing one.
 - Wallpapers and art are AI-generated and shipped at 4K, JPEG quality 90 for photos; keep new ones in

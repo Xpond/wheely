@@ -168,6 +168,20 @@ with tempfile.TemporaryDirectory(prefix="omarchy-install-") as temporary:
         (fixture.shell / changed).write_bytes(fixture.stock[changed])
     print("ok: an upstream change to either lock file keeps Omarchy's own lock pair")
 
+    # Edge's newer lock pair, tested in patches/edge, gets edge's patch; revert restores its stock.
+    edge = fixture.repo / "patches/edge"
+    update = {**fixture.stock, **{f: (edge / "orig" / f).read_bytes() for f in lock}}
+    assert update != fixture.stock, "patches/edge matches stable's lock; delete it"
+    fixture.publish(update)
+    for f in lock: (fixture.shell / f).write_bytes(update[f])
+    result = fixture.run()
+    assert result.returncode == 0 and "Lock screen left" not in result.stdout, result.stdout + result.stderr
+    assert all(fixture.installed(f) == (edge / "shell" / f).read_bytes() for f in lock)
+    assert fixture.run("revert.sh").returncode == 0 and all(fixture.installed(f) == update[f] for f in lock)
+    fixture.publish(fixture.stock)
+    for f in lock: (fixture.shell / f).write_bytes(fixture.stock[f])
+    print("ok: edge's lock pair gets edge's tested patch, and revert restores its stock")
+
     # A lock file left stock holds back its partner.
     notes = fixture.user / ".local/state/omarchy/notifications"
     notes.mkdir(parents=True)

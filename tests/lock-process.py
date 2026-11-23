@@ -19,12 +19,15 @@ def interrupted(signum, frame):
 signal.signal(signal.SIGTERM, interrupted)
 repo = Path(__file__).resolve().parents[1]
 omarchy = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy"))
-# install.sh keeps Omarchy's own lock once upstream changes it, so a stale patches/orig means no designs.
-for name in ["LockView.qml", "Service.qml"]:
-    installed = (omarchy / "shell/plugins/lock" / name).read_bytes()
-    if installed not in [(repo / part / "plugins/lock" / name).read_bytes() for part in ["patches/orig", "patches/shell"]]:
-        raise SystemExit(f"Omarchy changed plugins/lock/{name}: install.sh will keep its stock lock. "
-                         "Rebase patches/shell onto it and copy it to patches/orig.")
+# install.sh patches only a lock pair it was tested on, stable's or edge's newer one, as here.
+def matches(pair):
+    return all((omarchy / "shell/plugins/lock" / name).read_bytes()
+               in [(pair / part / "plugins/lock" / name).read_bytes() for part in ["orig", "shell"]]
+               for name in ["LockView.qml", "Service.qml"])
+pair = next((pair for pair in [repo / "patches", repo / "patches/edge"] if matches(pair)), None)
+if pair is None:
+    raise SystemExit("Omarchy changed its lock: install.sh will keep its stock lock. Rebase the lock in "
+                     "patches/shell (stable) or patches/edge/shell onto it, and copy it to that pair's orig.")
 with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     out = Path(directory)
     home, runtime, stubs = out / "home", out / "runtime", out / "bin"
@@ -44,7 +47,7 @@ with tempfile.TemporaryDirectory(prefix="lock-process-") as directory:
     lock = out / "installed"
     # As installed: Omarchy's lock plugin (FingerprintModel.js, poster.sh) with our two files over it.
     shutil.copytree(omarchy / "shell/plugins/lock", lock)
-    shutil.copytree(repo / "patches/shell/plugins/lock", lock, dirs_exist_ok=True)
+    shutil.copytree(pair / "shell/plugins/lock", lock, dirs_exist_ok=True)
     (worker / "Lock").symlink_to(lock)
     (out / "Lock").symlink_to(lock)
     shutil.copytree(omarchy / "shell/Commons", out / "installed-commons")

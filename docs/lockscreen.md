@@ -22,9 +22,9 @@ at least ten seconds so the monitor can recover.
 
 ## Known limits
 
-- Edge (omarchy-dev) r8178 changed Omarchy's lock, so from that build on `install.sh` leaves
-  Omarchy's own in place, without these designs, and says so. The rest of wheely installs. The
-  patch follows stable, which would lose the designs if it were rebased onto that build.
+- The designs patch only an Omarchy lock they were tested on: stable's and edge's newest. On
+  any other `install.sh` leaves Omarchy's own in place, without these designs, and says so. The
+  rest of wheely installs.
 - Multi-monitor and fingerprint unlock are untested.
 - Typing right after a wake can start before the monitor shows a picture again.
 

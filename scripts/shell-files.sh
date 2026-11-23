@@ -21,7 +21,7 @@ is_stock() {
 # A recorded install or one under way, the current patch, or any committed version of it.
 is_ours() {
   cmp -s "$2" "$STATE/installed/$1" || cmp -s "$2" "$STATE/installed/$1.new" ||
-    cmp -s "$2" "$REPO/patches/shell/$1" ||
+    cmp -s "$2" "$REPO/patches/shell/$1" || cmp -s "$2" "$REPO/patches/edge/shell/$1" ||
     [[ -n $(git -C "$REPO" log --all -1 --format=%h --find-object="$(git hash-object "$2" 2>/dev/null)" \
             -- "patches/shell/$1" 2>/dev/null) ]]
 }
@@ -44,7 +44,7 @@ clear_copies() {
 # Write verified stock bytes to $2: the checkout's merge base, the copy a rebase kept, else the cached package.
 stock_copy() {
   local archive copy
-  for copy in "$REPO/patches/orig/$1" "$STATE/rebased/orig/$1"; do
+  for copy in "$REPO/patches/orig/$1" "$REPO/patches/edge/orig/$1" "$STATE/rebased/orig/$1"; do
     if is_stock "$1" "$copy"; then cp "$copy" "$2"; return; fi
   done
   archive=$(ls "$PACKAGE_CACHE/${PACKAGE_DB##*/}"-*.pkg.tar.zst 2>/dev/null | head -n 1)

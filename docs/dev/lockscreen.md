@@ -42,7 +42,8 @@ list; neither needs `install.sh` or sudo.
 | `patches/shell/plugins/lock/Service.qml` | PAM flow, unlock delay, display blanking, wake state and the preview |
 | `lock-session/Bridge.qml` | Keeps the shell's lock IPC available and starts/reconnects the worker; if it is missing or its worker cannot start, Service.qml locks in-process |
 | `lock-session/shell.qml` | Runs the installed authentication service and exits after unlock/wake or preview closure |
-| `patches/orig/plugins/lock/` | Stock copies used by the verified install/revert workflow |
+| `patches/orig/plugins/lock/` | Stock copies of stable's lock, used by the verified install/revert workflow |
+| `patches/edge/{orig,shell}/plugins/lock/` | Edge's newer stock lock and its patch, while stable lags it; once stable ships it, move them into `patches/` |
 | `bin/omarchy-lock-design` | Lists the designs, names the chosen one, or sets the one the next lock shows |
 | `lock/wallpaper/Scene.qml` | The wallpaper, blurred, fading in once decoded and out on unlock |
 | `tests/lock-idle.js` | The shared five-second idle blank, the monitor wake allowance and one replay per wake |

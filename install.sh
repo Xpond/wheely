@@ -101,10 +101,14 @@ failed=()    # recording or installation failed
 ready=()     # patch due to be copied in
 declare -A from=()  # the patch each ready file gets
 
-# The lock is never merged: a clean merge can still leave it unable to lock. Once upstream changes
-# either file, the pair stays Omarchy's own until patches/orig catches up.
-lock_untested=0
-for f in plugins/lock/{LockView,Service}.qml; do is_stock "$f" "$REPO/patches/orig/$f" || lock_untested=1; done
+# The lock is never merged: a clean merge can still leave it unable to lock. It goes only over a stock
+# pair it was tested on, stable's in patches/ or edge's newer one in patches/edge/; on any other
+# the pair stays Omarchy's own.
+lock_from=
+for dir in "$REPO/patches" "$REPO/patches/edge"; do
+  is_stock plugins/lock/LockView.qml "$dir/orig/plugins/lock/LockView.qml" &&
+    is_stock plugins/lock/Service.qml "$dir/orig/plugins/lock/Service.qml" && { lock_from=$dir; break; }
+done
 
 for f in "${FILES[@]}"; do
   installed="$SHELL_DIR/$f"
@@ -113,7 +117,10 @@ for f in "${FILES[@]}"; do
   stock="$STATE/rebased/orig/$f"
   merged="$STATE/rebased/shell/$f"
 
-  if [[ $f == plugins/lock/* ]] && (( lock_untested )); then untested+=("$f"); continue; fi
+  if [[ $f == plugins/lock/* ]]; then
+    [[ -n $lock_from ]] || { untested+=("$f"); continue; }
+    ours="$lock_from/shell/$f" base="$lock_from/orig/$f"
+  fi
   # A patch made for another Omarchy version is rebased onto the installed one in the state, never in
   # the checkout, so git pull keeps working. Stock is kept there for reruns once the patch covers it.
   if is_stock "$f" "$base"; then
@@ -209,7 +216,8 @@ else
 fi
 if (( ${#untested[@]} )); then
   echo "Lock screen left as Omarchy's: wheely is not yet updated for Omarchy $VERSION. Later: git pull && ./install.sh"
-  command -v notify-send >/dev/null && notify-send "wheely" "Lock screen left as Omarchy's until wheely supports Omarchy $VERSION"
+  # Critical: only those outlive the shell restart below.
+  command -v notify-send >/dev/null && notify-send -u critical "wheely" "Lock screen left as Omarchy's until wheely supports Omarchy $VERSION"
 fi
 
 omarchy restart shell || { alert "Could not restart Omarchy shell"; exit 1; }
