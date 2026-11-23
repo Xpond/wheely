@@ -40,7 +40,7 @@ z across it, with the near side at negative z.
   Each tyre has a complete 20-unit-deep cylinder, projected as one convex silhouette
   behind the bodywork. The wheel-well backing reaches the bottom of each opening,
   keeping the tread and recess solid when the body pitches during launch.
-- Decals are geometry on the body: Martini bands wrap continuously around the
+- Decals are geometry on the body: the stripe bands wrap continuously around the
   bumper and sweep over the rear quarter. Lettering follows the same surfaces.
 
 `project()` uses yaw 30°, downward pitch 0.2 radians and perspective distance 1400.
