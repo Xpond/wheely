@@ -58,13 +58,13 @@ try {
   assert.notEqual(cancelled(A.compressCommand(at("c"), at("c", "c.zip"), ["a.txt"]), () => fs.existsSync(at("c", "c.zip"))), 0)
   assert.deepEqual(fs.readdirSync(at("c")), ["a.txt"], "a cancelled compress left its archive")
 
-  // Copy, and a move to another filesystem (stat says so): the copy being made goes, the sources stay,
+  // Copy, and a move to another filesystem (no rename): the copy being made goes, the sources stay,
   // and the next is never started.
   fs.mkdirSync(at("from")); fs.mkdirSync(at("to"))
   for (const n of ["one", "two"]) fs.writeFileSync(at("from", n), n)
   const pasteCommand = method(opsSource, "pasteCommand", {})
   for (const move of [false, true]) {
-    if (move) fs.writeFileSync(at("bin", "stat"), "#!/bin/sh\necho $$\n", { mode: 0o755 })
+    if (move) fs.writeFileSync(at("bin", "mv"), "#!/bin/sh\nexit 1\n", { mode: 0o755 })
     const paste = pasteCommand(move, at("to"), [at("from", "one"), at("from", "two")])
     assert.equal(cancelled(paste, () => fs.existsSync(at("to", "one"))), 130)
     assert.deepEqual(fs.readdirSync(at("to")), [], "a cancelled paste left a partial copy or went on to the next")

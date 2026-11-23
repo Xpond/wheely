@@ -94,16 +94,17 @@ Item {
   function inHere(name) { return root.panel.listedDir.replace(/\/+$/, "") + "/" + name }
 
   // Each into the folder in turn, past a name already taken, its own name included: 17 when every
-  // name was taken, 18 when some were, 19 on partial failure, 1 on total failure. A move to another
-  // filesystem is a whole copy before the source goes, so its failure, like any cancel, removes only
+  // name was taken, 18 when some were, 19 on partial failure, 1 on total failure. A move is a rename,
+  // never mv's own copy (across a bind mount it would remove as it went); where that fails it is a
+  // whole copy before the source goes, so its failure, like any cancel, removes only
   // the unfinished copy; a cancel stops before the next. A failed copy keeps a folder holding what did
   // copy, which counts as partial. rm empties a folder before it finds that it can't remove it: so a
   // move needs the source's parent writable first, drop opens read-only folders, and 20 says a source
   // still would not all go, leaving the copy the only whole one.
   function pasteCommand(move, dir, paths) {
-    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0 r=; trap "k=1" TERM; [ "$v" = mv ] && e=$(stat -c %d -- "$d"); '
+    return ["sh", "-c", 'v=$1 d=$2; shift 2; s=0 p=0 r=; trap "k=1" TERM; '
       + 'drop() { rm -rf -- "$1" 2>/dev/null || { find "$1" -type d -exec chmod u+rwx {} +; rm -rf -- "$1"; }; }; put() { '
-      + 'if [ "$v" = mv ] && [ "$(stat -c %d -- "$1")" = "$e" ]; then mv -- "$1" "$2"; return; fi; '
+      + 'if [ "$v" = mv ] && mv --no-copy -- "$1" "$2" 2>/dev/null; then return; fi; '
       + 'if [ "$v" = mv ]; then [ -w "${1%/*}/" ] || return 1; o=-a; else o=-r; fi; '
       + 'if ! cp $o -- "$1" "$2"; then if [ -n "$k" ] || [ "$v" = mv ]; then drop "$2"; '
       + 'else rm -df -- "$2" 2>/dev/null; [ ! -d "$2" ] || p=1; fi; return 1; fi; [ "$v" = cp ] || drop "$1" || r=1; }; '
