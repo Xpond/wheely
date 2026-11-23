@@ -1260,6 +1260,13 @@ ShellRoot {
     return out
   }
 
+  // Overlays that draw no backdrop of their own, or one that would blink out in a handoff.
+  readonly property var backdropOverlays: ["omarchy.image-picker", "omarchy.menu", "omarchy.emojis", "omarchy.reminders"]
+
+  function barSharesBackdrop() {
+    return !!shell.bar && typeof shell.bar.panelSurfaceVisible === "function"
+  }
+
   // Plugin popout ownership comes from the built-in Bar.qml. A custom
   // full bar may lack it; plugins then open without claiming its popout slot.
   function barHasPluginPopouts() {
@@ -1512,6 +1519,12 @@ ShellRoot {
       required property string sourceUrl
       // The manifest can be replaced on a rescan without the entry changing.
       readonly property var manifest: shell.pluginRegistry.installedPlugins[pluginId]
+      // Omarchy's own overlays stand on the bar's one backdrop, as the wheel and panels do,
+      // so opening one from another neither drops the blur nor doubles the dim.
+      readonly property bool sharesBackdrop: shell.backdropOverlays.indexOf(pluginId) !== -1
+      readonly property bool backdropWanted: sharesBackdrop && !!panelLoader.item && panelLoader.item.opened === true
+      onBackdropWantedChanged: shell.setPluginSurfaceVisible("backdrop:" + pluginId, backdropWanted)
+      Component.onDestruction: shell.setPluginSurfaceVisible("backdrop:" + pluginId, false)
 
       property Loader panelLoader: Loader {
         source: panelEntry.sourceUrl
@@ -1528,6 +1541,9 @@ ShellRoot {
           // state off `service`. Hand them the matching singleton if one was
           // loaded.
           if ("service" in item) item.service = shell.serviceFor(panelEntry.pluginId)
+          // A bar in place of Omarchy's has no backdrop to share; the overlay dims itself as stock.
+          if (panelEntry.sharesBackdrop && "scrim" in item)
+            item.scrim = Qt.binding(function() { return shell.barSharesBackdrop() ? "transparent" : Commons.Color.menu.scrim })
           shell.registerPanelLoader(panelEntry.pluginId, this)
         }
         onStatusChanged: {

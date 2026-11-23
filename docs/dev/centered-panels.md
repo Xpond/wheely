@@ -78,7 +78,7 @@ Eight package-owned QML files plus Hyprland config.
 | `plugins/lock/LockView.qml` | hosts the chosen lock-screen design from `lock/` behind a frosted password field; not panel-related, but patched through the same machinery. See [`lockscreen.md`](../lockscreen.md) |
 | `plugins/lock/Service.qml` | runs in its own worker process, started by `lock-session/Bridge.qml`; on successful authentication the design plays its exit before a timer releases the lock; tracks `blanked` for the wake flow |
 | `services/PluginShellApi.qml` | narrow peer-panel, popout, and shared-scrim callbacks without exposing host objects |
-| `shell.qml` | sets the render loop and software video decoding; grants menu plugins control of enabled non-authentication UI plugins and implements the callbacks above |
+| `shell.qml` | sets the render loop and software video decoding; grants menu plugins control of enabled non-authentication UI plugins and implements the callbacks above; puts Omarchy's image picker, menu, emoji picker and reminders on the shared scrim, blanking their own unless the bar has none to share |
 
 `config/hyprland.lua` is the installed source of truth. It explicitly disables
 blur on the wheel/files overlays, then installation reloads Hyprland and rolls
@@ -271,7 +271,7 @@ package-owned file.
 
 | Knob | Value | Effect |
 |---|---|---|
-| `panelScrimColor` | `Commons.Color.menu.scrim` | the one backdrop, behind panels, wheel, browser and clipboard alike |
+| `panelScrimColor` | `Commons.Color.menu.scrim` | the one backdrop, behind panels, wheel, browser, clipboard and Omarchy's overlays alike |
 | `panelScrimHoldMs` | `150` | **must stay >= `KeyboardPanel`'s close fade** (120 ms) or the backdrop drops out early |
 
 > Two cross-file couplings, both easy to break: `panelScrimHoldMs` >=
