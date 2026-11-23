@@ -79,7 +79,7 @@ Item {
             width: parent.width; height: parent.height
             property real light: root.light
             property vector3d rows: Qt.vector3d(root.layout.prints[1] / height, root.layout.prints[2] / height,
-                                                root.layout.horizon / height)
+                                                root.layout.prints[3] / height)
             property var source: Image {
               source: "base.jpg"; smooth: true; cache: false; visible: false
               sourceSize: Qt.size(Math.ceil(scene.width * scene.decode), Math.ceil(scene.height * scene.decode))
