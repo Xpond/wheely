@@ -24,9 +24,10 @@ copy leaves it untouched; the scene stops only for the directory swap. Rerun the
 installer if a later step fails. What runs goes apart from the theme, in
 `~/.local/share/wheely/themes/wheelie`: this command, and the baked scene in `scene/` as
 `animated/`. The themes folder is any theme's to replace, so nothing in it is ever run.
-Two native stills come first among the theme's backgrounds, and four static scenes follow:
-`00-wheelie-animated.jpg` and `00-wheelie-light-animated.jpg`, the same scene recoloured to daylight.
-Theme-change and post-boot hooks start the wallpaper controller, `scene/wallpaper.qml`. While either still is selected, the controller runs
+Three native stills come first among the theme's backgrounds, and four static scenes follow:
+`00-wheelie-animated.jpg`; `00-wheelie-blend-animated.jpg`, its skies cross-fading unframed; and
+`00-wheelie-light-animated.jpg`, the same scene recoloured to daylight.
+Theme-change and post-boot hooks start the wallpaper controller, `scene/wallpaper.qml`. While any of these stills is selected, the controller runs
 the live scene on every display. The scene is cropped to fill each screen and sits above
 the shell's static background and below windows. It takes no input or focus. Choosing
 another background unloads it; choosing another theme also ends the controller, until
@@ -78,6 +79,8 @@ behind the bar. Pausing holds every particle in place.
   the sky and is drawn over the storm, which ends just inside the dunes at the `horizon`
   row in `layout.json`. `Surface.qml` redraws the print borders over the storm from
   `prints` and `printBorder`, so thin dust never ghosts a border through it.
+- The blend variant draws `sky-blend.jpg` over the prints and leaves out the borders: the same
+  three photos as unframed strips that cross-fade over 200 rows at rows 360 and 720.
 - `HorizonStorm.qml` times the storm; `storm-wall.frag` scales and gently distorts
   `storm.png`, which holds only the dust and is 6336 pixels wide, so it never enlarges
   over the native scene.

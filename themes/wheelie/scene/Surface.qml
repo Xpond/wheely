@@ -8,6 +8,7 @@ Item {
   id: root
   property bool running: true
   property real light: 0 // 1 grades the daylight variant.
+  property bool blend: false // The blend variant: its skies cross-fade, unframed.
   property int revolution: 1200
   property real seconds
   // The storm steps 20 times a second on a clock tick, so regrading it adds no presentation.
@@ -88,6 +89,14 @@ Item {
             }
             fragmentShader: Qt.resolvedUrl("daylight.frag.qsb")
           }
+          Loader {
+            active: root.blend
+            sourceComponent: Image {
+              width: scene.width; height: root.layout.horizon
+              source: "sky-blend.jpg"; smooth: true; cache: false
+              sourceSize: Qt.size(Math.ceil(width * scene.decode), Math.ceil(height * scene.decode))
+            }
+          }
           // Sized by bindings, not anchors: anchors apply only after the storm image starts loading.
           HorizonStorm {
             width: parent.width; height: parent.height; horizon: root.layout.horizon || 0
@@ -96,7 +105,7 @@ Item {
           // A white band across each sky print edge, over the storm; the last edge lies past the horizon.
           Item {
             width: parent.width; height: root.layout.horizon || 0
-            clip: true
+            clip: true; visible: !root.blend
             Repeater {
               model: root.layout.prints || []
               Rectangle {

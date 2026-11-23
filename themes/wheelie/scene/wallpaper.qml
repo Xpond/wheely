@@ -18,7 +18,9 @@ Scope {
   property bool wheelieTheme: false
   // By name, any extension: a copy staged before the poster became a JPEG still animates.
   readonly property bool light: /\/00-wheelie-light-animated\.\w+$/.test(background)
-  readonly property bool animated: wheelieTheme && (light || /\/00-wheelie-animated\.\w+$/.test(background))
+  readonly property bool blend: /\/00-wheelie-blend-animated\.\w+$/.test(background)
+  // One test, so switching between variants never reads as leaving them and rebuilds the scene.
+  readonly property bool animated: wheelieTheme && /\/00-wheelie(-light|-blend)?-animated\.\w+$/.test(background)
 
   // Watch the directory: watching the image misses replacement of its symlink.
   FileView {
@@ -99,7 +101,7 @@ Scope {
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
       Surface {
-        anchors.fill: parent; dpr: wallpaper.devicePixelRatio; light: root.light ? 1 : 0
+        anchors.fill: parent; dpr: wallpaper.devicePixelRatio; light: root.light ? 1 : 0; blend: root.blend
         running: !root.paused && !wallpaper.suspended
       }
     }

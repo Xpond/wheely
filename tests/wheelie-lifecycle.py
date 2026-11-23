@@ -24,7 +24,7 @@ env = os.environ | {"QT_QPA_PLATFORM": "offscreen", "QT_QPA_PLATFORMTHEME": "gen
 def stage(theme):
     """Omarchy's copy of the current theme, which the background link points into."""
     (theme / "backgrounds").mkdir(parents=True)
-    for name in ("00-wheelie-animated.jpg", "00-wheelie-light-animated.jpg", "static.png"):
+    for name in ("00-wheelie-animated.jpg", "00-wheelie-light-animated.jpg", "00-wheelie-blend-animated.jpg", "static.png"):
         (theme / "backgrounds" / name).touch()
 
 
@@ -57,7 +57,7 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
         running: root.testScene ? root.testScene.running : false,
         ready: root.testScene ? !!root.testScene.layout.cutout : false,
         turn: root.testScene ? root.testScene.wheelTurn : 0, frames: root.frames,
-        light: root.testScene ? root.testScene.light : -1})
+        light: root.testScene ? root.testScene.light : -1, blend: root.testScene ? root.testScene.blend : null})
     }
     function pause(): void''')
     qml = qslog.patch(qml, 'onTriggered: Hyprland.refreshMonitors()', 'onTriggered: {}')
@@ -130,9 +130,11 @@ with tempfile.TemporaryDirectory(prefix="wheelie-lifecycle-") as temp:
                 select("static.png")
                 wait_for(lambda s: not s["animated"] and not s["loaded"])
                 select("00-wheelie-light-animated.jpg")
-                wait_for(lambda s: s["running"] and s["light"] == 1)
+                wait_for(lambda s: s["running"] and s["light"] == 1 and not s["blend"])
+                select("00-wheelie-blend-animated.jpg")
+                wait_for(lambda s: s["running"] and s["light"] == 0 and s["blend"])
                 select("00-wheelie-animated.jpg")
-                wait_for(lambda s: s["running"] and s["light"] == 0)
+                wait_for(lambda s: s["running"] and s["light"] == 0 and not s["blend"])
             # Setting the theme again replaces the folder the link points into, and empties
             # theme.name before writing it. Neither may restart the scene or lift a pause.
             ipc("pause")
