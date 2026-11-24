@@ -6,12 +6,13 @@ themes, fonts and files. It works alongside Omarchy's own menu and Walker.
 
 https://github.com/user-attachments/assets/57656b5b-241f-46d3-b071-86351037a481
 
-> **Early release.** Tested only on Omarchy 4.5.0rc3, 4.5.0-3 and edge (omarchy-dev r8045)
-> with Quickshell 0.3.2.r7, one NVIDIA GPU and one monitor (a second screen only as a virtual
-> display), without fingerprint unlock. It patches Omarchy's shell files with `sudo`, so
-> `omarchy plugin add` cannot install it. It takes over `SUPER+A` and `SUPER+W`, and
-> `Ctrl+Space` while Tidal or Wheelie is the active theme. The lock screen is a work in progress,
-> and edge builds from r8178 on keep Omarchy's own lock, without the designs.
+> **Early release.** Made for Omarchy stable (4.5), and its tests also run against rc and edge's
+> current packages. Used only with Quickshell 0.3.2.r7, one NVIDIA GPU and one monitor (a second
+> screen only as a virtual display), without fingerprint unlock. It patches Omarchy's shell files
+> with `sudo`, so `omarchy plugin add` cannot install it. It takes over `SUPER+A` and `SUPER+W`,
+> and `Ctrl+Space` while Tidal or Wheelie is the active theme. The lock screen is a work in
+> progress. Edge changed Omarchy's lock in r8178, so there wheely keeps Omarchy's own lock,
+> without the designs, and says so.
 
 ## Features
 
