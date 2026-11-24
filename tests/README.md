@@ -8,6 +8,12 @@ its temporary render outputs. It needs Node.js, Python 3 with Pygments, Quickshe
 `qsb` and `qmltestrunner` (`/usr/lib/qt6/bin`), ImageMagick, `lua`, `bsdtar`, `fd`, `git`,
 and the normal Omarchy tools. GPU checks open temporary preview windows.
 
+`scripts/test-channels.sh [stable] [rc] [edge]` tests the other channels without switching
+to them: it unpacks each channel's `omarchy` and `omarchy-settings` packages (the `-dev` ones
+on edge) into `~/.cache/wheely/channels/`, again only when a channel's version changes,
+checks that every shell patch applies to them, and runs each test that reads `OMARCHY_PATH`
+against them. The rest of the suite does not read Omarchy's files, so `all.sh` covers it once.
+
 For focused checks, run these entry points from the repository root:
 
 | Command | Coverage and layout |
