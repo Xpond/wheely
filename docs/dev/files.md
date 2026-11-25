@@ -597,8 +597,8 @@ fills 3 and 9 o'clock. It is ranked with the panels rather than the apps, which 
 GNOME Files, whose entry is also called "Files".
 
 The backdrop is not this surface's. The wash and the blur behind the card
-belong to one scrim owned by the bar, which the panels, the wheel and the
-clipboard hold a count on too — so opening the browser from the wheel changes
+belong to one scrim owned by the bar, which the panels, the wheel, the
+clipboard and Omarchy's overlays hold a count on too — so opening the browser from the wheel changes
 what stands on the backdrop without the backdrop itself going anywhere. This
 surface only asks for that count when it opens (`Files.qml` `onOpenedChanged`)
 and lets it go when it closes; the bar holds the scrim 150 ms past the last
