@@ -87,13 +87,14 @@ back if the block adds configuration errors. Revert removes only the managed blo
 ### Why the scrim lives in the bar
 
 Panels are separate layer surfaces that unmap and remap as you tab between
-them — and so are the wheel, the browser and the clipboard, which unmap and
+them — and so are the wheel, the browser, the clipboard and Omarchy's own overlays
+(image picker, menu, emoji picker, reminders), which unmap and
 remap as the wheel hands over to whatever you picked. A scrim inside any of
 them blinks out mid-handoff and takes Hyprland's blur with it. One bar-owned
 surface stays mapped across the whole interaction, and every one of those
 surfaces holds a count on it (`panelSurfaceVisible`) rather than drawing its
-own. Only the clipboard still can: a bar plugin in place of Omarchy's has no
-scrim to share.
+own. Only the clipboard and Omarchy's overlays still can, and only when a bar plugin
+in place of Omarchy's has no scrim to share.
 
 Ordering is by **Wayland layer**, not by `layer_rule`'s `order` field:
 

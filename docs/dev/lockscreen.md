@@ -122,8 +122,8 @@ where the field was.
 
 `omarchy-shell lock preview` and `omarchy-shell lock hidePreview` show/hide the real
 view without locking. That preview plays the entrance but does not exercise PAM,
-drive-off or wake flow. For lock events, inspect the user journal for `omarchy lock`:
-`display: blank`, `display: wake`, `unlock: driving off`, `unlocked`.
+drive-off or wake flow. Lock events go to the journal as `wheely-lock`
+(`journalctl -t wheely-lock`): `display: blank`, `display: wake`, `unlock: driving off`, `unlocked`.
 
 Use GPU captures for visual checks; SVGs miss Qt fill defects and the software
 renderer has crashed on this scene. Use a timeout and file-backed Quickshell logs

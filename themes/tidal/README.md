@@ -61,13 +61,6 @@ The detailed foam, caustics, and ripples render directly at the display's resolu
 including 4K, with no low-resolution texture cap or upscaling. No video player
 is needed.
 
-Foam uses a seamless bubble texture. Wave geometry and old tide marks are cached at
-the display's pixel width and refreshed only when its size or scale changes; motion
-and fine detail still render at full resolution on every update.
-Repeating noise uses a 64 KiB cache per surface of its original lattice values, preserving the
-same interpolation and slopes without recalculating hashes for each pixel.
-The shader also skips noise whose weight is exactly zero, which the held tide makes common.
-
 ```bash
 ~/.local/share/wheely/themes/tidal/tidal pause
 ~/.local/share/wheely/themes/tidal/tidal resume
@@ -104,6 +97,13 @@ The code is under the repository's [MIT license](../../LICENSE). No copyright is
 generated images; to the extent any rights exist, they are offered under the same license.
 
 ## Development
+
+Foam uses a seamless bubble texture. Wave geometry and old tide marks are cached at
+the display's pixel width and refreshed only when its size or scale changes; motion
+and fine detail still render at full resolution on every update.
+Repeating noise uses a 64 KiB cache per surface of its original lattice values, preserving the
+same interpolation and slopes without recalculating hashes for each pixel.
+The shader also skips noise whose weight is exactly zero, which the held tide makes common.
 
 Rebuild the shaders after editing `animated/*.frag`:
 

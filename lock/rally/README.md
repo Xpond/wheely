@@ -223,6 +223,5 @@ The tests check behaviour, not looks: inspect whole captures for visual changes.
 
 ## Known gaps
 
-- The car's aero parts remain subject to visual review.
 - Thin gaps along the roof and belt show during pitch.
 - Native 4K artwork is deferred.
