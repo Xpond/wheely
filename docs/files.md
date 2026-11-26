@@ -8,7 +8,7 @@ Every key is in the wheel's manual: type `help files` in the wheel, or see
 [`manual.md`](../plugins/xpo.wheel/manual.md). The mouse works too: click to select,
 double-click to open, right-click for the menu, `Ctrl`/`Shift`+click to mark.
 
-| ![Files, Tidal theme](images/tidal/05-files.webp) | ![Files, Wheelie theme](images/wheelie/05-files.webp) |
+| ![Files, Tidal theme](images/tidal/05-files.avif) | ![Files, Wheelie theme](images/wheelie/05-files.avif) |
 |---|---|
 
 ## Getting around
@@ -80,7 +80,7 @@ marks.
 Right-click an entry, or press `Menu` or `Shift+F10`, for what it can do. Right-click
 the path or the empty space below the rows for the folder itself.
 
-| ![The Files menu, Tidal theme](images/tidal/06-files-menu.webp) | ![The Files menu, Wheelie theme](images/wheelie/06-files-menu.webp) |
+| ![The Files menu, Tidal theme](images/tidal/06-files-menu.avif) | ![The Files menu, Wheelie theme](images/wheelie/06-files-menu.avif) |
 |---|---|
 
 | selection | adds |

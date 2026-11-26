@@ -5,7 +5,7 @@ Designs (search `lockscreen`), or from a terminal with `omarchy-lock-design list
 `current` and `set <name>`. `omarchy-shell lock preview` shows the chosen design without
 locking. The next lock uses it; nothing needs reinstalling.
 
-![The six lock designs](images/tidal/08-lock-grid.webp)
+![The six lock designs](images/tidal/08-lock-grid.avif)
 
 | design | |
 |---|---|
