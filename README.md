@@ -4,7 +4,7 @@ A radial launcher for [Omarchy](https://omarchy.org). `SUPER+A` puts your bar's 
 ring; start typing to search for anything: apps, open windows, keybindings, the Omarchy menu,
 themes, fonts and files. It works alongside Omarchy's own menu and Walker.
 
-https://github.com/user-attachments/assets/57656b5b-241f-46d3-b071-86351037a481
+https://github.com/user-attachments/assets/ae1dd625-12f5-46b3-b646-ba1e9c9a67e1
 
 > **Early release.** Made for Omarchy stable (4.5), and its tests also run against rc and edge's
 > current packages. Used only with Quickshell 0.3.2.r7, one NVIDIA GPU and one monitor (a second
