@@ -4,7 +4,7 @@ Omarchy's bar panels (Display, Audio, Network, Power…) open centered on screen
 blurred desktop, instead of beside their widget on the bar. Switching panels with
 `Ctrl+←` `Ctrl+→` keeps the backdrop.
 
-| ![A centered panel, Tidal theme](images/tidal/07-panel.webp) | ![A centered panel, Wheelie theme](images/wheelie/07-panel.webp) |
+| ![A centered panel, Tidal theme](images/tidal/07-panel.avif) | ![A centered panel, Wheelie theme](images/wheelie/07-panel.avif) |
 |---|---|
 
 ## Settings
