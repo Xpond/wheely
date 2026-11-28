@@ -6,7 +6,16 @@ name=$(basename -- "$0" -wallpaper)
 theme="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes/$name"
 code="${XDG_DATA_HOME:-$HOME/.local/share}/wheely/themes/$name"
 # Omarchy's theme removal deletes only the folder, so this hook and what it runs leave too.
-if [[ ! -d $theme && $0 == "$HOME"/.config/omarchy/hooks/* ]]; then rm -rf -- "$code" "$0"; exit 0; fi
+if [[ ! -d $theme && $0 == "$HOME"/.config/omarchy/hooks/* ]]; then
+  rm -rf -- "$code" "$0"
+  # The last animated theme to leave takes wheely-fetch and the fastfetch link along.
+  if [[ -z $(ls -A -- "${code%/*}" 2>/dev/null) ]]; then
+    fetch="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/config.jsonc"
+    rm -f -- "$HOME/.local/bin/wheely-fetch"
+    if [[ $(readlink -- "$fetch") == "$HOME/.local/state/omarchy/current/theme/fastfetch/config.jsonc" ]]; then rm -f -- "$fetch"; fi
+  fi
+  exit 0
+fi
 if [[ "$(cat "$HOME/.local/state/omarchy/current/theme.name")" == "$name" ]]; then
   # Never from the theme's folder: another theme installed under this name is not ours to run.
   exec "$code/$name" watch

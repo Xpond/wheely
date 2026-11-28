@@ -61,7 +61,11 @@ directories. Additional checks and their dependencies are documented with the fe
   offscreen platform cannot initialize Vulkan.
   `python3 tests/wheelie-install.py` checks staged installation and that failed copies
   leave the installed theme untouched, with temporary paths and command stubs; it needs
-  no graphics session.
+  no graphics session. It also checks the fastfetch link, that a user's own fastfetch config
+  stays, and that the last theme removed takes `wheely-fetch` and the link along.
+- `python3 tests/fastfetch-play.py` plays a tiny scene through `wheely-fetch` on a
+  pseudo-terminal with fastfetch stubbed, and checks plain fastfetch for arguments, pipes and
+  themes without a scene.
 - `python3 tests/wallpaper-toggle.py` checks that the shared pause shortcut routes
   to the active Tidal or Wheelie CLI and leaves other or missing themes alone.
 - `python3 tests/theme-dpr.py` checks that both wallpapers size their textures from the

@@ -165,16 +165,18 @@ print("ok: animate defaults to colorful, accepts muted, and rejects unknown pale
 source = output / "source"
 shutil.rmtree(source, ignore_errors=True)
 # What runs goes apart from the theme's folder, which holds only data and is another theme's to replace.
-data = ["colors.toml", "shell.toml", "icons.theme", "preview.jpg", "backgrounds/01-shoreline.jpg"]
+data = ["colors.toml", "shell.toml", "icons.theme", "preview.jpg", "backgrounds/01-shoreline.jpg",
+        "fastfetch/config.jsonc", "fastfetch/logo.txt", "fastfetch/scene.txt"]
 runtime = ["animated/shell.qml", "animated/tidal.frag.qsb", "animated/noise.frag.qsb"]
 for name in data + runtime + ["README.md", "preview.qml", "hooks/tidal-wallpaper", "animated/tidal.frag",
                               "animated/noise.frag", "animated/noise.glsl", "animated/bake-bubbles.py"]:
     (source / name).parent.mkdir(parents=True, exist_ok=True)
     (source / name).write_text(name)
 shutil.copy2(repo / "themes/tidal/tidal", source / "tidal")
+(output / "fastfetch-play").write_text("player")
 (theme_folder / "backgrounds").mkdir(parents=True, exist_ok=True)
 (theme_folder / "backgrounds/stale.jpg").write_text("removed from the theme")
-subprocess.run([str(source / "tidal"), "install"], env=cli_env, check=True, capture_output=True)
+subprocess.run([str(source / "tidal"), "install"], env=dict(cli_env, HOME=str(output / "home")), check=True, capture_output=True)
 for folder, files in ((theme_folder, data), (installed, runtime + ["tidal"])):
     assert sorted(str(p.relative_to(folder)) for p in folder.rglob("*") if p.is_file()) == sorted(files), folder
 assert not list((output / "config/omarchy").glob(".tidal-install-*"))

@@ -31,6 +31,19 @@ Omarchy generates matching app configurations from `colors.toml`; `shell.toml`
 supplies the soft grey surfaces and sea-glass selections.
 Wheely's installer does not install or select Tidal.
 
+## fastfetch
+
+A coast in Tidal's colours sits beside fastfetch: `omarchy` floats on the horizon over its
+reflection, bobbing on a swell while glints catch the water and the tide washes the sand.
+`wheely-fetch` plays it: fastfetch's output, then the scene animated over its logo for about four
+seconds. Plain `fastfetch`, and Omarchy's About, show its last frame. The installer links
+`~/.config/fastfetch/config.jsonc` to the current theme's fastfetch config, unless you already
+have one; other themes keep Omarchy's own, since fastfetch skips a link that leads nowhere.
+
+The scene is baked: `themes/fastfetch-bake tidal` redraws `fastfetch/scene.txt` and
+`fastfetch/logo.txt` from `colors.toml`. Its octant characters need a terminal that draws them, as
+kitty and Ghostty do; Alacritty and foot take them from the font and show thin seams.
+
 ## Animated coasts
 
 Open Omarchy's **Background** picker, including through Wheely. The first two

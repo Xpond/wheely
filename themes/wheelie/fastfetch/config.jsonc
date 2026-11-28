@@ -1,0 +1,41 @@
+// Wheelie: OMARCHY rides through the dust storm; the readout wears the livery.
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "type": "file-raw",
+    "source": "~/.local/state/omarchy/current/theme/fastfetch/logo.txt",
+    "width": 58,
+    "height": 21,
+    "padding": { "top": 1, "left": 2, "right": 3 }
+  },
+  "display": {
+    "disableLinewrap": true,
+    "separator": "",
+    "key": { "width": 13 },
+    "color": { "keys": "#E47D4F", "output": "#FFD5C3" },
+    "percent": { "color": { "green": "#81B862", "yellow": "#D0A33A", "red": "#F48E74" } }
+  },
+  "modules": [
+    "break",
+    { "type": "custom", "format": "\u001b[38;2;228;125;79m━━ MACHINE \u001b[38;2;189;145;126m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" },
+    { "type": "cpu", "key": "  engine", "showPeCoreCount": true },
+    { "type": "gpu", "key": "  optics", "detectionMethod": "pci", "format": "{name}" },
+    { "type": "memory", "key": "  tank" },
+    { "type": "disk", "key": "󰋊  cargo" },
+    { "type": "display", "key": "󱄄  visor" },
+    "break",
+    { "type": "custom", "format": "\u001b[38;2;228;125;79m━━ LIVERY \u001b[38;2;189;145;126m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" },
+    { "type": "command", "key": "  omarchy", "text": "echo \"$(omarchy-version) · $(omarchy-version-channel)\"" },
+    { "type": "kernel", "key": "  kernel" },
+    { "type": "wm", "key": "  wm" },
+    { "type": "terminal", "key": "  term" },
+    { "type": "packages", "key": "󰏖  pkgs" },
+    { "type": "command", "key": "󰸌  theme", "text": "omarchy-theme-current" },
+    "break",
+    { "type": "custom", "format": "\u001b[38;2;228;125;79m━━ RIDE \u001b[38;2;189;145;126m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" },
+    { "type": "command", "key": "󱦟  odo", "text": "echo \"$(( ($(date +%s) - $(stat -c %W /var/log)) / 86400 )) days\"" },
+    { "type": "uptime", "key": "󱫐  session" },
+    "break",
+    { "type": "colors", "symbol": "circle", "paddingLeft": 3 }
+  ]
+}

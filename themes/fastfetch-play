@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# wheely-fetch: fastfetch, with the current theme's scene animated over its logo. Each animated
+# theme's install copies this to ~/.local/bin/wheely-fetch. Arguments, a pipe, or a theme without a
+# scene get plain fastfetch.
+set -euo pipefail
+scene=$HOME/.local/state/omarchy/current/theme/fastfetch
+[[ $# -eq 0 && -t 1 && -f $scene/scene.txt ]] || exec fastfetch "$@"
+
+pad_top=1 pad_left=2   # the logo's padding in every scene's config.jsonc
+read -r _ rows count fps <"$scene/scene.txt"
+mapfile -t lines < <(tail -n +2 "$scene/scene.txt")
+
+# fastfetch prints the last frame as its logo; the frames then play over that spot.
+out=$(fastfetch -c "$scene/config.jsonc" --pipe false)
+printf '%s' "$out"   # fastfetch already ends on a fresh line
+total=$(printf '%s' "$out" | wc -l)
+up=$((total - pad_top)) down=$((total - pad_top - rows))
+
+printf '\e[?25l'
+trap 'printf "\e[?25h"' EXIT
+step=$((1000000 / fps)) next=${EPOCHREALTIME/./}
+for ((f = 0; f < count; f++)); do
+  # A frame's row is empty when nothing in it changed, and skips unchanged cells with cursor moves.
+  buf=$'\e['$up$'A\r'
+  for ((r = 0; r < rows; r++)); do buf+=$'\e['$pad_left'C'${lines[f * rows + r]}$'\r\n'; done
+  ((down > 0)) && buf+=$'\e['$down'B'
+  printf '%s' "$buf"
+  next=$((next + step)) now=${EPOCHREALTIME/./}
+  ((next > now)) && sleep "0.$(printf '%06d' $((next - now)))"
+done
+# fastfetch ends with a blank line; the prompt brings its own spacing, so take it back.
+last=${out%$'\n'*}; last=${last##*$'\n'}
+[[ -n $(sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g; s/ //g' <<<"$last") ]] || printf '\e[1A'
