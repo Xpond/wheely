@@ -74,6 +74,9 @@ if name == "mv":
             "HOME": str(root / (failure + "-home")),
             "PATH": str(commands) + os.pathsep + os.environ["PATH"],
         }
+        (root / (failure + "-home")).mkdir()
+        (root / (failure + "-home/.bashrc")).write_text("# mine\n")
+        (config / "fish").mkdir(parents=True, exist_ok=True)
         result = subprocess.run([str(source / "wheelie"), "install"], env=env,
                                 capture_output=True, text=True, timeout=20)
         calls = log.read_text()
@@ -87,6 +90,10 @@ if name == "mv":
             home = root / "none-home"
             assert os.readlink(config / "fastfetch/config.jsonc") == str(home / ".local/state/omarchy/current/theme/fastfetch/config.jsonc")
             assert (home / ".local/bin/wheely-fetch").read_text() == "player"
+            # Typing fastfetch plays it too, in bash and fish, added once however often install runs.
+            subprocess.run([str(source / "wheelie"), "install"], env=env, capture_output=True, timeout=20)
+            assert (home / ".bashrc").read_text() == "# mine\nalias fastfetch=wheely-fetch\n"
+            assert "wheely-fetch $argv" in (config / "fish/functions/fastfetch.fish").read_text()
             poster = "backgrounds/00-wheelie-animated.jpg"
             assert (destination / poster).read_text() == "new " + poster
             for name in ("ambient-dust.vert.qsb", "ambient-dust.frag.qsb"):
@@ -109,15 +116,20 @@ if name == "mv":
     for failure in ("copy", "none"):
         config = root / f"fresh-{failure}"
         destination = config / "omarchy/themes/wheelie"
-        env.update(XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(config / "data"), WHEELIE_FAIL=failure)
+        env.update(XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(config / "data"), WHEELIE_FAIL=failure, HOME=str(config / "home"))
         (config / "fastfetch").mkdir(parents=True)
         (config / "fastfetch/config.jsonc").write_text("mine")
+        (config / "fish").mkdir()
+        (config / "home").mkdir()
+        (config / "home/.bashrc").write_text("# mine\n")
         result = subprocess.run([str(source / "wheelie"), "install"], env=env,
                                 capture_output=True, text=True, timeout=20)
         assert (result.returncode == 0) == (failure == "none"), result.stderr
         assert destination.exists() == (config / "data/wheely/themes/wheelie").exists() == (failure == "none")
         assert not list(destination.parent.parent.glob(".wheelie-install-*"))
         assert (config / "fastfetch/config.jsonc").read_text() == "mine", "a user's fastfetch config was replaced"
+        assert "alias" not in (config / "home/.bashrc").read_text(), "fastfetch was aliased past the user's config"
+        assert not (config / "fish/functions/fastfetch.fish").exists()
         print(f"ok: first Wheelie install {failure}")
 
     # Omarchy's theme removal deletes only the folder; each animated theme's hook then removes itself
@@ -141,6 +153,10 @@ if name == "mv":
         fetch.symlink_to(home / ".local/state/omarchy/current/theme/fastfetch/config.jsonc")
         player.parent.mkdir(parents=True)
         player.write_text("player")
+        alias, fish = home / ".bashrc", home / ".config/fish/functions/fastfetch.fish"
+        alias.write_text("# mine\nalias fastfetch=wheely-fetch\n")
+        fish.parent.mkdir(parents=True)
+        fish.write_text("function fastfetch; wheely-fetch $argv; end\n")
         if theme == "wheelie":  # another animated theme stays installed
             (home / "data/wheely/themes/tidal").mkdir(parents=True)
         subprocess.run(["bash", str(hook)], env=hooked, check=True)
@@ -151,7 +167,8 @@ if name == "mv":
         shutil.rmtree(folder)
         subprocess.run(["bash", str(hook)], env=hooked, check=True)
         assert not hook.exists() and not code.exists(), theme + "'s hook or scene outlived its theme"
-        # wheely-fetch and the fastfetch link leave with the last animated theme.
+        # wheely-fetch, its aliases and the fastfetch link leave with the last animated theme.
         last = theme == "tidal"
-        assert player.exists() != last and fetch.is_symlink() != last, theme
+        assert player.exists() != last and fetch.is_symlink() != last and fish.exists() != last, theme
+        assert ("alias" in alias.read_text()) != last and alias.read_text().startswith("# mine"), theme
         print(f"ok: {theme}'s hook leaves with its theme")

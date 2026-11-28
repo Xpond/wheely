@@ -8,10 +8,13 @@ code="${XDG_DATA_HOME:-$HOME/.local/share}/wheely/themes/$name"
 # Omarchy's theme removal deletes only the folder, so this hook and what it runs leave too.
 if [[ ! -d $theme && $0 == "$HOME"/.config/omarchy/hooks/* ]]; then
   rm -rf -- "$code" "$0"
-  # The last animated theme to leave takes wheely-fetch and the fastfetch link along.
+  # The last animated theme to leave takes wheely-fetch, its aliases and the fastfetch link along.
   if [[ -z $(ls -A -- "${code%/*}" 2>/dev/null) ]]; then
     fetch="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/config.jsonc"
+    fish="${XDG_CONFIG_HOME:-$HOME/.config}/fish/functions/fastfetch.fish"
     rm -f -- "$HOME/.local/bin/wheely-fetch"
+    if [[ -f ~/.bashrc ]]; then sed -i --follow-symlinks '/^alias fastfetch=wheely-fetch$/d' ~/.bashrc; fi
+    if grep -qs wheely-fetch "$fish"; then rm -f -- "$fish"; fi
     if [[ $(readlink -- "$fetch") == "$HOME/.local/state/omarchy/current/theme/fastfetch/config.jsonc" ]]; then rm -f -- "$fetch"; fi
   fi
   exit 0

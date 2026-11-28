@@ -35,10 +35,11 @@ Wheely's installer does not install or select Tidal.
 
 A coast in Tidal's colours sits beside fastfetch: `omarchy` floats on the horizon over its
 reflection, bobbing on a swell while glints catch the water and the tide washes the sand.
-`wheely-fetch` plays it: fastfetch's output, then the scene animated over its logo for about four
-seconds. Plain `fastfetch`, and Omarchy's About, show its last frame. The installer links
-`~/.config/fastfetch/config.jsonc` to the current theme's fastfetch config, unless you already
-have one; other themes keep Omarchy's own, since fastfetch skips a link that leads nowhere.
+`fastfetch` plays it: its output, then the scene animated over its logo for about four seconds.
+The installer links `~/.config/fastfetch/config.jsonc` to the current theme's fastfetch config and
+aliases `fastfetch` to `wheely-fetch` in bash and fish, unless you already have a config of your
+own. Other themes keep Omarchy's own, since fastfetch skips a link that leads nowhere. Omarchy's
+About and a `fastfetch` with arguments show the last frame.
 
 The scene is baked: `themes/fastfetch-bake tidal` redraws `fastfetch/scene.txt` and
 `fastfetch/logo.txt` from `colors.toml`. Its octant characters need a terminal that draws them, as

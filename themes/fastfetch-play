@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # wheely-fetch: fastfetch, with the current theme's scene animated over its logo. Each animated
-# theme's install copies this to ~/.local/bin/wheely-fetch. Arguments, a pipe, or a theme without a
-# scene get plain fastfetch.
+# theme's install copies this to ~/.local/bin/wheely-fetch and aliases fastfetch to it. Arguments, a
+# pipe, a terminal too short for the output, or a theme without a scene get plain fastfetch.
 set -euo pipefail
 scene=$HOME/.local/state/omarchy/current/theme/fastfetch
 [[ $# -eq 0 && -t 1 && -f $scene/scene.txt ]] || exec fastfetch "$@"
@@ -15,6 +15,9 @@ out=$(fastfetch -c "$scene/config.jsonc" --pipe false)
 printf '%s' "$out"   # fastfetch already ends on a fresh line
 total=$(printf '%s' "$out" | wc -l)
 up=$((total - pad_top)) down=$((total - pad_top - rows))
+# A terminal shorter than the output has scrolled the logo's top away; leave the still.
+{ height=$(stty size <&3); } 3>&1
+((${height% *} > total)) || exit 0
 
 printf '\e[?25l'
 trap 'printf "\e[?25h"' EXIT

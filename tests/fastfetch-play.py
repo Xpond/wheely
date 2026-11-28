@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Play a tiny two-frame scene through wheely-fetch on a pseudo-terminal, with fastfetch stubbed."""
+import fcntl
 import os
 from pathlib import Path
 import pty
+import struct
 import subprocess
 import tempfile
+import termios
 import tty
 
 player = Path(__file__).resolve().parents[1] / "themes/fastfetch-play"
@@ -20,9 +23,10 @@ with tempfile.TemporaryDirectory(prefix="fastfetch-play-") as temp:
     stub.chmod(0o755)
     env = os.environ | {"HOME": str(home), "PATH": f"{commands}{os.pathsep}{os.environ['PATH']}"}
 
-    def run(*args):
-        """The player's output on a terminal."""
+    def run(*args, height=24):
+        """The player's output on a terminal of this many rows."""
         leader, follower = pty.openpty()
+        fcntl.ioctl(follower, termios.TIOCSWINSZ, struct.pack("HHHH", height, 80, 0, 0))
         tty.setraw(follower)  # bytes as written, without newline translation
         subprocess.run([str(player), *args], env=env, stdout=follower, check=True, timeout=10)
         os.close(follower)
@@ -46,6 +50,10 @@ with tempfile.TemporaryDirectory(prefix="fastfetch-play-") as temp:
     # The cursor shows again, and fastfetch's blank last line is taken back for the prompt.
     assert out.endswith("\x1b[?25h") and "\x1b[1A" in out.rsplit("\x1b[2C", 1)[1], out
     print("ok: wheely-fetch plays the scene over fastfetch's logo")
+
+    # A terminal no taller than the output has scrolled; the still stays.
+    assert "\x1b[3A" not in run(height=4)
+    print("ok: wheely-fetch leaves a scrolled logo still")
 
     # Arguments, or a pipe, get plain fastfetch.
     run("--logo", "none")
