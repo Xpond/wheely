@@ -21,12 +21,14 @@ with tempfile.TemporaryDirectory(prefix="wheelie-install-") as temp:
     source.mkdir()
     commands.mkdir()
     shutil.copy2(repo / "wheelie", source / "wheelie")
-    for folder in ("hooks", "backgrounds", "scene"):
+    for folder in ("hooks", "backgrounds", "scene", "fastfetch"):
         (source / folder).mkdir()
+    (root / "fastfetch-play").write_text("player")
     shutil.copy2(repo / "hooks/wheelie-wallpaper", source / "hooks/wheelie-wallpaper")
     for name in ("colors.toml", "icons.theme", "preview.jpg", "backgrounds/00-wheelie-animated.jpg",
                  "backgrounds/static.jpg", "scene/wallpaper.qml", "scene/ambient-dust.vert.qsb",
-                 "scene/ambient-dust.frag.qsb", "scene/ambient-dust.vert", "scene/ambient-dust.frag"):
+                 "scene/ambient-dust.frag.qsb", "scene/ambient-dust.vert", "scene/ambient-dust.frag",
+                 "fastfetch/config.jsonc", "fastfetch/logo.txt", "fastfetch/scene.txt"):
         (source / name).write_text("new " + name)
     os.utime(source, (0, 0))
     stub = """#!/usr/bin/env python3
@@ -69,8 +71,12 @@ if name == "mv":
         log = root / f"{failure}.log"
         env = os.environ | {
             "XDG_CONFIG_HOME": str(config), "XDG_DATA_HOME": str(root / (failure + "-data")), "WHEELIE_FAIL": failure, "WHEELIE_LOG": str(log),
+            "HOME": str(root / (failure + "-home")),
             "PATH": str(commands) + os.pathsep + os.environ["PATH"],
         }
+        (root / (failure + "-home")).mkdir()
+        (root / (failure + "-home/.bashrc")).write_text("# mine\n")
+        (config / "fish").mkdir(parents=True, exist_ok=True)
         result = subprocess.run([str(source / "wheelie"), "install"], env=env,
                                 capture_output=True, text=True, timeout=20)
         calls = log.read_text()
@@ -78,7 +84,16 @@ if name == "mv":
             assert result.returncode == 0, result.stderr
             assert (code / "animated/wallpaper.qml").read_text() == "new scene/wallpaper.qml"
             # Nothing that runs is in the theme's folder, which another theme may replace.
-            assert sorted(p.name for p in destination.iterdir()) == ["backgrounds", "colors.toml", "icons.theme", "preview.jpg"]
+            assert sorted(p.name for p in destination.iterdir()) == ["backgrounds", "colors.toml", "fastfetch", "icons.theme", "preview.jpg"]
+            assert (destination / "fastfetch/scene.txt").read_text() == "new fastfetch/scene.txt"
+            # fastfetch follows the current theme, and wheely-fetch plays its scene.
+            home = root / "none-home"
+            assert os.readlink(config / "fastfetch/config.jsonc") == str(home / ".local/state/omarchy/current/theme/fastfetch/config.jsonc")
+            assert (home / ".local/bin/wheely-fetch").read_text() == "player"
+            # Typing fastfetch plays it too, in bash and fish, added once however often install runs.
+            subprocess.run([str(source / "wheelie"), "install"], env=env, capture_output=True, timeout=20)
+            assert (home / ".bashrc").read_text() == "# mine\nalias fastfetch=wheely-fetch\n"
+            assert "wheely-fetch $argv" in (config / "fish/functions/fastfetch.fish").read_text()
             poster = "backgrounds/00-wheelie-animated.jpg"
             assert (destination / poster).read_text() == "new " + poster
             for name in ("ambient-dust.vert.qsb", "ambient-dust.frag.qsb"):
@@ -101,12 +116,20 @@ if name == "mv":
     for failure in ("copy", "none"):
         config = root / f"fresh-{failure}"
         destination = config / "omarchy/themes/wheelie"
-        env.update(XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(config / "data"), WHEELIE_FAIL=failure)
+        env.update(XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(config / "data"), WHEELIE_FAIL=failure, HOME=str(config / "home"))
+        (config / "fastfetch").mkdir(parents=True)
+        (config / "fastfetch/config.jsonc").write_text("mine")
+        (config / "fish").mkdir()
+        (config / "home").mkdir()
+        (config / "home/.bashrc").write_text("# mine\n")
         result = subprocess.run([str(source / "wheelie"), "install"], env=env,
                                 capture_output=True, text=True, timeout=20)
         assert (result.returncode == 0) == (failure == "none"), result.stderr
         assert destination.exists() == (config / "data/wheely/themes/wheelie").exists() == (failure == "none")
         assert not list(destination.parent.parent.glob(".wheelie-install-*"))
+        assert (config / "fastfetch/config.jsonc").read_text() == "mine", "a user's fastfetch config was replaced"
+        assert "alias" not in (config / "home/.bashrc").read_text(), "fastfetch was aliased past the user's config"
+        assert not (config / "fish/functions/fastfetch.fish").exists()
         print(f"ok: first Wheelie install {failure}")
 
     # Omarchy's theme removal deletes only the folder; each animated theme's hook then removes itself
@@ -125,6 +148,17 @@ if name == "mv":
             (where / theme).chmod(0o755)
         hooked = os.environ | {"HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
                                "XDG_DATA_HOME": str(home / "data")}
+        fetch, player = home / ".config/fastfetch/config.jsonc", home / ".local/bin/wheely-fetch"
+        fetch.parent.mkdir(parents=True)
+        fetch.symlink_to(home / ".local/state/omarchy/current/theme/fastfetch/config.jsonc")
+        player.parent.mkdir(parents=True)
+        player.write_text("player")
+        alias, fish = home / ".bashrc", home / ".config/fish/functions/fastfetch.fish"
+        alias.write_text("# mine\nalias fastfetch=wheely-fetch\n")
+        fish.parent.mkdir(parents=True)
+        fish.write_text("function fastfetch; wheely-fetch $argv; end\n")
+        if theme == "wheelie":  # another animated theme stays installed
+            (home / "data/wheely/themes/tidal").mkdir(parents=True)
         subprocess.run(["bash", str(hook)], env=hooked, check=True)
         assert hook.exists() and not (home / "ran").exists(), theme + "'s hook ran or left under another theme"
         (home / ".local/state/omarchy/current/theme.name").write_text(theme + "\n")
@@ -133,4 +167,8 @@ if name == "mv":
         shutil.rmtree(folder)
         subprocess.run(["bash", str(hook)], env=hooked, check=True)
         assert not hook.exists() and not code.exists(), theme + "'s hook or scene outlived its theme"
+        # wheely-fetch, its aliases and the fastfetch link leave with the last animated theme.
+        last = theme == "tidal"
+        assert player.exists() != last and fetch.is_symlink() != last and fish.exists() != last, theme
+        assert ("alias" in alias.read_text()) != last and alias.read_text().startswith("# mine"), theme
         print(f"ok: {theme}'s hook leaves with its theme")

@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+"""Bakes a theme's fastfetch scene: fastfetch-bake <wheelie|tidal>.
+
+Writes themes/<theme>/fastfetch/scene.txt, "<cols> <rows> <frames> <fps>" then every frame's rows
+(after the first, only the cells that changed), and logo.txt, the last frame whole, which fastfetch
+shows as its logo. Needs ImageMagick with Pango, the Adwaita Sans font and omarchy-theme-color."""
+import math, os, random, subprocess, sys, unicodedata
+
+THEMES = os.path.dirname(os.path.abspath(__file__))
+theme = sys.argv[1]
+OUT = f"{THEMES}/{theme}/fastfetch"
+FPS = 60
+ASPECT = 1.14           # a sub-pixel's height over its width: a cell is 2x4 of them, about 1:2.3
+
+def hexrgb(h): h = h.lstrip('#'); return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+def mix(a, b, t): return tuple(x + (y - x) * t for x, y in zip(a, b))
+def clamp(t): return min(max(t, 0.0), 1.0)
+def ease(t): t = clamp(t); return t * t * (3 - 2 * t)
+def ease_out(t): return 1 - (1 - clamp(t)) ** 3
+C = {k: hexrgb(v) for k, v in (l.split("\t") for l in subprocess.run(
+    ["omarchy-theme-color", "--file", f"{THEMES}/{theme}/colors.toml", "--all"],
+    capture_output=True, text=True).stdout.splitlines()) if v.startswith("#")}
+BG = C["background"]
+
+# --- octant characters: bit n-1 is sub-pixel n, numbered 1 2 / 3 4 / 5 6 / 7 8 ---
+SPECIAL = {0: " ", 255: "█", 15: "▀", 240: "▄", 85: "▌", 170: "▐", 5: "▘", 10: "▝", 80: "▖", 160: "▗",
+           165: "▚", 90: "▞", 245: "▙", 95: "▛", 175: "▜", 250: "▟", 192: "▂", 252: "▆",
+           3: unicodedata.lookup("UPPER ONE QUARTER BLOCK"), 63: unicodedata.lookup("UPPER THREE QUARTERS BLOCK"),
+           20: unicodedata.lookup("MIDDLE LEFT ONE QUARTER BLOCK"), 40: unicodedata.lookup("MIDDLE RIGHT ONE QUARTER BLOCK"),
+           1: unicodedata.lookup("LEFT HALF UPPER ONE QUARTER BLOCK"), 2: unicodedata.lookup("RIGHT HALF UPPER ONE QUARTER BLOCK"),
+           64: unicodedata.lookup("LEFT HALF LOWER ONE QUARTER BLOCK"), 128: unicodedata.lookup("RIGHT HALF LOWER ONE QUARTER BLOCK")}
+OCT = []
+for p in range(256):
+    name = "BLOCK OCTANT-" + "".join(str(n + 1) for n in range(8) if p >> n & 1)
+    try: ch = unicodedata.lookup(name)
+    except KeyError: ch = None
+    assert (ch is None) == (p in SPECIAL), p
+    OCT.append(ch or SPECIAL[p])
+
+# --- text masks, rendered big by Pango and scaled to sub-pixels with area averaging ---
+def pango(markup, *ops):
+    return subprocess.run(["magick", "-background", "black", "-fill", "white", f"pango:{markup}", *ops],
+                          capture_output=True).stdout
+
+def mask(markup, height):
+    hw, hh = map(int, pango(markup, "-trim", "-format", "%w %h", "info:").split())
+    w = round(hw / hh * height * ASPECT)
+    raw = pango(markup, "-trim", "+repage", "-resize", f"{w}x{height}!", "-colorspace", "gray", "-depth", "8", "gray:-")
+    return [[raw[y * w + x] / 255 for x in range(w)] for y in range(height)]
+
+def sample(m, x, y):
+    """Bilinear coverage of mask m at a fractional point, 0 outside."""
+    x0, y0 = math.floor(x), math.floor(y)
+    fx, fy = x - x0, y - y0
+    def at(i, j): return m[j][i] if 0 <= j < len(m) and 0 <= i < len(m[0]) else 0.0
+    return (at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx) * (1 - fy) + (at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx) * fy
+
+# --- a frame is a canvas of sub-pixel colours; cells pick their best two colours ---
+def luma(c): return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+def dist(a, b): return sum((x - y) ** 2 for x, y in zip(a, b))
+
+_cell_cache = {}
+def cell(px):
+    """Eight sub-pixel colours -> (char, fg, bg), the best two-colour fit. bg None means the terminal's own."""
+    hit = _cell_cache.get(px)
+    if hit: return hit
+    if all(dist(p, BG) < 40 for p in px): out = (" ", None, None)
+    elif all(dist(p, px[0]) < 60 for p in px):
+        out = ("█", tuple(round(sum(p[j] for p in px) / 8) for j in range(3)), None)
+    else:
+        order = sorted(range(8), key=lambda i: luma(px[i]))
+        best = None
+        for k in range(1, 8):
+            lo, hi = order[:k], order[k:]
+            ml = tuple(sum(px[i][j] for i in lo) / len(lo) for j in range(3))
+            mh = tuple(sum(px[i][j] for i in hi) / len(hi) for j in range(3))
+            err = sum(dist(px[i], ml) for i in lo) + sum(dist(px[i], mh) for i in hi)
+            if best is None or err < best[0]: best = (err, lo, hi, ml, mh)
+        _, lo, hi, ml, mh = best
+        if dist(ml, BG) < dist(mh, BG): fgi, fgc, bgc = hi, mh, ml
+        else: fgi, fgc, bgc = lo, ml, mh
+        fgc, bgc = tuple(map(round, fgc)), tuple(map(round, bgc))
+        out = (OCT[sum(1 << i for i in fgi)], fgc, None if dist(bgc, BG) < 40 else bgc)
+    _cell_cache[px] = out
+    return out
+
+def cells(canvas):
+    return [[cell(tuple(tuple(map(round, canvas[4 * r + i // 2][2 * c + i % 2])) for i in range(8)))
+             for c in range(COLS)] for r in range(ROWS)]
+
+def encode(line, prev=None):
+    """A row as text. With the previous frame's row, unchanged cells become cursor moves; an unchanged row is empty."""
+    s, run, state = "", 0, None
+    for i, (ch, f, b) in enumerate(line):
+        if prev is not None and prev[i] == (ch, f, b):
+            run += 1; state = None; continue
+        if run: s += "\x1b[%dC" % run; run = 0
+        if state is None or state[1] != b:
+            s += "\x1b[49m" if b is None else "\x1b[48;2;%d;%d;%dm" % b
+        if ch != " " and (state is None or state[0] != f):
+            s += "\x1b[38;2;%d;%d;%dm" % f
+        state = (f if ch != " " else (state[0] if state else None), b)
+        s += ch
+    return s + "\x1b[0m" if s else ""
+
+def rounded(canvas, r):
+    """Clear the corners outside a radius-r rounded rectangle (r in sub-pixel widths)."""
+    H, W = len(canvas), len(canvas[0])
+    for y in range(H):
+        for x in range(W):
+            cx = min(max(x, r), W - 1 - r); cy = min(max(y, r / ASPECT), H - 1 - r / ASPECT)
+            if (x - cx) ** 2 + ((y - cy) * ASPECT) ** 2 > r * r: canvas[y][x] = BG
+
+def noise(x, seed=0):
+    """Smooth 1-D value noise in 0..1."""
+    i = math.floor(x); f = x - i
+    def h(n): return (math.sin((n + seed * 57.0) * 127.1) * 43758.5453) % 1.0
+    return h(i) + (h(i + 1) - h(i)) * f * f * (3 - 2 * f)
+
+COLS, ROWS = 58, 21
+W, H = COLS * 2, ROWS * 4
+
+# --- Wheelie: the wallpaper's three prints in the livery (dusk teal, burnt orange, sunset peach), the word riding a dust storm ---
+def wheelie():
+    m = mask('<span font="Adwaita Sans Black Italic 160">OMARCHY</span>', 13)
+    mw, mh = len(m[0]), len(m)
+    paper = C["bright_foreground"]
+    teal, burnt, sunset = (hexrgb("#0D4E54"), hexrgb("#17707A")), (C["selection_background"], hexrgb("#A85A36")), (C["accent"], C["light_foreground"])
+    storm_lo, storm_hi = C["darker_background"], hexrgb("#0E5257")
+    storm_floor = hexrgb("#011D20")
+    ground = 70                                    # the storm's darkest band; the word rides on it
+    bands = ((0, 16, teal), (17, 32, burnt), (33, ground, sunset))
+    def sky(x, y):
+        if y in (16, 32): return paper
+        for a, b, (c0, c1) in bands:
+            if a <= y < b:
+                c = mix(c0, c1, (y - a) / (b - a))
+                if c0 == burnt[0]:                    # soft cloud rows in the middle print
+                    c = mix(c, hexrgb("#5A2C1A"), 0.35 * clamp(noise(x / 9, y) * 1.6 - 0.8))
+                return c
+        return sunset[1]
+    def storm_top(x, shift):
+        return ground - 15 - 12 * noise((x + shift) / 14, 1) - 4 * noise((x + shift) / 5, 2)
+    backdrop = {}
+    def scene(shift):
+        if shift not in backdrop:
+            cv = [[sky(x, y) for x in range(W)] for y in range(H)]
+            for x in range(W):
+                top = storm_top(x, shift)
+                for y in range(max(0, int(top)), H):
+                    if y < ground: cv[y][x] = mix(storm_hi, storm_lo, clamp((y - top) / (ground - top)) ** 0.8)
+                    else: cv[y][x] = mix(storm_lo, storm_floor, (y - ground) / (H - ground))
+            backdrop[shift] = cv
+        return [row[:] for row in backdrop[shift]]
+    stops = [C["accent"], C["orange"], C["foreground"]]
+    def grad(u): u = clamp(u) * 2; i = min(int(u), 1); return mix(stops[i], stops[i + 1], u - i)
+    dust_col = hexrgb("#E9DCC8")
+    rest_x = W - mw - 4
+    rng, dust, frames = random.Random(5), [], []
+    def angle(t):
+        if t < 1.0: return 0.0
+        if t < 1.15: return -1.6 * math.sin(math.pi * (t - 1.0) / 0.15)
+        if t < 1.5: return 7.5 * ease_out((t - 1.15) / 0.35)
+        h = t - 1.5
+        return 3.8 + 3.7 * math.exp(-2.0 * h) * math.cos(2 * math.pi * 1.1 * h)
+    for i in range(int(3.8 * FPS)):
+        t = i / FPS
+        canvas = scene(int(t * 3))                     # the storm drifts, a sub-pixel at a time
+        x0 = -mw + (rest_x + mw) * ease_out(t / 1.0)
+        speed = (rest_x + mw) * 3 * (1 - clamp(t / 1.0)) ** 2
+        for k, (yy, off) in enumerate(((ground - 3, 0), (ground - 7, 6), (ground - 10, 2))):
+            length = speed * 0.06 * (0.7 + 0.3 * (k % 2))
+            for d in range(int(length)):
+                x = int(x0 - 3 - off - d)
+                if 0 <= x < W: canvas[yy][x] = mix(dust_col, canvas[yy][x], 0.2 + 0.8 * d / max(length, 1))
+        per_second = 45 if t < 1.0 else max(0.0, 32 - (t - 1.0) * 14)
+        if rng.random() < per_second / FPS:
+            dust.append((t, x0 + rng.uniform(-2, 2), ground - rng.uniform(0, 1), rng.uniform(-14, -4), rng.uniform(-6, -2)))
+        for t0, dx0, dy0, vx, vy in dust:
+            age = t - t0
+            if 0 <= age < 1.4:
+                x, y = int(dx0 + vx * age), int(dy0 + vy * age)
+                if 0 <= x < W and 0 <= y < H: canvas[y][x] = mix(dust_col, canvas[y][x], ease(age / 1.4))
+        a = math.radians(angle(t)); ca, sa = math.cos(a), math.sin(a)
+        lift = int(mw * abs(sa) / ASPECT) + 3
+        for y in range(max(0, ground - mh - lift), min(H, ground + lift + 3)):
+            for x in range(max(0, int(x0 - 3)), min(W, int(x0 + mw + 4))):
+                dx, dy = x - x0, (y - ground) * ASPECT
+                u, v = dx * ca - dy * sa, dx * sa + dy * ca
+                mx, my = u, mh + v / ASPECT
+                if sample(m, mx - 0.5, my - 0.5) >= 0.5: canvas[y][x] = grad(mx / mw)
+        rounded(canvas, 6)
+        frames.append(canvas)
+    return frames
+
+# --- Tidal: the word on the horizon over its reflection, glints on the water, the tide washing the sand ---
+def tidal():
+    seaglass = hexrgb("#7FBDB4")
+    word = "omarchy"
+    span = '<span font="Adwaita Sans ExtraBold 160">%s</span>'
+    full = mask(span % word, 21)
+    mw, mh = len(full[0]), len(full)
+    # Letters split at Pango's advance after each prefix, scaled into the trimmed mask.
+    trim_w, trim_x = map(int, pango(span % word, "-format", "%w %X", "-trim", "info:").split())
+    edges = [0] + [(int(pango(span % word[:k], "-format", "%w", "info:")) - trim_x) * mw / trim_w for k in range(1, len(word))] + [mw]
+    spans = [(edges[k], edges[k + 1]) for k in range(len(word))]
+    base = max(y for y in range(mh) for x in range(int(spans[0][1])) if full[y][x] >= 0.5)
+    water = 44                                  # the horizon, where the letters stand
+    shore = 68                                  # where the water meets the sand at rest
+    left = (W - mw) // 2
+    # Every colour from the theme: chalk, sea glass, warm sand (its brown, thinned) and marine ink.
+    chalk, sand = C["background"], mix(C["brown"], C["yellow"], 0.4)
+    sky_top, sky_low = C["selection"], C["lighter_background"]
+    sun, halo, cloud = chalk, C["dark_background"], C["lighter_background"]
+    sea_far, sea_near = mix(C["cyan"], seaglass, 0.35), seaglass
+    foam, shallow = C["lighter_background"], C["selection"]
+    sand_c, sand_far, sand_r, wet = mix(chalk, sand, 0.16), mix(chalk, sand, 0.2), mix(chalk, sand, 0.26), mix(chalk, sand, 0.34)
+    gull = C["muted"]
+    T = 3.8
+    rng = random.Random(3)
+    glints = [(rng.uniform(2, W - 4), rng.uniform(water + 2, shore - 4), rng.uniform(0, T), rng.uniform(0.25, 0.6)) for _ in range(26)]
+    def grad(u): return mix(C["accent"], seaglass, clamp(u))
+    def tide(t):                                 # how far the swash has run up the sand, in sub-pixels
+        return 6 * math.sin(math.pi * clamp((t - 0.6) / 2.4)) ** 2
+    frames = []
+    for i in range(int(T * FPS)):
+        t = i / FPS
+        env = math.sin(math.pi / 2 * min(t / 0.5, 1)) * (1 - t / T) ** 2
+        amp = 3.2 * env
+        def swell(x): return amp * math.sin(2 * math.pi * (x / 46 - 0.7 * t))
+        bob = [swell(left + (a + b) / 2) for a, b in spans]
+        reach = max(tide(s / FPS) for s in range(i + 1))
+        canvas = []
+        for y in range(H):
+            row = []
+            for x in range(W):
+                if y < water:
+                    c = mix(sky_top, sky_low, (y / water) ** 1.3)
+                    r2 = (x - 86) ** 2 + ((y - 11) * ASPECT) ** 2
+                    if r2 < 49: c = sun
+                    elif r2 < 90: c = mix(c, halo, 0.5)
+                    for cx, cy, rx, ry in ((30, 9, 13, 2.2), (40, 7, 7, 1.8), (72, 21, 16, 2.0), (62, 23, 8, 1.4)):
+                        cx = cx + t * 1.5
+                        if ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < 1: c = cloud
+                else:
+                    curve = 1.5 * math.sin(x / 11 + 1.3)
+                    edge = shore - tide(t) + curve
+                    if y < edge - 1:
+                        c = mix(sea_far, sea_near, ((y - water) / (shore - water)) ** 0.8)
+                        if y >= edge - 4: c = mix(c, shallow, 0.6)
+                    elif y < edge: c = foam
+                    else:
+                        c = mix(sand_c, sand_far, (y - shore) / (H - shore))
+                        if (y - shore) % 3 == 1 and math.sin(x / 5 + 4 * noise(y / 5, 7)) > 0.55: c = mix(c, sand_r, 0.5)
+                        rest_edge = shore + curve
+                        if y < rest_edge + 3: c = mix(c, wet, 0.75)                     # always-wet edge
+                        elif y < rest_edge + 3 + reach:                                    # wet by the swash, drying
+                            c = mix(c, wet, 0.6 * (1 - ease((t - 2.2) / 1.6)))
+                row.append(c)
+            canvas.append(row)
+        for gx, gy, g0, life in glints:
+            age = (t - g0) % T
+            if age < life:
+                k = math.sin(math.pi * age / life)
+                for dx in range(3 if gy < water + 10 else 2):
+                    x, y = int(gx + dx), int(gy)
+                    canvas[y][x] = mix(canvas[y][x], foam, 0.85 * k)
+        for k, (gx0, gy) in enumerate(((18, 10), (25, 13))):
+            gx = gx0 + t * 4 + k * 2
+            flap = int(t * 5 + k) % 2
+            for dx, dy in ((0, 0), (1, 1 - flap), (2, 1), (3, 1 - flap), (4, 0)):
+                canvas[gy + dy][int(gx) + dx] = gull
+        def letter_cov(mx, my):
+            for k, (a, b) in enumerate(spans):
+                if a <= mx < b or (k == 0 and mx < a) or (k == len(spans) - 1 and mx >= b):
+                    return sample(full, mx - 0.5, my - bob[k] - 0.5)
+            return 0.0
+        def glow(x):
+            g = 0
+            for start, strength in ((0.2, 0.75), (1.6, 0.4)):
+                u = (t - start) / 1.5
+                if 0 <= u <= 1: g = max(g, strength * max(0, 1 - abs(x - (-8 + u * (mw + 16))) / 7))
+            return g
+        for y in range(H):
+            for x in range(max(0, left - 3), min(W, left + mw + 3)):
+                mx = x - left
+                if letter_cov(mx, y - (water - 1 - base)) >= 0.5:
+                    canvas[y][x] = mix(grad(mx / mw), C["lighter_background"], glow(mx))
+                elif y >= water:
+                    depth = y - water
+                    if depth % 3 == 2: continue
+                    ripple = (0.35 + amp * 0.4) * math.sin(depth * 0.9 - t * 5)
+                    if letter_cov(mx + ripple, base - depth / 0.65) >= 0.5:
+                        canvas[y][x] = mix(grad(mx / mw), canvas[y][x], 0.45 + 0.4 * clamp(depth / 12))
+        rounded(canvas, 6)
+        frames.append(canvas)
+    return frames
+
+frames = wheelie() if theme == "wheelie" else tidal()
+grids = [cells(f) for f in frames]
+with open(f"{OUT}/scene.txt", "w") as f:
+    f.write(f"{COLS} {ROWS} {len(frames)} {FPS}\n")
+    prev = None
+    for g in grids:
+        for r, line in enumerate(g): f.write(encode(line, prev[r] if prev else None) + "\n")
+        prev = g
+with open(f"{OUT}/logo.txt", "w") as f:
+    for line in grids[-1]: f.write(encode(line) + "\n")

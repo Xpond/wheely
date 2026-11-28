@@ -95,3 +95,4 @@ omarchy theme remove tidal    # or wheelie
 
 That deletes the theme's folder. Its two hooks then remove themselves and the animation in
 `~/.local/share/wheely/themes/`, one at the next theme change and the other at the next boot.
+The last of the two to go also removes `wheely-fetch`, its `fastfetch` aliases and the fastfetch config link.

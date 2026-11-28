@@ -19,7 +19,7 @@ case "${1:-help}" in
     trap 'rm -rf "$stage"' EXIT
     new="$stage/$name"
     mkdir "$new"
-    cp -a "$theme"/{colors.toml,icons.theme,preview.jpg,backgrounds} "$new/"
+    cp -a "$theme"/{colors.toml,icons.theme,preview.jpg,backgrounds,fastfetch} "$new/"
     if [[ -e $theme/shell.toml ]]; then cp -a "$theme/shell.toml" "$new/"; fi
     mkdir "$stage/code"
     cp -L "$theme/$name" "$stage/code/$name"
@@ -54,6 +54,28 @@ case "${1:-help}" in
         }
       fi
       exit 1
+    fi
+    # fastfetch follows the current theme: its scene's last frame, or Omarchy's own when the theme
+    # has none, since fastfetch skips a config link that leads nowhere. A config of the user's stays.
+    fetch="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/config.jsonc"
+    link="$HOME/.local/state/omarchy/current/theme/fastfetch/config.jsonc"
+    if [[ ! -e $fetch && ! -L $fetch ]]; then
+      mkdir -p "${fetch%/*}"
+      ln -s "$link" "$fetch"
+    fi
+    mkdir -p "$HOME/.local/bin"
+    cp "$theme/../fastfetch-play" "$HOME/.local/bin/wheely-fetch"
+    # Unless fastfetch has the user's config, typing fastfetch plays the scene too, in bash and fish.
+    if [[ $(readlink -- "$fetch") == "$link" ]]; then
+      if [[ -f ~/.bashrc ]] && ! grep -qx 'alias fastfetch=wheely-fetch' ~/.bashrc; then
+        echo 'alias fastfetch=wheely-fetch' >>~/.bashrc
+      fi
+      fish="${XDG_CONFIG_HOME:-$HOME/.config}/fish"
+      if [[ -d $fish && ! -e $fish/functions/fastfetch.fish ]]; then
+        mkdir -p "$fish/functions"
+        # shellcheck disable=SC2016 # $argv is fish's
+        echo 'function fastfetch; wheely-fetch $argv; end' >"$fish/functions/fastfetch.fish"
+      fi
     fi
     omarchy hook install theme-set "$theme/hooks/$name-wallpaper"
     omarchy hook install post-boot "$theme/hooks/$name-wallpaper"
